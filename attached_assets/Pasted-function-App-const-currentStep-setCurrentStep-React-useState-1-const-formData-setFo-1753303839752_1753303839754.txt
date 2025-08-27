@@ -1,0 +1,523 @@
+function App() {
+  const [currentStep, setCurrentStep] = React.useState(1);
+  const [formData, setFormData] = React.useState({
+    images: [],
+    title: '',
+    description: '',
+    category: '',
+    condition: '',
+    ageRange: '',
+    brand: '',
+    originalPrice: '',
+    tags: [],
+    availableFor: 'exchange', // 'exchange', 'loan', 'both'
+    location: '',
+    meetingPreference: 'flexible' // 'flexible', 'pickup', 'delivery'
+  });
+
+  const [dragActive, setDragActive] = React.useState(false);
+  const [showSuccessModal, setShowSuccessModal] = React.useState(false);
+
+  const categories = [
+    { id: 'action-figures', name: 'Action Figures', icon: 'fas fa-robot' },
+    { id: 'dolls', name: 'Dolls & Accessories', icon: 'fas fa-female' },
+    { id: 'building', name: 'Building Toys', icon: 'fas fa-cubes' },
+    { id: 'educational', name: 'Educational', icon: 'fas fa-graduation-cap' },
+    { id: 'outdoor', name: 'Outdoor & Sports', icon: 'fas fa-football-ball' },
+    { id: 'board-games', name: 'Board Games', icon: 'fas fa-chess' },
+    { id: 'vehicles', name: 'Vehicles', icon: 'fas fa-car' },
+    { id: 'arts-crafts', name: 'Arts & Crafts', icon: 'fas fa-palette' }
+  ];
+
+  const conditions = [
+    { id: 'like-new', name: 'Like New', description: 'Barely used, excellent condition' },
+    { id: 'excellent', name: 'Excellent', description: 'Minor wear, works perfectly' },
+    { id: 'good', name: 'Good', description: 'Some wear, fully functional' },
+    { id: 'fair', name: 'Fair', description: 'Well-used but still works' }
+  ];
+
+  const ageRanges = ['0-2 years', '3-5 years', '6-8 years', '9-12 years', '13+ years'];
+  
+  const popularTags = ['Educational', 'STEM', 'Creative', 'Popular', 'Rare', 'Complete Set', 'Vintage', 'Interactive'];
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleTagToggle = (tag) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag) 
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag]
+    }));
+  };
+
+  const handleImageUpload = (files) => {
+    const newImages = Array.from(files).slice(0, 5 - formData.images.length);
+    const imageUrls = newImages.map((file, index) => 
+      `https://placehold.co/300x300/8B5CF6/white?text=Photo+${formData.images.length + index + 1}`
+    );
+    
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...imageUrls]
+    }));
+  };
+
+  const removeImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const nextStep = () => {
+    if (currentStep < 3) setCurrentStep(currentStep + 1);
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  const handleSubmit = () => {
+    setShowSuccessModal(true);
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageUpload(e.dataTransfer.files);
+    }
+  };
+
+  const renderStep1 = () => (
+    <div className="space-y-6">
+      {/* Photo Upload */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">
+          Add Photos <span className="text-red-500">*</span>
+        </label>
+        <p className="text-sm text-gray-500 mb-4">Add up to 5 photos. The first photo will be your main image.</p>
+        
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {formData.images.map((image, index) => (
+            <div key={index} className="relative aspect-square bg-gray-100 rounded-xl overflow-hidden">
+              <img src={image} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+              <button
+                onClick={() => removeImage(index)}
+                className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
+              >
+                <i className="fas fa-times text-white text-xs"></i>
+              </button>
+              {index === 0 && (
+                <div className="absolute bottom-2 left-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  Main
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {formData.images.length < 5 && (
+            <div
+              className={`aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${
+                dragActive ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-purple-400'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('photo-upload').click()}
+            >
+              <i className="fas fa-camera text-gray-400 text-2xl mb-2"></i>
+              <span className="text-sm text-gray-500 text-center px-2">
+                Tap to add photo
+              </span>
+            </div>
+          )}
+        </div>
+        
+        <input
+          id="photo-upload"
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={(e) => handleImageUpload(e.target.files)}
+          className="hidden"
+        />
+      </div>
+
+      {/* Title */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">
+          Toy Title <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={formData.title}
+          onChange={(e) => handleInputChange('title', e.target.value)}
+          placeholder="e.g., LEGO Creator 3-in-1 Deep Sea Creatures"
+          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">
+          Description <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          placeholder="Describe your toy's condition, what's included, and why kids would love it..."
+          rows={4}
+          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+        />
+        <div className="text-right text-sm text-gray-500 mt-1">
+          {formData.description.length}/500
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div className="space-y-6">
+      {/* Category */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">
+          Category <span className="text-red-500">*</span>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => handleInputChange('category', category.id)}
+              className={`p-4 rounded-xl border-2 transition-all ${
+                formData.category === category.id
+                  ? 'border-purple-500 bg-purple-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <i className={`${category.icon} text-2xl mb-2 ${
+                formData.category === category.id ? 'text-purple-500' : 'text-gray-400'
+              }`}></i>
+              <div className={`text-sm font-medium ${
+                formData.category === category.id ? 'text-purple-700' : 'text-gray-700'
+              }`}>
+                {category.name}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Condition */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">
+          Condition <span className="text-red-500">*</span>
+        </label>
+        <div className="space-y-3">
+          {conditions.map((condition) => (
+            <button
+              key={condition.id}
+              onClick={() => handleInputChange('condition', condition.id)}
+              className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                formData.condition === condition.id
+                  ? 'border-purple-500 bg-purple-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className={`font-medium mb-1 ${
+                formData.condition === condition.id ? 'text-purple-700' : 'text-gray-800'
+              }`}>
+                {condition.name}
+              </div>
+              <div className="text-sm text-gray-500">{condition.description}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Age Range & Brand */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-lg font-semibold text-gray-800 mb-3">Age Range</label>
+          <select
+            value={formData.ageRange}
+            onChange={(e) => handleInputChange('ageRange', e.target.value)}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          >
+            <option value="">Select age range</option>
+            {ageRanges.map((range) => (
+              <option key={range} value={range}>{range}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-lg font-semibold text-gray-800 mb-3">Brand</label>
+          <input
+            type="text"
+            value={formData.brand}
+            onChange={(e) => handleInputChange('brand', e.target.value)}
+            placeholder="e.g., LEGO, Barbie"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      {/* Tags */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">Tags</label>
+        <p className="text-sm text-gray-500 mb-4">Add tags to help others find your toy</p>
+        <div className="flex flex-wrap gap-2">
+          {popularTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => handleTagToggle(tag)}
+              className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
+                formData.tags.includes(tag)
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Available For */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">
+          Available For <span className="text-red-500">*</span>
+        </label>
+        <div className="space-y-3">
+          <button
+            onClick={() => handleInputChange('availableFor', 'exchange')}
+            className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+              formData.availableFor === 'exchange'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <i className="fas fa-exchange-alt text-purple-500"></i>
+              <div>
+                <div className="font-medium text-gray-800">Exchange Only</div>
+                <div className="text-sm text-gray-500">Trade for another toy</div>
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => handleInputChange('availableFor', 'loan')}
+            className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+              formData.availableFor === 'loan'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <i className="fas fa-clock text-blue-500"></i>
+              <div>
+                <div className="font-medium text-gray-800">Loan Only</div>
+                <div className="text-sm text-gray-500">Temporary lending</div>
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => handleInputChange('availableFor', 'both')}
+            className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+              formData.availableFor === 'both'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <i className="fas fa-heart text-pink-500"></i>
+              <div>
+                <div className="font-medium text-gray-800">Both</div>
+                <div className="text-sm text-gray-500">Open to exchange or loan</div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Meeting Preference */}
+      <div>
+        <label className="block text-lg font-semibold text-gray-800 mb-3">Meeting Preference</label>
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={() => handleInputChange('meetingPreference', 'pickup')}
+            className={`p-3 rounded-xl border-2 text-center transition-all ${
+              formData.meetingPreference === 'pickup'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <i className="fas fa-car text-lg mb-2 text-purple-500"></i>
+            <div className="text-sm font-medium">Pickup</div>
+          </button>
+          <button
+            onClick={() => handleInputChange('meetingPreference', 'delivery')}
+            className={`p-3 rounded-xl border-2 text-center transition-all ${
+              formData.meetingPreference === 'delivery'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <i className="fas fa-truck text-lg mb-2 text-blue-500"></i>
+            <div className="text-sm font-medium">Delivery</div>
+          </button>
+          <button
+            onClick={() => handleInputChange('meetingPreference', 'flexible')}
+            className={`p-3 rounded-xl border-2 text-center transition-all ${
+              formData.meetingPreference === 'flexible'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <i className="fas fa-handshake text-lg mb-2 text-green-500"></i>
+            <div className="text-sm font-medium">Flexible</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-100">
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between">
+            <button 
+              onClick={currentStep > 1 ? prevStep : () => {}}
+              className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center"
+            >
+              <i className="fas fa-arrow-left text-gray-600"></i>
+            </button>
+            <div className="text-center">
+              <h1 className="text-lg font-bold text-gray-800">List Your Toy</h1>
+              <p className="text-sm text-gray-500">Step {currentStep} of 3</p>
+            </div>
+            <button className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+              <i className="fas fa-times text-gray-600"></i>
+            </button>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="mt-4">
+            <div className="flex space-x-2">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={`flex-1 h-2 rounded-full transition-all ${
+                    step <= currentStep
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500'
+                      : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Form Content */}
+      <div className="px-4 py-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          {currentStep === 1 && renderStep1()}
+          {currentStep === 2 && renderStep2()}
+          {currentStep === 3 && renderStep3()}
+        </div>
+      </div>
+
+      {/* Bottom Actions */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div className="flex space-x-3">
+          {currentStep > 1 && (
+            <button
+              onClick={prevStep}
+              className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+            >
+              Previous
+            </button>
+          )}
+          <button
+            onClick={currentStep === 3 ? handleSubmit : nextStep}
+            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all"
+          >
+            {currentStep === 3 ? 'List My Toy' : 'Continue'}
+          </button>
+        </div>
+      </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i className="fas fa-check text-white text-xl"></i>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Toy Listed Successfully!</h3>
+            <p className="text-gray-500 text-sm mb-6">
+              Your toy is now live and other parents can discover it. You'll get notified when someone is interested!
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium"
+              >
+                View My Listing
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setCurrentStep(1);
+                  setFormData({
+                    images: [],
+                    title: '',
+                    description: '',
+                    category: '',
+                    condition: '',
+                    ageRange: '',
+                    brand: '',
+                    originalPrice: '',
+                    tags: [],
+                    availableFor: 'exchange',
+                    location: '',
+                    meetingPreference: 'flexible'
+                  });
+                }}
+                className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium"
+              >
+                List Another Toy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Padding */}
+      <div className="h-24"></div>
+    </div>
+  );
+}

@@ -1,0 +1,373 @@
+function App() {
+  const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
+  const [isFavorited, setIsFavorited] = React.useState(false);
+  const [showRequestModal, setShowRequestModal] = React.useState(false);
+  const [showMessageModal, setShowMessageModal] = React.useState(false);
+  const [message, setMessage] = React.useState('');
+
+  const toy = {
+    id: 1,
+    name: 'LEGO Creator 3-in-1 Deep Sea Creatures',
+    description: 'Amazing LEGO set that transforms into 3 different sea creatures! Build a shark, squid, or angler fish. Perfect for kids aged 7-12. All pieces included, instruction manual available. Great for developing creativity and fine motor skills.',
+    condition: 'Like New',
+    category: 'Building Toys',
+    ageRange: '7-12 years',
+    brand: 'LEGO',
+    pieceCount: '230 pieces',
+    distance: '0.5 km away',
+    postedDate: '2 days ago',
+    images: [
+      'https://placehold.co/400x400/8B5CF6/white?text=LEGO+Main',
+      'https://placehold.co/400x400/A855F7/white?text=LEGO+2',
+      'https://placehold.co/400x400/9333EA/white?text=LEGO+3',
+      'https://placehold.co/400x400/7C3AED/white?text=LEGO+4'
+    ],
+    owner: {
+      name: 'Sarah Miller',
+      username: '@sarahm_toys',
+      avatar: 'SM',
+      rating: 4.8,
+      reviewCount: 24,
+      responseTime: '~2 hours',
+      joinDate: 'March 2024',
+      location: 'San Francisco, CA',
+      verified: true
+    },
+    tags: ['Educational', 'Creative', 'STEM', 'Popular']
+  };
+
+  const similarToys = [
+    {
+      id: 2,
+      name: 'LEGO City Fire Station',
+      image: 'https://placehold.co/120x120/FF6B6B/white?text=Fire',
+      distance: '0.8 km',
+      condition: 'Excellent'
+    },
+    {
+      id: 3,
+      name: 'LEGO Friends House',
+      image: 'https://placehold.co/120x120/10B981/white?text=House',
+      distance: '1.2 km',
+      condition: 'Good'
+    },
+    {
+      id: 4,
+      name: 'LEGO Technic Car',
+      image: 'https://placehold.co/120x120/F59E0B/white?text=Car',
+      distance: '1.5 km',
+      condition: 'Like New'
+    }
+  ];
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % toy.images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + toy.images.length) % toy.images.length);
+  };
+
+  const handleRequest = () => {
+    setShowRequestModal(true);
+  };
+
+  const handleMessage = () => {
+    setShowMessageModal(true);
+  };
+
+  const sendMessage = () => {
+    // Handle message sending logic
+    setShowMessageModal(false);
+    setMessage('');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-100 relative z-10">
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between">
+            <button className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+              <i className="fas fa-arrow-left text-gray-600"></i>
+            </button>
+            <div className="flex items-center space-x-2">
+              <button className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i className="fas fa-share text-gray-600"></i>
+              </button>
+              <button 
+                onClick={() => setIsFavorited(!isFavorited)}
+                className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center"
+              >
+                <i className={`${isFavorited ? 'fas' : 'far'} fa-heart ${isFavorited ? 'text-red-500' : 'text-gray-600'}`}></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Image Gallery */}
+      <div className="relative">
+        <div className="aspect-square bg-white">
+          <img
+            src={toy.images[currentImageIndex]}
+            alt={toy.name}
+            className="w-full h-full object-cover"
+          />
+          
+          {/* Image Navigation */}
+          {toy.images.length > 1 && (
+            <>
+              <button
+                onClick={prevImage}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white bg-opacity-80 rounded-full flex items-center justify-center shadow-lg"
+              >
+                <i className="fas fa-chevron-left text-gray-600"></i>
+              </button>
+              <button
+                onClick={nextImage}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white bg-opacity-80 rounded-full flex items-center justify-center shadow-lg"
+              >
+                <i className="fas fa-chevron-right text-gray-600"></i>
+              </button>
+            </>
+          )}
+
+          {/* Image Indicators */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+            {toy.images.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImageIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Toy Information */}
+      <div className="bg-white mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 p-6">
+        {/* Title and Condition */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-gray-800 mb-2">{toy.name}</h1>
+            <div className="flex items-center space-x-3 mb-3">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                toy.condition === 'Like New' 
+                  ? 'bg-green-100 text-green-700'
+                  : toy.condition === 'Excellent'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {toy.condition}
+              </span>
+              <div className="flex items-center space-x-1">
+                <i className="fas fa-map-marker-alt text-purple-500 text-sm"></i>
+                <span className="text-gray-500 text-sm">{toy.distance}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {toy.tags.map((tag, index) => (
+            <span
+              key={index}
+              className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        {/* Description */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-gray-800 mb-2">Description</h3>
+          <p className="text-gray-600 text-sm leading-relaxed">{toy.description}</p>
+        </div>
+
+        {/* Toy Details */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div>
+            <div className="text-sm text-gray-500 mb-1">Category</div>
+            <div className="font-medium text-gray-800">{toy.category}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-500 mb-1">Age Range</div>
+            <div className="font-medium text-gray-800">{toy.ageRange}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-500 mb-1">Brand</div>
+            <div className="font-medium text-gray-800">{toy.brand}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-500 mb-1">Pieces</div>
+            <div className="font-medium text-gray-800">{toy.pieceCount}</div>
+          </div>
+        </div>
+
+        {/* Posted Date */}
+        <div className="text-sm text-gray-500">Posted {toy.postedDate}</div>
+      </div>
+
+      {/* Owner Information */}
+      <div className="bg-white mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h3 className="font-semibold text-gray-800 mb-4">Toy Owner</h3>
+        
+        <div className="flex items-center space-x-4 mb-4">
+          <div className="relative">
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-lg font-bold">{toy.owner.avatar}</span>
+            </div>
+            {toy.owner.verified && (
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                <i className="fas fa-check text-white text-xs"></i>
+              </div>
+            )}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <h4 className="font-semibold text-gray-800">{toy.owner.name}</h4>
+              {toy.owner.verified && (
+                <i className="fas fa-check-circle text-blue-500 text-sm"></i>
+              )}
+            </div>
+            <p className="text-gray-500 text-sm mb-1">{toy.owner.username}</p>
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <div className="flex items-center space-x-1">
+                <i className="fas fa-star text-yellow-400"></i>
+                <span>{toy.owner.rating} ({toy.owner.reviewCount} reviews)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div className="text-gray-500 mb-1">Response Time</div>
+            <div className="font-medium text-gray-800">{toy.owner.responseTime}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 mb-1">Member Since</div>
+            <div className="font-medium text-gray-800">{toy.owner.joinDate}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Similar Toys */}
+      <div className="mx-4 mt-4">
+        <h3 className="font-semibold text-gray-800 mb-4">Similar Toys</h3>
+        <div className="flex space-x-4 overflow-x-auto pb-2">
+          {similarToys.map((similarToy) => (
+            <div
+              key={similarToy.id}
+              className="flex-shrink-0 w-32 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="aspect-square bg-gray-50">
+                <img
+                  src={similarToy.image}
+                  alt={similarToy.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-3">
+                <h4 className="font-medium text-gray-800 text-sm mb-1 line-clamp-2">
+                  {similarToy.name}
+                </h4>
+                <div className="text-xs text-gray-500 mb-1">{similarToy.distance}</div>
+                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                  {similarToy.condition}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div className="flex space-x-3">
+          <button
+            onClick={handleMessage}
+            className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:bg-gray-200 transition-colors"
+          >
+            <i className="fas fa-comment"></i>
+            <span>Message</span>
+          </button>
+          <button
+            onClick={handleRequest}
+            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
+          >
+            <i className="fas fa-handshake"></i>
+            <span>Request Exchange</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Request Modal */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fas fa-handshake text-white text-xl"></i>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Request Exchange</h3>
+              <p className="text-gray-500 text-sm">Send a request to exchange toys with {toy.owner.name}</p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowRequestModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all">
+                Send Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Modal */}
+      {showMessageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Send Message</h3>
+              <p className="text-gray-500 text-sm mb-4">Send a message to {toy.owner.name}</p>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Hi! I'm interested in this toy..."
+                className="w-full h-24 p-3 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowMessageModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendMessage}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all"
+              >
+                Send Message
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Padding */}
+      <div className="h-24"></div>
+    </div>
+  );
+}

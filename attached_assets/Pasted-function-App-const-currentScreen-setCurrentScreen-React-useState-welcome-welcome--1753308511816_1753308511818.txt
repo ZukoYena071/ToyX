@@ -1,0 +1,475 @@
+function App() {
+  const [currentScreen, setCurrentScreen] = React.useState('welcome'); // 'welcome', 'signup', 'login', 'forgot'
+  const [formData, setFormData] = React.useState({
+    firstName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    agreeToTerms: false,
+    loginEmail: '',
+    loginPassword: '',
+    forgotEmail: ''
+  });
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (type) => {
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      if (type === 'signup' || type === 'login') {
+        // Navigate to main app
+        alert('Success! Redirecting to main app...');
+      } else if (type === 'forgot') {
+        alert('Reset link sent to your email!');
+        setCurrentScreen('login');
+      }
+    }, 2000);
+  };
+
+  // Welcome Screen
+  if (currentScreen === 'welcome') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-100 via-pink-50 to-purple-100 flex flex-col">
+        {/* Status Bar */}
+        <div className="flex items-center justify-between px-6 pt-12 pb-4">
+          <button className="w-8 h-8 flex items-center justify-center">
+            <i className="fas fa-times text-gray-600"></i>
+          </button>
+          <button className="text-gray-600 text-sm font-medium">Skip</button>
+        </div>
+
+        {/* Illustration */}
+        <div className="flex-1 flex items-center justify-center px-8">
+          <div className="text-center">
+            <div className="relative mb-12">
+              {/* Colorful toy illustration */}
+              <div className="relative w-80 h-80 mx-auto">
+                {/* Background circles */}
+                <div className="absolute top-8 left-12 w-24 h-24 bg-yellow-300 rounded-full opacity-80"></div>
+                <div className="absolute top-16 right-8 w-20 h-20 bg-pink-300 rounded-full opacity-70"></div>
+                <div className="absolute bottom-20 left-8 w-28 h-28 bg-blue-300 rounded-full opacity-60"></div>
+                <div className="absolute bottom-12 right-12 w-16 h-16 bg-purple-300 rounded-full opacity-80"></div>
+                <div className="absolute top-24 left-1/2 transform -translate-x-1/2 w-32 h-32 bg-green-300 rounded-full opacity-50"></div>
+                
+                {/* Central toy character */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center shadow-lg">
+                  <div className="text-2xl">🧸</div>
+                </div>
+                
+                {/* Floating elements */}
+                <div className="absolute top-12 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-red-400 rounded-full opacity-70"></div>
+                <div className="absolute bottom-8 left-1/4 w-6 h-6 bg-indigo-400 rounded-full opacity-80"></div>
+                <div className="absolute top-1/3 right-4 w-10 h-10 bg-teal-400 rounded-full opacity-60"></div>
+              </div>
+            </div>
+
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">Welcome to ToyX</h1>
+            <p className="text-gray-600 text-lg leading-relaxed mb-12 px-4">
+              A joyful experience for parents, caregivers and children for sharing treasured toys. New connections and happy memories await!
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="px-8 pb-12">
+          <button
+            onClick={() => setCurrentScreen('signup')}
+            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-4 rounded-2xl font-semibold text-lg mb-6 shadow-lg hover:shadow-xl transition-all"
+          >
+            Get Started
+          </button>
+          
+          <div className="text-center">
+            <span className="text-gray-600">Already have an account? </span>
+            <button
+              onClick={() => setCurrentScreen('login')}
+              className="text-purple-600 font-semibold"
+            >
+              Log in
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Create Account Screen
+  if (currentScreen === 'signup') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-12 pb-8">
+          <button 
+            onClick={() => setCurrentScreen('welcome')}
+            className="w-8 h-8 flex items-center justify-center"
+          >
+            <i className="fas fa-arrow-left text-gray-600"></i>
+          </button>
+        </div>
+
+        {/* Logo and Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">
+            <span className="text-gray-800">Toy</span>
+            <span className="text-purple-600">X</span>
+          </h1>
+          <h2 className="text-xl font-semibold text-purple-600 mb-8">Create Account</h2>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 px-8">
+          <div className="space-y-6">
+            {/* First Name */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">First Name</label>
+              <input
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Enter your first name"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Email Address</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Create Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                  placeholder="Create a password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                >
+                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Confirm Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                  placeholder="Confirm your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                >
+                  <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Terms Agreement */}
+            <div className="flex items-start space-x-3 py-4">
+              <button
+                onClick={() => handleInputChange('agreeToTerms', !formData.agreeToTerms)}
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 ${
+                  formData.agreeToTerms 
+                    ? 'bg-green-500 border-green-500' 
+                    : 'border-gray-300'
+                }`}
+              >
+                {formData.agreeToTerms && (
+                  <i className="fas fa-check text-white text-xs"></i>
+                )}
+              </button>
+              <div className="text-sm text-gray-600 leading-relaxed">
+                I agree to the <span className="text-purple-600 font-medium">Terms of Service</span> and have read the <span className="text-purple-600 font-medium">Privacy Policy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="px-8 pb-8">
+          <button
+            onClick={() => handleSubmit('signup')}
+            disabled={isLoading || !formData.agreeToTerms}
+            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-4 rounded-2xl font-semibold text-lg mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Creating Account...</span>
+              </div>
+            ) : (
+              'Sign Up'
+            )}
+          </button>
+
+          {/* Social Login Options */}
+          <div className="space-y-3 mb-6">
+            <div className="text-center text-gray-500 text-sm mb-4">Or continue with</div>
+            
+            <button className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                <i className="fab fa-google text-white text-xs"></i>
+              </div>
+              <span className="text-gray-700 font-medium">Continue with Google</span>
+            </button>
+            
+            <button className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+              <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                <i className="fab fa-facebook-f text-white text-xs"></i>
+              </div>
+              <span className="text-gray-700 font-medium">Continue with Facebook</span>
+            </button>
+            
+            <button className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+              <div className="w-5 h-5 bg-black rounded-full flex items-center justify-center">
+                <i className="fab fa-apple text-white text-xs"></i>
+              </div>
+              <span className="text-gray-700 font-medium">Continue with Apple</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setCurrentScreen('login')}
+            className="w-full bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold text-lg"
+          >
+            Already have an account?
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Login Screen
+  if (currentScreen === 'login') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-12 pb-8">
+          <button 
+            onClick={() => setCurrentScreen('welcome')}
+            className="w-8 h-8 flex items-center justify-center"
+          >
+            <i className="fas fa-arrow-left text-gray-600"></i>
+          </button>
+        </div>
+
+        {/* Logo and Title */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-6">
+            <span className="text-gray-800">Toy</span>
+            <span className="text-purple-600">X</span>
+          </h1>
+          <h2 className="text-xl font-semibold text-purple-600">Log In</h2>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 px-8">
+          <div className="space-y-6">
+            {/* Email */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Email Address</label>
+              <input
+                type="email"
+                value={formData.loginEmail}
+                onChange={(e) => handleInputChange('loginEmail', e.target.value)}
+                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-gray-700 text-sm font-medium">Password</label>
+                <button
+                  onClick={() => setCurrentScreen('forgot')}
+                  className="text-purple-600 text-sm font-medium"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.loginPassword}
+                  onChange={(e) => handleInputChange('loginPassword', e.target.value)}
+                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                >
+                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="px-8 pb-8">
+          <button
+            onClick={() => handleSubmit('login')}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-4 rounded-2xl font-semibold text-lg mb-6 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Logging in...</span>
+              </div>
+            ) : (
+              'Log In'
+            )}
+          </button>
+
+          {/* Social Login */}
+          <div className="mb-6">
+            <div className="text-center text-gray-500 text-sm mb-4">Or continue with</div>
+            <div className="flex items-center justify-center space-x-4">
+              <button className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center">
+                <i className="fab fa-google text-white"></i>
+              </button>
+              <button className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                <i className="fab fa-apple text-white"></i>
+              </button>
+              <button className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center">
+                <i className="fab fa-snapchat-ghost text-white"></i>
+              </button>
+              <button className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                <i className="fab fa-facebook-f text-white"></i>
+              </button>
+              <button className="w-12 h-12 bg-pink-500 rounded-xl flex items-center justify-center">
+                <i className="fab fa-instagram text-white"></i>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <span className="text-gray-600">Don't have an account? </span>
+            <button
+              onClick={() => setCurrentScreen('signup')}
+              className="text-purple-600 font-semibold"
+            >
+              Sign up
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Forgot Password Screen
+  if (currentScreen === 'forgot') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-12 pb-8">
+          <button 
+            onClick={() => setCurrentScreen('login')}
+            className="w-8 h-8 flex items-center justify-center"
+          >
+            <i className="fas fa-arrow-left text-gray-600"></i>
+          </button>
+        </div>
+
+        {/* Logo and Title */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-8">
+            <span className="text-gray-800">Toy</span>
+            <span className="text-purple-600">X</span>
+          </h1>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Forgot Password</h2>
+          <p className="text-gray-600 px-8 leading-relaxed">
+            Enter your email address and we'll send you a link to reset your password.
+          </p>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 px-8">
+          <div className="space-y-6">
+            {/* Email */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Email Address</label>
+              <input
+                type="email"
+                value={formData.forgotEmail}
+                onChange={(e) => handleInputChange('forgotEmail', e.target.value)}
+                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Enter your email"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="px-8 pb-8">
+          <button
+            onClick={() => handleSubmit('forgot')}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-4 rounded-2xl font-semibold text-lg mb-6 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Sending...</span>
+              </div>
+            ) : (
+              'Send Reset Link'
+            )}
+          </button>
+
+          <div className="text-center">
+            <span className="text-gray-600">Try a different method? </span>
+            <button
+              onClick={() => setCurrentScreen('login')}
+              className="text-purple-600 font-semibold"
+            >
+              Back to login
+            </button>
+          </div>
+
+          {/* Support */}
+          <div className="mt-8 text-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-2">
+              <i className="fas fa-headset text-white"></i>
+            </div>
+            <p className="text-gray-500 text-sm">Need help? Contact support</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}

@@ -1,0 +1,230 @@
+function App() {
+  const [activeCategory, setActiveCategory] = React.useState('All');
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const categories = ['All', 'Action Figures', 'Dolls', 'Building', 'Educational', 'Outdoor'];
+  
+  const toys = [
+    {
+      id: 1,
+      name: 'LEGO Castle Set',
+      image: 'https://placehold.co/150x150/8B5CF6/white?text=LEGO',
+      distance: '0.5 km away',
+      condition: 'Like New',
+      category: 'Building'
+    },
+    {
+      id: 2,
+      name: 'Barbie Dreamhouse',
+      image: 'https://placehold.co/150x150/FF6B6B/white?text=Barbie',
+      distance: '1.2 km away',
+      condition: 'Good',
+      category: 'Dolls'
+    },
+    {
+      id: 3,
+      name: 'Action Hero Figure',
+      image: 'https://placehold.co/150x150/10B981/white?text=Hero',
+      distance: '0.8 km away',
+      condition: 'Excellent',
+      category: 'Action Figures'
+    },
+    {
+      id: 4,
+      name: 'Educational Tablet',
+      image: 'https://placehold.co/150x150/F59E0B/white?text=Tablet',
+      distance: '2.1 km away',
+      condition: 'Like New',
+      category: 'Educational'
+    },
+    {
+      id: 5,
+      name: 'Soccer Ball',
+      image: 'https://placehold.co/150x150/3B82F6/white?text=Soccer',
+      distance: '0.3 km away',
+      condition: 'Good',
+      category: 'Outdoor'
+    },
+    {
+      id: 6,
+      name: 'Puzzle Game',
+      image: 'https://placehold.co/150x150/8B5CF6/white?text=Puzzle',
+      distance: '1.5 km away',
+      condition: 'Excellent',
+      category: 'Educational'
+    }
+  ];
+
+  const filteredToys = toys.filter(toy => {
+    const matchesCategory = activeCategory === 'All' || toy.category === activeCategory;
+    const matchesSearch = toy.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-100">
+        <div className="px-4 py-4">
+          {/* Logo and Profile */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <div className="text-2xl font-bold">
+                <span className="text-gray-800">Toy</span>
+                <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">X</span>
+              </div>
+            </div>
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <i className="fas fa-user text-white text-sm"></i>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i className="fas fa-search text-gray-400"></i>
+            </div>
+            <input
+              type="text"
+              placeholder="Search for toys..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="px-4 pb-4">
+          <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all duration-200 ${
+                  activeCategory === category
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="px-4 py-6">
+        {/* Section Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Available Toys</h2>
+            <p className="text-gray-500 text-sm">{filteredToys.length} toys near you</p>
+          </div>
+          <button className="text-purple-500 text-sm font-medium">
+            View All
+          </button>
+        </div>
+
+        {/* Toys Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          {filteredToys.map((toy) => (
+            <div
+              key={toy.id}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-105"
+            >
+              {/* Toy Image */}
+              <div className="aspect-square bg-gray-50 relative">
+                <img
+                  src={toy.image}
+                  alt={toy.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2 right-2">
+                  <button className="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors">
+                    <i className="far fa-heart text-gray-400 text-sm"></i>
+                  </button>
+                </div>
+              </div>
+
+              {/* Toy Info */}
+              <div className="p-3">
+                <h3 className="font-semibold text-gray-800 text-sm mb-1 line-clamp-2">
+                  {toy.name}
+                </h3>
+                <div className="flex items-center space-x-1 mb-2">
+                  <i className="fas fa-map-marker-alt text-purple-500 text-xs"></i>
+                  <span className="text-xs text-gray-500">{toy.distance}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    toy.condition === 'Like New' 
+                      ? 'bg-green-100 text-green-700'
+                      : toy.condition === 'Excellent'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {toy.condition}
+                  </span>
+                  <button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:shadow-lg transition-all duration-200">
+                    Request
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Load More */}
+        <div className="text-center mt-8">
+          <button className="bg-white border border-gray-200 text-gray-600 px-6 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors">
+            Load More Toys
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
+        <div className="flex items-center justify-around">
+          <button className="flex flex-col items-center space-y-1 py-2">
+            <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <i className="fas fa-home text-white text-sm"></i>
+            </div>
+            <span className="text-xs font-medium text-purple-500">Home</span>
+          </button>
+          
+          <button className="flex flex-col items-center space-y-1 py-2">
+            <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+              <i className="fas fa-search text-gray-400 text-sm"></i>
+            </div>
+            <span className="text-xs text-gray-400">Browse</span>
+          </button>
+          
+          <button className="flex flex-col items-center space-y-1 py-2">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+              <i className="fas fa-plus text-white text-sm"></i>
+            </div>
+          </button>
+          
+          <button className="flex flex-col items-center space-y-1 py-2">
+            <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+              <i className="fas fa-comment text-gray-400 text-sm"></i>
+            </div>
+            <span className="text-xs text-gray-400">Messages</span>
+          </button>
+          
+          <button className="flex flex-col items-center space-y-1 py-2">
+            <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+              <i className="fas fa-user text-gray-400 text-sm"></i>
+            </div>
+            <span className="text-xs text-gray-400">Profile</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Padding for Fixed Nav */}
+      <div className="h-20"></div>
+    </div>
+  );
+}

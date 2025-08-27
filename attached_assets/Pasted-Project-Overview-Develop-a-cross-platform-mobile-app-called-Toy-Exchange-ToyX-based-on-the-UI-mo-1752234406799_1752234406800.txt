@@ -1,0 +1,64 @@
+Project Overview:
+Develop a cross-platform mobile app called Toy Exchange (ToyX), based on the UI mockups and branding created with Lovart AI. The app enables parents to upload, browse, and exchange their children’s unwanted toys in a safe, trusted, and community-driven environment.
+
+Tech Stack:
+
+Framework: React Native (for iOS and Android support)
+Navigation: React Navigation
+State Management: Redux Toolkit or Context API
+Backend: (Optional for MVP) Use Firebase for authentication, real-time database, and storage
+UI Library: React Native Paper or NativeBase for consistent, modern UI components
+Image Uploads: Firebase Storage or similar
+Icons: React Native Vector Icons
+Other: Expo (for easier development and testing)
+App Structure & Key Screens:
+
+Onboarding & Authentication
+Onboarding screens introducing ToyX
+Sign up/log in (email, Google, Facebook, Apple)
+Parent profile setup (name, location, child’s age/interests)
+Home / Dashboard
+Hero section with tagline and main CTA (“List a Toy” / “Browse Toys”)
+Overview of how ToyX works (3 steps: List, Browse, Exchange)
+Highlights of new/featured toys
+Toy Listing / Browse
+Grid/card layout for toys (image, name, age range, condition, location)
+Filters and search bar (category, age, location, condition)
+Toy Detail
+Large toy image, description, owner info (first name, general location)
+“Request Exchange” button
+More photos, similar toys, favorite/save
+Upload / List a Toy
+Step-by-step upload: add photos, description, category, preferences
+Progress indicator and feedback
+Exchange / Chat
+Messaging interface for arranging exchanges
+Status indicators (pending, accepted, completed)
+My Exchanges / Activity
+List of current/past exchanges with status
+Option to rate/review users
+Profile & Settings
+Editable parent profile
+Child’s age/interests
+App settings, safety tips, support
+Navigation
+Bottom navigation bar: Home, Browse, List a Toy, My Exchanges, Profile
+Design Guidelines:
+
+Use the ToyX branding, color palette, and logo from Lovart
+Playful, rounded UI elements and icons
+Soft pastel colors, white space, clear fonts
+Friendly illustrations/mascots where appropriate
+Accessible design: large tap targets, high contrast
+Playful micro-interactions (animated icons, fun loading screens)
+Development Instructions:
+
+Scaffold the project using Expo for React Native.
+Implement navigation using React Navigation (bottom tab navigation).
+Use React Native Paper or NativeBase for UI components.
+Integrate Firebase for authentication, database, and image storage.
+Create reusable components for toy cards, filters, chat bubbles, etc.
+Ensure all screens match the Lovart UI mockups as closely as possible.
+Use the provided color palette, typography, and iconography.
+Make the app responsive and accessible.
+Add comments and documentation for maintainability.
