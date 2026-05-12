@@ -184,10 +184,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toys = await storage.getToys();
       }
       
-      // Add favorite status and owner rating for all toys
-      const userId = req.user?.claims?.sub;
+      // Add favorite status and owner rating
+      const uid = req.user?.claims?.sub;
       for (const toy of toys) {
-        toy.isFavorited = userId ? await storage.isFavorite(userId, toy.id) : false;
+        toy.isFavorited = uid ? await storage.isFavorite(uid, toy.id) : false;
         toy.ownerRating = await storage.getUserAverageRating(toy.ownerId);
       }
       

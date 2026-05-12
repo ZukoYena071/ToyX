@@ -365,7 +365,7 @@ export default function BrowsePage() {
                       </h3>
                       <div className="flex items-center space-x-1 mb-2">
                         <MapPin className="text-purple-500 w-3 h-3" />
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{toy.location || '1.2 km away'}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{toy.location || 'Unknown location'}</span>
                       </div>
                       <div className="flex items-center justify-between mb-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -379,7 +379,7 @@ export default function BrowsePage() {
                         </span>
                         <div className="flex items-center space-x-1">
                           <Star className="text-yellow-400 w-3 h-3 fill-current" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">4.8</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">{(toy.ownerRating || 0).toFixed(1)}</span>
                         </div>
                       </div>
                       <button 
@@ -440,11 +440,11 @@ export default function BrowsePage() {
                           <div className="flex items-center space-x-3">
                             <div className="flex items-center space-x-1">
                               <MapPin className="text-purple-500 w-3 h-3" />
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{toy.location || '1.2 km away'}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{toy.location || 'Unknown location'}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Star className="text-yellow-400 w-3 h-3 fill-current" />
-                              <span className="text-xs text-gray-600 dark:text-gray-400">4.8</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{(toy.ownerRating || 0).toFixed(1)}</span>
                             </div>
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
