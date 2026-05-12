@@ -45,6 +45,18 @@ export default function ToyDetail() {
     ? userExchanges.some((ex: any) => ex.toyId === parseInt(id!) && ex.requesterId === (user as any)?.id && ex.status !== "canceled")
     : false;
 
+  // Owner rating
+  const ownerId = (toy as any)?.ownerId;
+  const { data: ownerRating } = useQuery({
+    queryKey: ["/api/users", ownerId, "rating"],
+    enabled: !!ownerId,
+  });
+
+  const { data: ownerReviews } = useQuery({
+    queryKey: ["/api/users", ownerId, "reviews"],
+    enabled: !!ownerId,
+  });
+
   const { data: myToys } = useQuery({
     queryKey: ["/api/users", (user as any)?.id, "toys"],
     enabled: !!(user as any)?.id,
@@ -312,14 +324,6 @@ export default function ToyDetail() {
           </div>
         </div>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">Educational</span>
-          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">Creative</span>
-          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">STEM</span>
-          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">Popular</span>
-        </div>
-
         {/* Description */}
         {(toy as any)?.description && (
           <div className="mb-6">
@@ -351,10 +355,6 @@ export default function ToyDetail() {
             </div>
           </div>
           <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Brand</div>
-            <div className="font-medium text-gray-800 dark:text-white">LEGO</div>
-          </div>
-          <div>
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Condition</div>
             <div className="font-medium text-gray-800 dark:text-white">{(toy as any)?.condition}</div>
           </div>
@@ -371,11 +371,12 @@ export default function ToyDetail() {
             
             <div className="flex items-center space-x-4 mb-4">
           <div className="relative">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-lg font-bold">
+            <Avatar className="w-16 h-16">
+              <AvatarImage src={(toy as any)?.owner?.profileImageUrl || undefined} />
+              <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-bold">
                 {(toy as any)?.owner?.firstName?.[0] || (toy as any)?.owner?.email?.[0] || 'U'}
-              </span>
-            </div>
+              </AvatarFallback>
+            </Avatar>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
               <CheckCircle className="w-3 h-3 text-white" />
             </div>
@@ -394,17 +395,13 @@ export default function ToyDetail() {
             <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
               <div className="flex items-center space-x-1">
                 <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                <span>4.8 (24 reviews)</span>
+                <span>{((ownerRating as any)?.rating || 0).toFixed(1)} ({(ownerReviews as any)?.length || 0} reviews)</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <div className="text-gray-500 dark:text-gray-400 mb-1">Response Time</div>
-            <div className="font-medium text-gray-800 dark:text-white">~2 hours</div>
-          </div>
           <div>
               <div className="text-gray-500 dark:text-gray-400 mb-1">Member Since</div>
               <div className="font-medium text-gray-800 dark:text-white">{(toy as any)?.owner?.createdAt ? new Date((toy as any).owner.createdAt).toLocaleDateString() : 'Unknown'}</div>

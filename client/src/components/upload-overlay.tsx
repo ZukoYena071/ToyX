@@ -19,7 +19,10 @@ interface UploadOverlayProps {
 }
 
 const categories = [
-  "Building Toys", "Dolls & Plush", "Educational", "Vehicles", "Outdoor Play", "Games & Puzzles"
+  "Building Toys", "Dolls & Plush", "Educational", "Vehicles", "Outdoor Play",
+  "Games & Puzzles", "Arts & Crafts", "Musical Toys", "Action Figures",
+  "Stuffed Animals", "Electronics", "Sports & Outdoor", "Pretend Play",
+  "Sensory Toys", "Books & Learning", "Other"
 ];
 
 const ageGroups = ["0-2", "3-6", "7-12", "13+"];
