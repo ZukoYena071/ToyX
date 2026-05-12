@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memorystore from "memorystore";
@@ -77,6 +78,48 @@ export async function setupAuth(app: Express) {
       res.redirect("/login");
     });
   });
+
+  // Google OAuth — only if credentials are configured
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+  const APP_BASE_URL = process.env.APP_BASE_URL || "";
+
+  if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && APP_BASE_URL) {
+    passport.use(new GoogleStrategy({
+      clientID: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      callbackURL: `${APP_BASE_URL}/api/auth/google/callback`,
+    }, async (_accessToken, _refreshToken, profile, done) => {
+      try {
+        const email = profile.emails?.[0]?.value;
+        const name = profile.displayName?.split(" ") || [];
+        const existing = email ? await storage.searchUsersByEmail(email) : [];
+        let user = existing[0];
+        if (!user) {
+          const userId = `google_${profile.id}`;
+          await storage.upsertUser({
+            id: userId,
+            email: email || `google_${profile.id}@placeholder.com`,
+            firstName: name[0] || profile.displayName || "Google",
+            lastName: name.slice(1).join(" ") || "",
+            profileImageUrl: profile.photos?.[0]?.value || null,
+          });
+          user = await storage.getUser(userId);
+        }
+        if (user) {
+          done(null, { id: user.id, sub: user.id, claims: { sub: user.id }, expires_at: Math.floor(Date.now() / 1000) + 86400, access_token: _accessToken, refresh_token: _refreshToken });
+        } else {
+          done(null, false);
+        }
+      } catch (err) {
+        done(err as Error);
+      }
+    }));
+
+    app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"], session: true }));
+    app.get("/api/auth/google/callback", passport.authenticate("google", { successReturnToOrRedirect: "/", failureRedirect: "/login" }));
+    console.log("Google OAuth configured");
+  }
 
   // Auto-create a demo user on startup
   try {
