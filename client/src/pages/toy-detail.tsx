@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, MessageCircle, MapPin, User, Star, ChevronLeft, ChevronRight, Share2, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, MapPin, User, Star, ChevronLeft, ChevronRight, Share2, CheckCircle, Clock, Check } from "lucide-react";
 import { useState } from "react";
 import BottomNav from "@/components/bottom-nav";
 
@@ -23,6 +23,7 @@ export default function ToyDetail() {
   const [selectedToyForExchange, setSelectedToyForExchange] = useState<any>(null);
   const [message, setMessage] = useState('');
   const [exchangeMessage, setExchangeMessage] = useState('');
+  const [limitModal, setLimitModal] = useState<{ message: string; upgradeUrl: string } | null>(null);
 
   const { data: toy, isLoading, error } = useQuery({
     queryKey: ["/api/toys", id],
@@ -35,6 +36,15 @@ export default function ToyDetail() {
   });
 
   // Get current user's toys for exchange selection
+  const { data: userExchanges } = useQuery({
+    queryKey: ["/api/exchanges"],
+    enabled: !!user,
+  });
+
+  const hasExistingRequest = Array.isArray(userExchanges)
+    ? userExchanges.some((ex: any) => ex.toyId === parseInt(id!) && ex.requesterId === (user as any)?.id && ex.status !== "canceled")
+    : false;
+
   const { data: myToys } = useQuery({
     queryKey: ["/api/users", (user as any)?.id, "toys"],
     enabled: !!(user as any)?.id,
@@ -74,10 +84,27 @@ export default function ToyDetail() {
         title: "Exchange request sent!",
         description: "Your exchange request has been sent to the toy owner.",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
       setShowRequestModal(false);
       setShowToySelectionModal(false);
       setSelectedToyForExchange(null);
       setExchangeMessage('');
+    },
+    onError: (error: any) => {
+      setShowToySelectionModal(false);
+      setShowRequestModal(false);
+      const msg = error?.message || "";
+      const body = msg.includes("{") ? JSON.parse(msg.substring(msg.indexOf("{"))) : null;
+      if (body?.upgradeUrl && (body?.code === "LIMIT_ACTIVE_EXCHANGES" || body?.code === "LIMIT_MONTHLY_REQUESTS")) {
+        setLimitModal({ message: body.message, upgradeUrl: body.upgradeUrl });
+        setTimeout(() => window.location.href = body.upgradeUrl, 4000);
+      } else {
+        toast({
+          title: "Error",
+          description: body?.message || "Failed to send exchange request.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -180,7 +207,17 @@ export default function ToyDetail() {
               <h1 className="text-xl font-bold text-gray-800 dark:text-white">Toy Details</h1>
             </div>
             <div className="flex items-center space-x-2">
-              <button className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/toy/${id}`;
+                  navigator.clipboard.writeText(url).then(() => {
+                    toast({ title: "Link copied!", description: "Toy listing link copied to clipboard. Share it anywhere!" });
+                  }).catch(() => {
+                    toast({ title: "Could not copy", description: "Please copy the URL manually.", variant: "destructive" });
+                  });
+                }}
+                className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
                 <Share2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
               {!isOwner && (
@@ -292,14 +329,26 @@ export default function ToyDetail() {
         )}
 
         {/* Toy Details */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Category</div>
-            <div className="font-medium text-gray-800 dark:text-white">{(toy as any)?.category}</div>
+        <div className="mb-6">
+          <div className="mb-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Categories</div>
+            <div className="flex flex-wrap gap-2">
+              {((toy as any)?.category || "").split(", ").filter(Boolean).map((cat: string) => (
+                <span key={cat} className="px-3 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
+                  {cat}
+                </span>
+              ))}
+            </div>
           </div>
-          <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Age Range</div>
-            <div className="font-medium text-gray-800 dark:text-white">{(toy as any)?.ageGroup}</div>
+          <div className="mb-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Age Range</div>
+            <div className="flex flex-wrap gap-2">
+              {((toy as any)?.ageGroup || "").split(", ").filter(Boolean).map((age: string) => (
+                <span key={age} className="px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                  Ages {age}
+                </span>
+              ))}
+            </div>
           </div>
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Brand</div>
@@ -375,13 +424,37 @@ export default function ToyDetail() {
               <MessageCircle className="w-4 h-4" />
               <span>Message</span>
             </button>
-            <button
-              onClick={handleRequestExchange}
-              className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
-            >
-              <User className="w-4 h-4" />
-              <span>Request Exchange</span>
-            </button>
+            {hasExistingRequest ? (
+              <div className="flex-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 py-3 rounded-xl font-medium flex items-center justify-center space-x-2">
+                <Check className="w-4 h-4" />
+                <span>Exchange Requested</span>
+              </div>
+            ) : (
+              <button
+                onClick={handleRequestExchange}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
+              >
+                <User className="w-4 h-4" />
+                <span>Request Exchange</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Limit Reached Modal */}
+      {limitModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm text-center shadow-xl">
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-3">Upgrade Required</h3>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">{limitModal.message}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-xs mb-6">Redirecting to pricing...</p>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+              <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }} />
+            </div>
           </div>
         </div>
       )}
@@ -392,16 +465,18 @@ export default function ToyDetail() {
       {/* Toy Selection Modal */}
       {showToySelectionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <User className="w-6 h-6 text-white" />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
+            <div className="p-6 pb-0 shrink-0">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Select Your Toy to Offer</h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Choose one of your toys to offer in exchange</p>
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Select Your Toy to Offer</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Choose one of your toys to offer in exchange</p>
             </div>
             
-            <div className="flex-1 overflow-y-auto mb-6">
+            <div className="flex-1 overflow-y-auto px-6">
               {myToys && Array.isArray(myToys) && myToys.length > 0 ? (
                 <div className="space-y-3">
                   {myToys.filter((toy: any) => toy.isAvailable).map((myToy: any) => (
@@ -442,12 +517,14 @@ export default function ToyDetail() {
               )}
             </div>
             
-            <button
-              onClick={() => setShowToySelectionModal(false)}
-              className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Cancel
-            </button>
+            <div className="p-6 shrink-0">
+              <button
+                onClick={() => setShowToySelectionModal(false)}
+                className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

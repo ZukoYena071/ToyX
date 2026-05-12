@@ -28,8 +28,14 @@ import { eq, desc, and, or, ilike, sql } from "drizzle-orm";
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+  searchUsersByEmail(email: string): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, userData: Partial<User>): Promise<User>;
+  setUserSubscriptionByUserId(userId: string, data: Partial<User>): Promise<User>;
+  setUserSubscriptionByCustomerCode(customerCode: string, data: Partial<User>): Promise<User>;
+  countActiveListings(userId: string): Promise<number>;
+  countOutgoingExchangeRequestsThisMonth(userId: string): Promise<number>;
+  countActiveOutgoingExchanges(userId: string): Promise<number>;
   
   // Toy operations
   getToys(): Promise<ToyWithOwner[]>;
@@ -72,6 +78,10 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async searchUsersByEmail(email: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.email, email));
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -94,6 +104,60 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async setUserSubscriptionByUserId(userId: string, data: Partial<User>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async setUserSubscriptionByCustomerCode(customerCode: string, data: Partial<User>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.paystackCustomerCode, customerCode))
+      .returning();
+    return user;
+  }
+
+  async countActiveListings(userId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(toys)
+      .where(and(eq(toys.ownerId, userId), eq(toys.isAvailable, true)));
+    return Number(result?.count || 0);
+  }
+
+  async countOutgoingExchangeRequestsThisMonth(userId: string): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(exchanges)
+      .where(
+        and(
+          eq(exchanges.requesterId, userId),
+          sql`${exchanges.createdAt} >= ${startOfMonth}`
+        )
+      );
+    return Number(result?.count || 0);
+  }
+
+  async countActiveOutgoingExchanges(userId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(exchanges)
+      .where(
+        and(
+          eq(exchanges.requesterId, userId),
+          sql`${exchanges.status} IN ('pending', 'accepted')`
+        )
+      );
+    return Number(result?.count || 0);
   }
 
   // Toy operations

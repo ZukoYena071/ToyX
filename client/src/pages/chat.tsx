@@ -11,9 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import ChatMessage from "@/components/chat-message";
 import ReviewForm from "@/components/review-form";
+import EmojiPicker from "@/components/emoji-picker";
 import BottomNav from "@/components/bottom-nav";
 import { ArrowLeft, Send, Paperclip, Star } from "lucide-react";
 import type { ExchangeWithDetails, MessageWithSender } from "@shared/schema";
+import { isExchangeUnread, markExchangeRead, getUnreadExchanges } from "@/lib/chat-utils";
 
 export default function Chat() {
   const { exchangeId } = useParams();
@@ -47,6 +49,13 @@ export default function Chat() {
     enabled: !!exchangeId && !!user,
   });
 
+  // Mark exchange as read when viewing
+  useEffect(() => {
+    if (exchangeId) {
+      markExchangeRead(parseInt(exchangeId));
+    }
+  }, [exchangeId]);
+
   // WebSocket for real-time messaging
   useWebSocket((data) => {
     if (data.type === 'new_message' && data.data.exchangeId === parseInt(exchangeId!)) {
@@ -63,6 +72,20 @@ export default function Chat() {
     },
     onSuccess: () => {
       setMessage("");
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId, "messages"] });
+    },
+  });
+
+  // Set window userId for reaction highlighting
+  useEffect(() => {
+    (window as any).__userId = (user as any)?.id;
+  }, [user]);
+
+  const reactionMutation = useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: number; emoji: string }) => {
+      return await apiRequest("POST", `/api/exchanges/${exchangeId}/messages/${messageId}/react`, { emoji });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId, "messages"] });
     },
   });
@@ -136,7 +159,11 @@ export default function Chat() {
               </div>
             ) : (
               <div className="space-y-3">
-                {exchanges?.map((exchange) => {
+                {[...(exchanges || [])].sort((a, b) => {
+                  const aTime = a.messages?.length ? new Date(a.messages[a.messages.length - 1].createdAt).getTime() : new Date(a.createdAt).getTime();
+                  const bTime = b.messages?.length ? new Date(b.messages[b.messages.length - 1].createdAt).getTime() : new Date(b.createdAt).getTime();
+                  return bTime - aTime;
+                }).map((exchange) => {
                   const otherUser = exchange.requesterId === (user as any)?.id ? exchange.owner : exchange.requester;
                   const lastMessage = exchange.messages?.[exchange.messages.length - 1];
                   
@@ -150,7 +177,7 @@ export default function Chat() {
                                 {otherUser.firstName?.[0] || otherUser.email?.[0] || 'U'}
                               </span>
                             </div>
-                            {exchange.status === 'pending' && (
+                            {isExchangeUnread(exchange, (user as any)?.id) && (
                               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                             )}
                           </div>
@@ -264,6 +291,7 @@ export default function Chat() {
               key={msg.id} 
               message={msg} 
               isOwn={msg.senderId === (user as any)?.id} 
+              onReact={(messageId, emoji) => reactionMutation.mutate({ messageId, emoji })}
             />
           ))}
           <div ref={messagesEndRef} />
@@ -331,13 +359,14 @@ export default function Chat() {
               <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
                 <Paperclip className="w-5 h-5 text-gray-500" />
               </button>
+              <EmojiPicker onEmojiSelect={(emoji) => setMessage(prev => prev + emoji)} />
               <input
                 type="text"
                 placeholder="Type a message..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1 bg-gray-100 rounded-2xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+                className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-gray-600 transition-all"
               />
               <button 
                 onClick={handleSendMessage}

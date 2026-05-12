@@ -1,7 +1,9 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { getUnreadExchanges } from "@/lib/chat-utils";
 import UploadOverlay from "./upload-overlay";
 
 const navItems = [
@@ -15,6 +17,23 @@ const navItems = [
 export default function BottomNav() {
   const [location, setLocation] = useLocation();
   const [showUpload, setShowUpload] = useState(false);
+  const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!(user as any)?.id) return;
+    fetch("/api/exchanges", { credentials: "include" })
+      .then(r => r.json())
+      .then(data => setUnreadCount(getUnreadExchanges(data, (user as any).id)))
+      .catch(() => {});
+    const interval = setInterval(() => {
+      fetch("/api/exchanges", { credentials: "include" })
+        .then(r => r.json())
+        .then(data => setUnreadCount(getUnreadExchanges(data, (user as any).id)))
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleNavClick = (item: typeof navItems[0]) => {
     if (item.action === "upload") {
@@ -44,12 +63,21 @@ export default function BottomNav() {
                     <Icon className="text-white w-4 h-4" />
                   </div>
                 ) : (
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                    isActive 
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500"
-                      : "bg-gray-100 dark:bg-gray-700"
-                  }`}>
-                    <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400 dark:text-gray-300"}`} />
+                  <div className="relative">
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                      isActive 
+                        ? "bg-gradient-to-r from-purple-500 to-pink-500"
+                        : "bg-gray-100 dark:bg-gray-700"
+                    }`}>
+                      <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400 dark:text-gray-300"}`} />
+                    </div>
+                    {item.icon === MessageCircle && unreadCount > 0 && (
+                      <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center px-1">
+                        <span className="text-white text-[10px] font-bold leading-none">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
                 <span className={`text-xs ${

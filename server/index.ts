@@ -1,8 +1,36 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
+
 const app = express();
+
+// Raw body for Paystack webhook (must run before express.json)
+app.use((req, res, next) => {
+  if (req.path === '/api/billing/paystack/webhook') {
+    express.raw({ type: '*/*' })(req, res, (err) => {
+      if (err) return next(err);
+      req.rawBody = req.body as Buffer;
+      try {
+        req.body = JSON.parse((req.body as Buffer).toString());
+      } catch {
+        req.body = {};
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
@@ -64,7 +92,6 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });

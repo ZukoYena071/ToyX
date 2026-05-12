@@ -19,12 +19,46 @@ export default function Login() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.loginEmail, password: formData.loginPassword }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        window.location.href = "/";
+      } else {
+        const err = await res.json();
+        alert(err.message || "Login failed");
+      }
+    } catch (err) {
+      alert("Login failed. Please try again.");
+    } finally {
       setIsLoading(false);
-      // Navigate to main app - for now redirect to Replit auth
-      window.location.href = "/api/login";
-    }, 2000);
+    }
+  };
+
+  const handleDevLogin = async (email: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: "" }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        window.location.href = "/";
+      } else {
+        const err = await res.json();
+        alert(err.message || "Login failed");
+      }
+    } catch (err) {
+      alert("Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -44,7 +78,7 @@ export default function Login() {
           <img 
             src={toyxLogo} 
             alt="ToyX Logo" 
-            className="h-40 w-auto drop-shadow-lg"
+            className="h-48 w-auto drop-shadow-lg"
           />
         </div>
         <h2 className="text-xl font-semibold text-purple-600">Log In</h2>
@@ -60,7 +94,7 @@ export default function Login() {
               type="email"
               value={formData.loginEmail}
               onChange={(e) => handleInputChange('loginEmail', e.target.value)}
-              className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-4 bg-gray-50 text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Enter your email"
             />
           </div>
@@ -78,7 +112,7 @@ export default function Login() {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.loginPassword}
                 onChange={(e) => handleInputChange('loginPassword', e.target.value)}
-                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                className="w-full px-4 py-4 bg-gray-50 text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
                 placeholder="Enter your password"
               />
               <button
@@ -115,7 +149,7 @@ export default function Login() {
           <div className="text-center text-gray-500 text-sm mb-4">Or continue with</div>
           <div className="flex items-center justify-center space-x-4">
             <button 
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => handleDevLogin("demo@gmail.com")}
               className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -126,7 +160,7 @@ export default function Login() {
               </svg>
             </button>
             <button 
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => handleDevLogin("parent@gmail.com")}
               className="w-12 h-12 bg-black rounded-xl flex items-center justify-center hover:bg-gray-800 transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="white">
@@ -134,7 +168,7 @@ export default function Login() {
               </svg>
             </button>
             <button 
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => handleDevLogin("demo@gmail.com")}
               className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-700 transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="white">

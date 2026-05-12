@@ -35,6 +35,12 @@ export const users = pgTable("users", {
   bio: text("bio"),
   location: varchar("location", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
+  plan: varchar("plan", { length: 50 }).notNull().default("free"),
+  subscriptionStatus: varchar("subscription_status", { length: 50 }).notNull().default("inactive"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  paystackCustomerCode: varchar("paystack_customer_code", { length: 255 }),
+  paystackSubscriptionCode: varchar("paystack_subscription_code", { length: 255 }),
+  paystackEmailToken: varchar("paystack_email_token", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -75,6 +81,7 @@ export const messages = pgTable("messages", {
   senderId: varchar("sender_id").notNull().references(() => users.id),
   content: text("content").notNull(),
   messageType: varchar("message_type", { length: 50 }).default("text"),
+  reactions: jsonb("reactions").default([]),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

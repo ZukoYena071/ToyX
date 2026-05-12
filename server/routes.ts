@@ -1,13 +1,60 @@
+import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import { eq } from "drizzle-orm";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { db } from "./db";
+import { users, messages } from "@shared/schema";
+import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
+
+function isPremiumUser(user: any): boolean {
+  if (!user) return false;
+  return (
+    typeof user.plan === "string" &&
+    user.plan.startsWith("premium_") &&
+    user.subscriptionStatus === "active" &&
+    (!user.currentPeriodEnd || new Date(user.currentPeriodEnd) > new Date())
+  );
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Dev/test auth bypass (only when DEV_AUTH_BYPASS=true and not production)
+  if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
+    app.get("/api/dev/login/:userId", async (req: any, res, next) => {
+      try {
+        const user = await storage.getUser(req.params.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        req.login({ id: user.id, sub: user.id, claims: { sub: user.id }, expires_at: Math.floor(Date.now() / 1000) + 86400, access_token: "dev", refresh_token: "dev" }, (err: any) => {
+          if (err) return next(err);
+          res.json({ message: "Dev login ok", user });
+        });
+      } catch (e: any) {
+        res.status(500).json({ message: e.message });
+      }
+    });
+
+    app.post("/api/dev/set-plan", async (req: any, res) => {
+      try {
+        const { userId, plan } = req.body;
+        if (!userId || !plan) return res.status(400).json({ message: "userId and plan required" });
+        const user = await storage.getUser(userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        const now = new Date();
+        const currentPeriodEnd = plan !== "free" ? new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000) : null;
+        await storage.updateUser(userId, { plan, subscriptionStatus: plan !== "free" ? "active" : "inactive", currentPeriodEnd });
+        res.json({ message: "Plan updated", plan, subscriptionStatus: plan !== "free" ? "active" : "inactive" });
+      } catch (e: any) {
+        res.status(500).json({ message: e.message });
+      }
+    });
+
+    console.log("DEV_AUTH_BYPASS endpoints registered");
+  }
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -18,6 +65,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Signup - create a new user and log them in
+  app.post('/api/signup', async (req: any, res, next) => {
+    try {
+      const { email, firstName } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      const existing = await storage.searchUsersByEmail(email);
+      if (existing.length > 0) {
+        return res.status(409).json({ message: "Email already in use" });
+      }
+      const userId = `user-${Date.now()}`;
+      await storage.upsertUser({
+        id: userId,
+        email,
+        firstName: firstName || email.split('@')[0],
+        lastName: "",
+        profileImageUrl: null,
+      });
+      req.logIn({ id: userId, sub: userId, claims: { sub: userId } }, (err: any) => {
+        if (err) return next(err);
+        res.json({ message: "Account created", user: { id: userId, email, firstName: firstName || email.split('@')[0] } });
+      });
+    } catch (error) {
+      console.error("Error in signup:", error);
+      res.status(500).json({ message: "Signup failed" });
+    }
+  });
+
+  // Dev login - quick login as demo user
+  app.post('/api/dev-login', async (req: any, res, next) => {
+    try {
+      const { userId } = req.body;
+      const user = await storage.getUser(userId || "demo-user-1");
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      req.logIn({ id: user.id, sub: user.id, claims: { sub: user.id } }, (err: any) => {
+        if (err) return next(err);
+        res.json({ message: "Logged in", user });
+      });
+    } catch (error) {
+      console.error("Error in dev login:", error);
+      res.status(500).json({ message: "Login failed" });
     }
   });
 
@@ -138,6 +232,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/toys', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!isPremiumUser(user)) {
+        const activeCount = await storage.countActiveListings(userId);
+        if (activeCount >= 5) {
+          return res.status(403).json({
+            code: "LIMIT_ACTIVE_LISTINGS",
+            message: "Free tier allows up to 5 active listings. Upgrade to Premium to list more.",
+            upgradeUrl: "/pricing",
+          });
+        }
+      }
       const toyData = insertToySchema.parse({ ...req.body, ownerId: userId });
       const toy = await storage.createToy(toyData);
       res.status(201).json(toy);
@@ -155,6 +260,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user toys:", error);
       res.status(500).json({ message: "Failed to fetch user toys" });
+    }
+  });
+
+  app.patch('/api/toys/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.id);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      const updated = await storage.updateToy(toyId, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to update toy" });
+    }
+  });
+
+  app.delete('/api/toys/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.id);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      await storage.deleteToy(toyId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to delete toy" });
     }
   });
 
@@ -189,6 +322,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/exchanges', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!isPremiumUser(user)) {
+        const monthlyRequests = await storage.countOutgoingExchangeRequestsThisMonth(userId);
+        if (monthlyRequests >= 3) {
+          return res.status(403).json({
+            code: "LIMIT_MONTHLY_REQUESTS",
+            message: "Free tier allows up to 3 outgoing exchange requests per month. Upgrade to Premium for unlimited requests.",
+            upgradeUrl: "/pricing",
+          });
+        }
+        const activeExchanges = await storage.countActiveOutgoingExchanges(userId);
+        if (activeExchanges >= 2) {
+          return res.status(403).json({
+            code: "LIMIT_ACTIVE_EXCHANGES",
+            message: "Free tier allows up to 2 active outgoing exchanges. Upgrade to Premium for more.",
+            upgradeUrl: "/pricing",
+          });
+        }
+      }
       console.log("Creating exchange request:", { 
         body: req.body, 
         userId 
@@ -303,6 +455,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reaction toggle
+  app.post('/api/exchanges/:id/messages/:messageId/react', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const messageId = parseInt(req.params.messageId);
+      const { emoji } = req.body;
+      if (!emoji) return res.status(400).json({ message: "emoji required" });
+
+      const [message] = await db.select().from(messages).where(eq(messages.id, messageId));
+      if (!message) return res.status(404).json({ message: "Message not found" });
+
+      const currentReactions: Array<{ userId: string; emoji: string }> = Array.isArray(message.reactions) ? message.reactions : [];
+      const existing = currentReactions.findIndex((r) => r.userId === userId && r.emoji === emoji);
+      if (existing >= 0) {
+        currentReactions.splice(existing, 1);
+      } else {
+        currentReactions.push({ userId, emoji });
+      }
+
+      const [updated] = await db.update(messages).set({ reactions: currentReactions }).where(eq(messages.id, messageId)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error toggling reaction:", error);
+      res.status(500).json({ message: error.message || "Failed to toggle reaction" });
+    }
+  });
+
   // Favorite routes
   app.get('/api/favorites', isAuthenticated, async (req: any, res) => {
     try {
@@ -410,6 +589,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking review eligibility:", error);
       res.status(500).json({ message: "Failed to check review eligibility" });
+    }
+  });
+
+  // Paystack billing endpoints
+  const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "";
+  const PAYSTACK_MONTHLY_PLAN_CODE = process.env.PAYSTACK_MONTHLY_PLAN_CODE || "PLN_qa2hymptm1v3pks";
+  const PAYSTACK_YEARLY_PLAN_CODE = process.env.PAYSTACK_YEARLY_PLAN_CODE || "PLN_6r1rrbz34iv7ct4";
+  const PAYSTACK_MONTHLY_AMOUNT = parseInt(process.env.PAYSTACK_MONTHLY_AMOUNT || "8900");
+  const PAYSTACK_YEARLY_AMOUNT = parseInt(process.env.PAYSTACK_YEARLY_AMOUNT || "44900");
+  const APP_BASE_URL = process.env.APP_BASE_URL || "";
+
+  async function paystackFetch(path: string, options: any = {}) {
+    const res = await fetch(`https://api.paystack.co${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        ...options.headers,
+      },
+    });
+    return res.json();
+  }
+
+  app.post('/api/billing/paystack/initialize', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.email) {
+        return res.status(400).json({ message: "User email not found" });
+      }
+      const { planType } = req.body;
+      if (planType !== "monthly" && planType !== "yearly") {
+        return res.status(400).json({ message: "planType must be 'monthly' or 'yearly'" });
+      }
+      const planCode = planType === "monthly" ? PAYSTACK_MONTHLY_PLAN_CODE : PAYSTACK_YEARLY_PLAN_CODE;
+      const amount = planType === "monthly" ? PAYSTACK_MONTHLY_AMOUNT : PAYSTACK_YEARLY_AMOUNT;
+      const result = await paystackFetch("/transaction/initialize", {
+        method: "POST",
+        body: JSON.stringify({
+          email: user.email,
+          amount,
+          plan: planCode,
+          callback_url: `${APP_BASE_URL}/billing-success`,
+          metadata: { userId },
+        }),
+      });
+      if (!result.status) {
+        return res.status(400).json({ message: result.message || "Paystack initialization failed" });
+      }
+      res.json({ authorizationUrl: result.data.authorization_url });
+    } catch (error: any) {
+      console.error("Error initializing Paystack:", error);
+      res.status(500).json({ message: error.message || "Failed to initialize payment" });
+    }
+  });
+
+  app.get('/api/billing/paystack/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { reference } = req.query;
+      if (!reference) {
+        return res.status(400).json({ message: "Reference is required" });
+      }
+      const result = await paystackFetch(`/transaction/verify/${reference}`);
+      if (!result.status) {
+        return res.status(400).json({ message: result.message || "Verification failed" });
+      }
+      const data = result.data;
+      const now = new Date();
+      let plan = "premium_monthly";
+      let currentPeriodEnd: Date;
+      if (data.plan?.plan_code === PAYSTACK_YEARLY_PLAN_CODE) {
+        plan = "premium_yearly";
+        currentPeriodEnd = new Date(now.getTime() + 366 * 24 * 60 * 60 * 1000);
+      } else {
+        currentPeriodEnd = new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000);
+      }
+      const updateData: any = {
+        plan,
+        subscriptionStatus: "active",
+        currentPeriodEnd,
+      };
+      if (data.customer?.customer_code) {
+        updateData.paystackCustomerCode = data.customer.customer_code;
+      }
+      if (data.subscription?.subscription_code) {
+        updateData.paystackSubscriptionCode = data.subscription.subscription_code;
+      }
+      if (data.subscription?.email_token) {
+        updateData.paystackEmailToken = data.subscription.email_token;
+      }
+      const updatedUser = await storage.setUserSubscriptionByUserId(userId, updateData);
+      res.json({ ok: true, user: updatedUser });
+    } catch (error: any) {
+      console.error("Error verifying Paystack transaction:", error);
+      res.status(500).json({ message: error.message || "Verification failed" });
+    }
+  });
+
+  app.post('/api/billing/paystack/webhook', async (req: any, res) => {
+    const signature = req.headers["x-paystack-signature"] as string;
+    if (!signature) {
+      return res.status(401).json({ message: "Missing signature" });
+    }
+    const hash = crypto
+      .createHmac("sha512", PAYSTACK_SECRET_KEY)
+      .update(req.rawBody)
+      .digest("hex");
+    if (hash !== signature) {
+      return res.status(401).json({ message: "Invalid signature" });
+    }
+    try {
+      const event = req.body;
+      const data = event.data;
+      switch (event.event) {
+        case "subscription.create":
+        case "subscription.enable": {
+          const customerCode = data.customer?.customer_code;
+          const email = data.customer?.email;
+          let userId = data.metadata?.userId;
+          if (!userId && customerCode) {
+            const usersByCode = await db.select().from(users).where(eq(users.paystackCustomerCode, customerCode)).limit(1);
+            userId = usersByCode[0]?.id;
+          }
+          if (!userId && email) {
+            const usersByEmail = await storage.searchUsersByEmail(email);
+            userId = usersByEmail[0]?.id;
+          }
+          if (userId) {
+            const planCode = data.plan?.plan_code || data.plan_code;
+            const plan = planCode === PAYSTACK_YEARLY_PLAN_CODE ? "premium_yearly" : "premium_monthly";
+            const now = new Date();
+            const nextPaymentDate = data.next_payment_date ? new Date(data.next_payment_date) : null;
+            const updateData: any = {
+              plan,
+              subscriptionStatus: "active",
+              paystackSubscriptionCode: data.subscription_code || data.subscription?.subscription_code,
+              paystackEmailToken: data.email_token || data.subscription?.email_token,
+            };
+            if (customerCode) updateData.paystackCustomerCode = customerCode;
+            if (nextPaymentDate) updateData.currentPeriodEnd = nextPaymentDate;
+            await storage.setUserSubscriptionByUserId(userId, updateData);
+          }
+          break;
+        }
+        case "subscription.disable":
+        case "subscription.expire": {
+          const subCode = data.subscription_code || data.subscription?.subscription_code;
+          if (subCode) {
+            const usersBySub = await db.select().from(users).where(eq(users.paystackSubscriptionCode, subCode)).limit(1);
+            if (usersBySub[0]) {
+              await storage.setUserSubscriptionByUserId(usersBySub[0].id, { subscriptionStatus: "canceled" });
+            }
+          }
+          break;
+        }
+        case "invoice.payment_failed":
+        case "charge.failed": {
+          const custCode = data.customer?.customer_code;
+          if (custCode) {
+            await storage.setUserSubscriptionByCustomerCode(custCode, { subscriptionStatus: "past_due" });
+          }
+          break;
+        }
+      }
+      res.status(200).json({ ok: true });
+    } catch (error) {
+      console.error("Error handling webhook:", error);
+      res.status(200).json({ ok: true });
+    }
+  });
+
+  app.post('/api/billing/paystack/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      // Try Paystack API if we have subscription details
+      if (user?.paystackSubscriptionCode && user?.paystackEmailToken) {
+        try {
+          await paystackFetch("/subscription/disable", {
+            method: "POST",
+            body: JSON.stringify({
+              code: user.paystackSubscriptionCode,
+              token: user.paystackEmailToken,
+            }),
+          });
+        } catch (paystackErr) {
+          console.warn("Paystack cancel API failed, canceling locally:", paystackErr);
+        }
+      }
+      await storage.setUserSubscriptionByUserId(userId, {
+        plan: "free",
+        subscriptionStatus: "canceled",
+        paystackSubscriptionCode: null,
+        paystackEmailToken: null,
+      });
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("Error canceling subscription:", error);
+      res.status(500).json({ message: error.message || "Failed to cancel subscription" });
     }
   });
 

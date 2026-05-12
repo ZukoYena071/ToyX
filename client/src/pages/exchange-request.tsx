@@ -210,9 +210,9 @@ export default function ExchangeRequest() {
   }
 
   return (
-    <div className="max-w-sm mx-auto bg-white dark:bg-background min-h-screen">
+    <div className="max-w-sm mx-auto bg-white dark:bg-background min-h-screen flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b dark:border-border">
+      <div className="flex items-center justify-between p-4 border-b dark:border-border shrink-0">
         <Link href={`/users/${ownerId}`}>
           <Button variant="ghost" size="icon" className="w-10 h-10 bg-gray-100 dark:bg-muted rounded-full">
             <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-muted-foreground" />
@@ -222,131 +222,133 @@ export default function ExchangeRequest() {
         <div className="w-10 h-10" />
       </div>
 
-      {/* Owner & Selected Toys */}
-      <div className="p-4 bg-gradient-to-br from-powder/20 to-mint/20 dark:from-powder/10 dark:to-mint/10">
-        <div className="flex items-center space-x-3 mb-4">
-          <Avatar className="w-12 h-12">
-            <AvatarImage src={owner.profileImageUrl || undefined} />
-            <AvatarFallback className="bg-royal text-white">
-              {owner.firstName?.[0] || owner.email?.[0]?.toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="font-bold text-charcoal dark:text-foreground">
-              Exchange with {owner.firstName || owner.email?.split('@')[0]}
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-muted-foreground">
-              {selectedToys.length} toy{selectedToys.length !== 1 ? 's' : ''} selected
-            </p>
+      <div className="flex-1 overflow-y-auto pb-24">
+        {/* Owner & Selected Toys */}
+        <div className="p-4 bg-gradient-to-br from-powder/20 to-mint/20 dark:from-powder/10 dark:to-mint/10">
+          <div className="flex items-center space-x-3 mb-4">
+            <Avatar className="w-12 h-12">
+              <AvatarImage src={owner.profileImageUrl || undefined} />
+              <AvatarFallback className="bg-royal text-white">
+                {owner.firstName?.[0] || owner.email?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="font-bold text-charcoal dark:text-foreground">
+                Exchange with {owner.firstName || owner.email?.split('@')[0]}
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                {selectedToys.length} toy{selectedToys.length !== 1 ? 's' : ''} selected
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Selected Toys */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-charcoal dark:text-foreground">You want:</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {selectedToys.map((toy) => (
-              <Card key={toy.id} className="bg-white dark:bg-card">
-                <CardContent className="p-3">
-                  <div className="aspect-square bg-gray-100 dark:bg-muted rounded-lg mb-2 overflow-hidden">
-                    {toy.imageUrls?.[0] ? (
-                      <img 
-                        src={toy.imageUrls[0]} 
-                        alt={toy.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl">🧸</div>
-                    )}
-                  </div>
-                  <h4 className="font-medium text-sm text-charcoal dark:text-foreground line-clamp-2">
-                    {toy.name}
-                  </h4>
-                  <Badge variant="secondary" className="text-xs mt-1">
-                    {toy.category}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* My Toys Selection */}
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-charcoal dark:text-foreground">Select Your Toys</h3>
-          <span className="text-sm text-gray-500 dark:text-muted-foreground">
-            {selectedMyToys.length} selected
-          </span>
-        </div>
-
-        {availableMyToys.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-4">📦</div>
-            <p className="text-gray-500 dark:text-muted-foreground mb-4">
-              You don't have any available toys to exchange
-            </p>
-            <Link href="/profile">
-              <Button className="bg-royal hover:bg-royal/90 text-white rounded-2xl">
-                Add Some Toys
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {availableMyToys.map((toy) => (
-              <Card 
-                key={toy.id} 
-                className={`relative cursor-pointer transition-all ${
-                  selectedMyToys.includes(toy.id) 
-                    ? 'ring-2 ring-royal bg-royal/5' 
-                    : 'hover:shadow-md'
-                }`}
-                onClick={() => handleToySelection(toy.id)}
-              >
-                {selectedMyToys.includes(toy.id) && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-royal rounded-full flex items-center justify-center z-10">
-                    <Heart className="w-3 h-3 text-white fill-current" />
-                  </div>
-                )}
-                <CardContent className="p-3">
-                  <div className="aspect-square bg-gray-100 dark:bg-muted rounded-lg mb-2 overflow-hidden">
-                    {toy.imageUrls?.[0] ? (
-                      <img 
-                        src={toy.imageUrls[0]} 
-                        alt={toy.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl">🧸</div>
-                    )}
-                  </div>
-                  <h4 className="font-medium text-sm text-charcoal dark:text-foreground mb-1 line-clamp-2">
-                    {toy.name}
-                  </h4>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className="text-xs">
+          {/* Selected Toys */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-charcoal dark:text-foreground">You want:</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {selectedToys.map((toy) => (
+                <Card key={toy.id} className="bg-white dark:bg-card">
+                  <CardContent className="p-3">
+                    <div className="aspect-square bg-gray-100 dark:bg-muted rounded-lg mb-2 overflow-hidden">
+                      {toy.imageUrls?.[0] ? (
+                        <img 
+                          src={toy.imageUrls[0]} 
+                          alt={toy.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl">🧸</div>
+                      )}
+                    </div>
+                    <h4 className="font-medium text-sm text-charcoal dark:text-foreground line-clamp-2">
+                      {toy.name}
+                    </h4>
+                    <Badge variant="secondary" className="text-xs mt-1">
                       {toy.category}
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {toy.condition}
-                    </Badge>
-                  </div>
-                  {toy.location && (
-                    <div className="flex items-center space-x-1 mt-2 text-xs text-gray-500 dark:text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      <span className="truncate">{toy.location}</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* My Toys Selection */}
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-charcoal dark:text-foreground">Select Your Toys</h3>
+            <span className="text-sm text-gray-500 dark:text-muted-foreground">
+              {selectedMyToys.length} selected
+            </span>
+          </div>
+
+          {availableMyToys.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">📦</div>
+              <p className="text-gray-500 dark:text-muted-foreground mb-4">
+                You don't have any available toys to exchange
+              </p>
+              <Link href="/profile">
+                <Button className="bg-royal hover:bg-royal/90 text-white rounded-2xl">
+                  Add Some Toys
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {availableMyToys.map((toy) => (
+                <Card 
+                  key={toy.id} 
+                  className={`relative cursor-pointer transition-all ${
+                    selectedMyToys.includes(toy.id) 
+                      ? 'ring-2 ring-royal bg-royal/5' 
+                      : 'hover:shadow-md'
+                  }`}
+                  onClick={() => handleToySelection(toy.id)}
+                >
+                  {selectedMyToys.includes(toy.id) && (
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-royal rounded-full flex items-center justify-center z-10">
+                      <Heart className="w-3 h-3 text-white fill-current" />
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                  <CardContent className="p-3">
+                    <div className="aspect-square bg-gray-100 dark:bg-muted rounded-lg mb-2 overflow-hidden">
+                      {toy.imageUrls?.[0] ? (
+                        <img 
+                          src={toy.imageUrls[0]} 
+                          alt={toy.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl">🧸</div>
+                      )}
+                    </div>
+                    <h4 className="font-medium text-sm text-charcoal dark:text-foreground mb-1 line-clamp-2">
+                      {toy.name}
+                    </h4>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary" className="text-xs">
+                        {toy.category}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {toy.condition}
+                      </Badge>
+                    </div>
+                    {toy.location && (
+                      <div className="flex items-center space-x-1 mt-2 text-xs text-gray-500 dark:text-muted-foreground">
+                        <MapPin className="w-3 h-3" />
+                        <span className="truncate">{toy.location}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Request Message */}
-        <div className="space-y-4">
+        <div className="px-4">
           <div>
             <label className="text-sm font-medium text-charcoal dark:text-foreground mb-2 block">
               Message (Optional)
@@ -362,21 +364,17 @@ export default function ExchangeRequest() {
               💬 {requestMessage.trim() ? "This message" : "The default message"} will appear as your first chat message
             </p>
           </div>
+        </div>
 
-          {/* Action Buttons */}
+        {/* Action Buttons inside scrollable area */}
+        <div className="p-4 mt-4">
           <div className="space-y-3">
             <Button 
               onClick={() => {
-                console.log("Button clicked, starting exchange creation...");
-                console.log("Selected toys:", selectedMyToys);
-                console.log("Available toys:", availableMyToys.length);
-                console.log("Request message:", requestMessage);
-                console.log("User authenticated:", !!user);
-                console.log("User ID:", (user as any)?.id);
                 createExchangeMutation.mutate();
               }}
               disabled={createExchangeMutation.isPending || selectedMyToys.length === 0 || !user}
-              className="w-full bg-royal hover:bg-royal/90 text-white py-3 rounded-2xl text-lg font-semibold"
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-3 rounded-2xl text-lg font-semibold"
             >
               {createExchangeMutation.isPending ? "Sending Request..." : 
                !user ? "Please log in to request exchange" :
@@ -387,7 +385,7 @@ export default function ExchangeRequest() {
             
             <Button 
               variant="outline" 
-              className="w-full border-royal text-royal hover:bg-royal hover:text-white py-3 rounded-2xl"
+              className="w-full border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 py-3 rounded-2xl"
               onClick={() => window.location.href = `/users/${ownerId}`}
             >
               <MessageCircle className="w-5 h-5 mr-2" />

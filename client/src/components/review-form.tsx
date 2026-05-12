@@ -152,7 +152,7 @@ export default function ReviewForm({ exchangeId, revieweeId, revieweeName, onClo
               <Button
                 type="submit"
                 disabled={rating === 0 || createReviewMutation.isPending}
-                className="flex-1 bg-gradient-to-r from-mint to-royal hover:from-mint/90 hover:to-royal/90 text-white rounded-2xl"
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-2xl"
               >
                 {createReviewMutation.isPending ? "Submitting..." : "Submit Review"}
               </Button>

@@ -21,6 +21,9 @@ import UserProfile from "@/pages/user-profile";
 import LoadingDemo from "@/pages/loading-demo";
 import ExchangeRequest from "@/pages/exchange-request";
 import Favorites from "@/pages/favorites";
+import Pricing from "@/pages/pricing";
+import BillingSuccess from "@/pages/billing-success";
+import BillingCancel from "@/pages/billing-cancel";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -51,6 +54,9 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/billing-success" component={BillingSuccess} />
+        <Route path="/billing-cancel" component={BillingCancel} />
         <Route path="/exchange-request" component={Landing} />
         <Route component={Landing} />
       </Switch>
@@ -74,8 +80,11 @@ function Router() {
       <Route path="/toy/:id" component={ToyDetail} />
       <Route path="/toys/:id" component={ToyDetail} />
       <Route path="/chat/:exchangeId?" component={Chat} />
-      <Route path="/profile" component={Profile} />
-      <Route path="/favorites" component={Favorites} />
+        <Route path="/profile" component={Profile} />
+        <Route path="/favorites" component={Favorites} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/billing-success" component={BillingSuccess} />
+        <Route path="/billing-cancel" component={BillingCancel} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />
       <Route path="/loading-demo" component={LoadingDemo} />

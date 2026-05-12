@@ -16,7 +16,7 @@ export default function AppHeader() {
           <img 
             src={toyxLogo} 
             alt="ToyX" 
-            className="h-12 w-auto transform group-hover:scale-110 transition-transform duration-300 drop-shadow-lg"
+            className="h-20 w-auto transform group-hover:scale-110 transition-transform duration-300 drop-shadow-lg"
           />
         </div>
       </Link>

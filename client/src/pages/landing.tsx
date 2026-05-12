@@ -11,7 +11,7 @@ export default function Landing() {
           <img 
             src={toyxLogo} 
             alt="ToyX" 
-            className="h-60 w-auto drop-shadow-lg"
+            className="h-48 w-auto drop-shadow-lg"
           />
         </div>
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-3">Welcome to ToyX!</h1>

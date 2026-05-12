@@ -3,17 +3,19 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useGeolocation, reverseGeocode } from "@/hooks/useGeolocation";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, X, Trash2, MapPin, Loader2 } from "lucide-react";
+import { Camera, X, Trash2, MapPin, Loader2, Navigation, Check, ChevronDown, Search } from "lucide-react";
+import { searchLocations } from "@/lib/location";
 import { insertToySchema } from "@shared/schema";
 
 interface UploadOverlayProps {
   onClose: () => void;
+  toy?: any;
 }
 
 const categories = [
@@ -23,19 +25,51 @@ const categories = [
 const ageGroups = ["0-2", "3-6", "7-12", "13+"];
 const conditions = ["Like New", "Good", "Fair", "Poor"];
 
-export default function UploadOverlay({ onClose }: UploadOverlayProps) {
+
+
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  const zaLocations = [
+    { name: "Cape Town, Western Cape, South Africa", lat: -33.9249, lng: 18.4241 },
+    { name: "Johannesburg, Gauteng, South Africa", lat: -26.2041, lng: 28.0473 },
+    { name: "Pretoria, Gauteng, South Africa", lat: -25.7479, lng: 28.2293 },
+    { name: "Durban, KwaZulu-Natal, South Africa", lat: -29.8587, lng: 31.0218 },
+    { name: "Gqeberha, Eastern Cape, South Africa", lat: -33.9608, lng: 25.6022 },
+    { name: "Bloemfontein, Free State, South Africa", lat: -29.0852, lng: 26.1596 },
+    { name: "East London, Eastern Cape, South Africa", lat: -33.0153, lng: 27.9116 },
+    { name: "Polokwane, Limpopo, South Africa", lat: -23.8962, lng: 29.4486 },
+    { name: "Nelspruit, Mpumalanga, South Africa", lat: -25.4745, lng: 30.9703 },
+    { name: "Kimberley, Northern Cape, South Africa", lat: -28.7282, lng: 24.7499 },
+    { name: "Rustenburg, North West, South Africa", lat: -25.6676, lng: 27.2421 },
+    { name: "Pietermaritzburg, KwaZulu-Natal, South Africa", lat: -29.6006, lng: 30.3794 },
+  ];
+  let closest = zaLocations[0];
+  let minDist = Infinity;
+  for (const loc of zaLocations) {
+    const d = Math.sqrt((lat - loc.lat) ** 2 + (lng - loc.lng) ** 2);
+    if (d < minDist) { minDist = d; closest = loc; }
+  }
+  return closest.name;
+}
+
+export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [images, setImages] = useState<string[]>([]);
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const [images, setImages] = useState<string[]>(toy?.imageUrls || []);
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    category: "",
-    ageGroup: "",
-    condition: "",
-    location: "",
+    name: toy?.name || "",
+    description: toy?.description || "",
+    category: toy?.category || "",
+    ageGroup: toy?.ageGroup || "",
+    condition: toy?.condition || "",
+    location: toy?.location || "",
   });
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [locationResults, setLocationResults] = useState<{ displayName: string; lat: number; lng: number }[]>([]);
+  const [searchingLocation, setSearchingLocation] = useState(false);
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const locationDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   
   const { latitude, longitude, error: locationError, loading: locationLoading, requestLocation } = useGeolocation();
   const [detectedLocation, setDetectedLocation] = useState<string>("");
@@ -44,11 +78,15 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
   useEffect(() => {
     if (latitude && longitude) {
       setIsDetectingLocation(true);
+      setSelectedCoords({ lat: latitude, lng: longitude });
       reverseGeocode(latitude, longitude).then(location => {
         setDetectedLocation(location);
-        if (!formData.location) {
-          setFormData(prev => ({ ...prev, location }));
-        }
+        setFormData(prev => {
+          if (!prev.location) {
+            return { ...prev, location };
+          }
+          return prev;
+        });
         setIsDetectingLocation(false);
       });
     }
@@ -56,6 +94,9 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
 
   const createToyMutation = useMutation({
     mutationFn: async (toyData: any) => {
+      if (toy) {
+        return await apiRequest("PATCH", `/api/toys/${toy.id}`, toyData);
+      }
       return await apiRequest("POST", "/api/toys", toyData);
     },
     onSuccess: () => {
@@ -64,17 +105,22 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
         queryClient.invalidateQueries({ queryKey: ["/api/users", user.id, "toys"] });
       }
       toast({
-        title: "Toy listed successfully!",
-        description: "Your toy is now available for exchange.",
+        title: toy ? "Toy updated!" : "Toy listed successfully!",
+        description: toy ? "Your toy has been updated." : "Your toy is now available for exchange.",
       });
       onClose();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const msg = error?.message || "";
+      const body = msg.includes("{") ? JSON.parse(msg.substring(msg.indexOf("{"))) : null;
       toast({
-        title: "Error",
-        description: "Failed to list toy. Please try again.",
+        title: body?.code === "LIMIT_ACTIVE_LISTINGS" ? "Upgrade Required" : "Error",
+        description: body?.message || (toy ? "Failed to update toy." : "Failed to list toy."),
         variant: "destructive",
       });
+      if (body?.upgradeUrl) {
+        setTimeout(() => window.location.href = body.upgradeUrl, 2000);
+      }
     },
   });
 
@@ -96,28 +142,80 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const toggleCategory = (cat: string) => {
+    const current = formData.category ? formData.category.split(", ") : [];
+    const idx = current.indexOf(cat);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(cat);
+    }
+    setFormData(prev => ({ ...prev, category: current.join(", ") }));
+  };
+
+  const toggleAgeGroup = (age: string) => {
+    const current = formData.ageGroup ? formData.ageGroup.split(", ") : [];
+    const idx = current.indexOf(age);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(age);
+    }
+    setFormData(prev => ({ ...prev, ageGroup: current.join(", ") }));
+  };
+
+  useEffect(() => {
+    if (formData.location.length > 1) {
+      if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
+      locationDebounceRef.current = setTimeout(async () => {
+        setSearchingLocation(true);
+        const results = await searchLocations(formData.location);
+        setLocationResults(results);
+        setSearchingLocation(false);
+        setShowLocationSuggestions(results.length > 0);
+      }, 300);
+    } else {
+      setLocationResults([]);
+      setShowLocationSuggestions(false);
+    }
+    return () => { if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current); };
+  }, [formData.location]);
+
   const handleSubmit = () => {
-    try {
-      const toyData = insertToySchema.parse({
+    const coords = selectedCoords || (latitude && longitude ? { lat: latitude, lng: longitude } : { lat: null, lng: null });
+    if (toy) {
+      createToyMutation.mutate({
         ...formData,
-        ownerId: user?.id || "",
         imageUrls: images,
-        latitude,
-        longitude,
+        latitude: coords.lat,
+        longitude: coords.lng,
       });
-      createToyMutation.mutate(toyData);
-    } catch (error) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
+    } else {
+      try {
+        const toyData = insertToySchema.parse({
+          ...formData,
+          ownerId: user?.id || "",
+          imageUrls: images,
+          latitude: coords.lat,
+          longitude: coords.lng,
+        });
+        createToyMutation.mutate(toyData);
+      } catch (error) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const handleUseDetectedLocation = () => {
     if (detectedLocation) {
       setFormData(prev => ({ ...prev, location: detectedLocation }));
+      if (latitude && longitude) {
+        setSelectedCoords({ lat: latitude, lng: longitude });
+      }
     }
   };
 
@@ -131,8 +229,8 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
           <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4"></div>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-white mb-1">List a Toy</h2>
-              <p className="text-sm text-purple-100">Share your toy with the community</p>
+              <h2 className="text-xl font-bold text-white mb-1">{toy ? "Edit Toy" : "List a Toy"}</h2>
+              <p className="text-sm text-purple-100">{toy ? "Update your toy listing" : "Share your toy with the community"}</p>
             </div>
             <button
               onClick={onClose}
@@ -157,7 +255,7 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
           />
           
             <div>
-              <label className="block text-lg font-semibold text-gray-800 mb-3">
+              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 Add Photos <span className="text-red-500">*</span>
               </label>
               <p className="text-sm text-gray-500 mb-4">Add up to 5 photos. The first photo will be your main image.</p>
@@ -222,7 +320,7 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
 
             {/* Toy Name */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 mb-3">
+              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 Toy Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -230,13 +328,13 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., LEGO Creator 3-in-1 Deep Sea Creatures"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 mb-3">
+              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 Description
               </label>
               <textarea
@@ -244,66 +342,92 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe your toy's condition, what's included, and why kids would love it..."
                 rows={4}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
               />
               <div className="text-right text-sm text-gray-500 mt-1">
                 {formData.description.length}/500
               </div>
             </div>
 
-            {/* Category */}
+            {/* Category - Multi Select */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 mb-3">
-                Category <span className="text-red-500">*</span>
+              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Categories <span className="text-red-500">*</span>
               </label>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Select one or more categories</p>
               <div className="grid grid-cols-2 gap-3">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setFormData({ ...formData, category })}
-                    className={`p-4 rounded-xl border-2 transition-all text-left ${
-                      formData.category === category
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className={`text-sm font-medium ${
-                      formData.category === category ? 'text-purple-700' : 'text-gray-700'
-                    }`}>
-                      {category}
-                    </div>
-                  </button>
-                ))}
+                {categories.map((category) => {
+                  const selected = formData.category.split(", ").includes(category);
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => toggleCategory(category)}
+                      className={`p-4 rounded-xl border-2 transition-all text-left relative ${
+                        selected
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                      }`}
+                    >
+                      <div className={`text-sm font-medium ${
+                        selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
+                      }`}>
+                        {category}
+                      </div>
+                      {selected && (
+                        <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+              {formData.category && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {formData.category.split(", ").map(c => (
+                    <Badge key={c} variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                      {c}
+                      <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Age Group and Condition */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-lg font-semibold text-gray-800 mb-3">Age Range</label>
+                <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Age Range</label>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Select one or more</p>
                 <div className="space-y-2">
-                  {ageGroups.map((age) => (
-                    <button
-                      key={age}
-                      onClick={() => setFormData({ ...formData, ageGroup: age })}
-                      className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
-                        formData.ageGroup === age
-                          ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`text-sm font-medium ${
-                        formData.ageGroup === age ? 'text-purple-700' : 'text-gray-700'
-                      }`}>
-                        Ages {age}
-                      </div>
-                    </button>
-                  ))}
+                  {ageGroups.map((age) => {
+                    const selected = formData.ageGroup.split(", ").includes(age);
+                    return (
+                      <button
+                        key={age}
+                        onClick={() => toggleAgeGroup(age)}
+                        className={`w-full p-3 rounded-xl border-2 text-left transition-all relative ${
+                          selected
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                        }`}
+                      >
+                        <div className={`text-sm font-medium ${
+                          selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
+                        }`}>
+                          Ages {age}
+                        </div>
+                        {selected && (
+                          <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               
               <div>
-                <label className="block text-lg font-semibold text-gray-800 mb-3">
+                <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
                   Condition <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
@@ -313,12 +437,12 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
                       onClick={() => setFormData({ ...formData, condition })}
                       className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
                         formData.condition === condition
-                          ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                       }`}
                     >
                       <div className={`text-sm font-medium ${
-                        formData.condition === condition ? 'text-purple-700' : 'text-gray-700'
+                        formData.condition === condition ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
                       }`}>
                         {condition}
                       </div>
@@ -330,35 +454,74 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
 
             {/* Location */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 mb-3">Location</label>
+              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Location</label>
               <div className="space-y-3">
                 <div className="relative">
                   <input
+                    ref={locationInputRef}
                     type="text"
-                    placeholder="Enter location manually"
+                    placeholder="Search for a city or suburb..."
                     value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                    onChange={(e) => {
+                      setFormData((prev: any) => ({ ...prev, location: e.target.value }));
+                      setShowLocationSuggestions(e.target.value.length > 1);
+                    }}
+                    onFocus={() => {
+                      if (formData.location.length > 1) setShowLocationSuggestions(true);
+                    }}
+                    onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
                   />
                   <button
                     type="button"
-                    onClick={requestLocation}
+                    onClick={() => requestLocation()}
                     disabled={locationLoading || isDetectingLocation}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 flex items-center justify-center text-purple-500 hover:text-purple-600"
+                    title="Detect my location"
                   >
                     {locationLoading || isDetectingLocation ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <MapPin className="w-4 h-4" />
+                      <Navigation className="w-4 h-4" />
                     )}
                   </button>
+
+                  {/* Location Suggestions Dropdown */}
+                  {showLocationSuggestions && (
+                    <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                      {searchingLocation ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                        </div>
+                      ) : locationResults.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">No locations found</div>
+                      ) : (
+                        locationResults.map((result, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setFormData((prev: any) => ({ ...prev, location: result.displayName }));
+                              setSelectedCoords({ lat: result.lat, lng: result.lng });
+                              setShowLocationSuggestions(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span>{result.displayName}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {detectedLocation && detectedLocation !== formData.location && (
                   <button
                     type="button"
                     onClick={handleUseDetectedLocation}
-                    className="w-full p-3 border border-purple-200 rounded-xl text-purple-600 hover:bg-purple-50 transition-colors"
+                    className="w-full p-3 border border-purple-200 dark:border-purple-800 rounded-xl text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                   >
                     <MapPin className="w-4 h-4 inline mr-2" />
                     Use detected: {detectedLocation}
@@ -385,7 +548,7 @@ export default function UploadOverlay({ onClose }: UploadOverlayProps) {
               disabled={!isFormValid || createToyMutation.isPending}
               className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {createToyMutation.isPending ? "Listing..." : "List Toy"}
+              {createToyMutation.isPending ? "Saving..." : toy ? "Save Changes" : "List Toy"}
             </button>
           </div>
         </div>

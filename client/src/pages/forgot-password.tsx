@@ -58,7 +58,7 @@ export default function ForgotPassword() {
               type="email"
               value={formData.forgotEmail}
               onChange={(e) => handleInputChange('forgotEmail', e.target.value)}
-              className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-4 bg-gray-50 text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Enter your email"
             />
           </div>

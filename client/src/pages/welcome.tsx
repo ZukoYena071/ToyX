@@ -17,7 +17,7 @@ export default function Welcome() {
               <img 
                 src={toyxLogo} 
                 alt="ToyX Logo" 
-                className="w-64 h-auto drop-shadow-2xl"
+                className="h-48 w-auto drop-shadow-2xl"
               />
             </div>
           </div>

@@ -87,7 +87,7 @@ export default function HomePage() {
               <img 
                 src={toyxLogo} 
                 alt="ToyX" 
-                className="h-12 w-auto dark:brightness-0 dark:invert"
+                className="h-20 w-auto dark:brightness-0 dark:invert"
               />
             </div>
             <Link href="/profile">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -31,7 +31,10 @@ import {
   X,
   Camera,
   Save,
-  Navigation
+  Navigation,
+  Edit3,
+  Trash2,
+  Loader2
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -41,6 +44,8 @@ import { useToast } from "@/hooks/use-toast";
 import { PageLoadingSkeleton } from "@/components/loading-skeletons";
 import BottomNav from "@/components/bottom-nav";
 import { apiRequest } from "@/lib/queryClient";
+import UploadOverlay from "@/components/upload-overlay";
+import { searchLocations } from "@/lib/location";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -51,6 +56,11 @@ export default function Profile() {
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditToy, setShowEditToy] = useState<any>(null);
+  const [confirmDeleteToyId, setConfirmDeleteToyId] = useState<number | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingSub, setCancellingSub] = useState(false);
+  const [cancelConfirmed, setCancelConfirmed] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   
   // Edit form state
@@ -64,8 +74,10 @@ export default function Profile() {
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
+  const [locationSuggestions, setLocationSuggestions] = useState<{ displayName: string; lat: number; lng: number }[]>([]);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [searchingLocation, setSearchingLocation] = useState(false);
+  const locationDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Initialize form with user data when modal opens
   useEffect(() => {
@@ -222,6 +234,21 @@ export default function Profile() {
     },
   });
 
+  const deleteToyMutation = useMutation({
+    mutationFn: async (toyId: number) => {
+      return await apiRequest('DELETE', `/api/toys/${toyId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Toy Deleted", description: "Your toy listing has been removed." });
+      setConfirmDeleteToyId(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/toys"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete toy.", variant: "destructive" });
+    },
+  });
+
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -335,60 +362,23 @@ export default function Profile() {
   // Location autocomplete functionality
   const handleLocationChange = async (value: string) => {
     handleEditChange('location', value);
-    
-    if (value.length > 2) {
-      // Enhanced location suggestions including South African cities
-      const southAfricanCities = [
-        'Johannesburg, Gauteng, South Africa',
-        'Cape Town, Western Cape, South Africa',
-        'Durban, KwaZulu-Natal, South Africa',
-        'Pretoria, Gauteng, South Africa',
-        'Port Elizabeth, Eastern Cape, South Africa',
-        'Bloemfontein, Free State, South Africa',
-        'Randburg, Gauteng, South Africa',
-        'Sandton, Gauteng, South Africa',
-        'Soweto, Gauteng, South Africa',
-        'Pietermaritzburg, KwaZulu-Natal, South Africa',
-        'Benoni, Gauteng, South Africa',
-        'Tembisa, Gauteng, South Africa',
-        'East London, Eastern Cape, South Africa',
-        'Vereeniging, Gauteng, South Africa',
-        'Uitenhage, Eastern Cape, South Africa',
-        'Welkom, Free State, South Africa',
-        'Roodepoort, Gauteng, South Africa',
-        'Boksburg, Gauteng, South Africa',
-        'Klerksdorp, North West, South Africa',
-        'Midrand, Gauteng, South Africa'
-      ];
-      
-      const usCities = [
-        'San Francisco, CA, USA',
-        'San Jose, CA, USA',
-        'Oakland, CA, USA',
-        'Berkeley, CA, USA',
-        'Palo Alto, CA, USA',
-        'New York, NY, USA',
-        'Los Angeles, CA, USA',
-        'Chicago, IL, USA',
-        'Houston, TX, USA',
-        'Phoenix, AZ, USA'
-      ];
-      
-      const allLocations = [...southAfricanCities, ...usCities];
-      
-      const suggestions = allLocations.filter(location => 
-        location.toLowerCase().includes(value.toLowerCase())
-      ).slice(0, 6);
-      
-      setLocationSuggestions(suggestions);
-      setShowLocationSuggestions(suggestions.length > 0);
+    if (value.length > 1) {
+      if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
+      locationDebounceRef.current = setTimeout(async () => {
+        setSearchingLocation(true);
+        const results = await searchLocations(value);
+        setLocationSuggestions(results);
+        setSearchingLocation(false);
+        setShowLocationSuggestions(results.length > 0);
+      }, 300);
     } else {
+      setLocationSuggestions([]);
       setShowLocationSuggestions(false);
     }
   };
 
-  const selectLocation = (location: string) => {
-    handleEditChange('location', location);
+  const selectLocation = (loc: { displayName: string; lat: number; lng: number }) => {
+    handleEditChange('location', loc.displayName);
     setShowLocationSuggestions(false);
   };
 
@@ -479,16 +469,16 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-                {(user as any)?.firstName && (user as any)?.lastName 
-                  ? `${(user as any).firstName} ${(user as any).lastName}`
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white truncate">
+                {(user as any)?.firstName || (user as any)?.lastName
+                  ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim()
                   : (user as any)?.email || 'User'
                 }
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
               <div className="flex items-center space-x-1 mt-1">
                 <MapPin className="text-purple-500 w-3 h-3" />
-                <span className="text-gray-500 dark:text-gray-400 text-sm">San Francisco, CA</span>
+                <span className="text-gray-500 dark:text-gray-400 text-sm">{(user as any)?.location || 'Location not set'}</span>
               </div>
             </div>
             <button 
@@ -582,223 +572,212 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Menu Items */}
+        {/* Menu Items with inline expandable sections */}
         <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Account</h3>
           
           <div className="space-y-1">
             {menuItems.map((item, index) => (
-              item.href ? (
-                <Link key={index} href={item.href}>
-                  <button className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <div className={`w-10 h-10 ${item.bgColor} rounded-lg flex items-center justify-center`}>
-                      <item.icon className={`${item.color} w-5 h-5`} />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="font-medium text-gray-800 dark:text-white">{item.title}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{item.subtitle}</div>
-                    </div>
-                    <ChevronRight className="text-gray-400 w-4 h-4" />
-                  </button>
-                </Link>
-              ) : (
-                <button
-                  key={index}
-                  onClick={() => handleMenuClick(item)}
-                  className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <div className={`w-10 h-10 ${item.bgColor} rounded-lg flex items-center justify-center`}>
-                    <item.icon className={`${item.color} w-5 h-5`} />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <div className="font-medium text-gray-800 dark:text-white">{item.title}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{item.subtitle}</div>
-                  </div>
-                  <ChevronRight className={`text-gray-400 w-4 h-4 transition-transform ${activeSection === item.section ? 'rotate-90' : ''}`} />
-                </button>
-              )
+              <div key={index}>
+                {item.href ? (
+                  <Link href={item.href}>
+                    <button className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <div className={`w-10 h-10 ${item.bgColor} rounded-lg flex items-center justify-center`}>
+                        <item.icon className={`${item.color} w-5 h-5`} />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="font-medium text-gray-800 dark:text-white">{item.title}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{item.subtitle}</div>
+                      </div>
+                      <ChevronRight className="text-gray-400 w-4 h-4" />
+                    </button>
+                  </Link>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleMenuClick(item)}
+                      className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className={`w-10 h-10 ${item.bgColor} rounded-lg flex items-center justify-center`}>
+                        <item.icon className={`${item.color} w-5 h-5`} />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="font-medium text-gray-800 dark:text-white">{item.title}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{item.subtitle}</div>
+                      </div>
+                      <ChevronRight className={`text-gray-400 w-4 h-4 transition-transform ${activeSection === item.section ? 'rotate-90' : ''}`} />
+                    </button>
+                    {/* Inline expanded content */}
+                    {activeSection === item.section && (
+                      <div className="ml-2 mr-2 mb-2 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                        {/* Toys section */}
+                        {item.section === 'toys' && (
+                          <>
+                            <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">My Active Listings</h4>
+                            {Array.isArray(userToys) && userToys.length > 0 ? (
+                              <div className="space-y-2">
+                                {userToys.map((toy: any) => (
+                                  <div key={toy.id} className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-xl">
+                                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg overflow-hidden shrink-0">
+                                      {toy.imageUrls && toy.imageUrls[0] ? (
+                                        <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center">🧸</div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="font-medium text-gray-800 dark:text-white truncate text-sm">{toy.name}</h4>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-1 shrink-0">
+                                      <button onClick={() => setShowEditToy(toy)} className="w-7 h-7 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors">
+                                        <Edit3 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                      </button>
+                                      <button onClick={() => setConfirmDeleteToyId(toy.id)} className="w-7 h-7 bg-red-100 dark:bg-red-900/50 rounded-lg flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-900 transition-colors">
+                                        <Trash2 className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
+                                      </button>
+                                      <div className={`px-2 py-0.5 rounded-full text-xs ${toy.isAvailable ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}>
+                                        {toy.isAvailable ? 'Avail' : 'Unavail'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6">
+                                <Package className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No toys listed yet</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {/* History section */}
+                        {item.section === 'history' && (
+                          <>
+                            <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">Exchange History</h4>
+                            {completedExchanges.length > 0 ? (
+                              <div className="space-y-2">
+                                {completedExchanges.map((exchange: any) => (
+                                  <div key={exchange.id} className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-xl">
+                                    <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                                      <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-gray-800 dark:text-white">Exchange completed</p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(exchange.createdAt).toLocaleDateString()}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6">
+                                <History className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No completed exchanges yet</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {/* Reviews section */}
+                        {item.section === 'reviews' && (
+                          <>
+                            <div className="text-center mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
+                              <div className="text-2xl font-bold text-gray-800 dark:text-white mb-1">{userStats.rating.toFixed(1)}</div>
+                              <div className="flex justify-center mb-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star key={star} className={`w-4 h-4 ${star <= userStats.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">{userStats.reviewCount} reviews</p>
+                            </div>
+                            {Array.isArray(userReviews) && userReviews.length > 0 ? (
+                              <div className="space-y-2">
+                                {userReviews.map((review: any) => (
+                                  <div key={review.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <div className="flex">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <Star key={star} className={`w-3 h-3 ${star <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                                        ))}
+                                      </div>
+                                      <span className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    {review.comment && <p className="text-xs text-gray-700 dark:text-gray-300">{review.comment}</p>}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6">
+                                <Star className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No reviews yet</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {/* Rewards section */}
+                        {item.section === 'rewards' && (
+                          <>
+                            <div className="text-center mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                              <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">150</div>
+                              <p className="text-xs text-green-700 dark:text-green-300">Total Points Earned</p>
+                            </div>
+                            <div className="space-y-2">
+                              {[
+                                { icon: Trophy, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900', title: 'First Exchange', desc: 'Completed your first toy exchange', pts: '+50 pts' },
+                                { icon: Award, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900', title: 'Community Member', desc: 'Listed your first toy for sharing', pts: '+25 pts' },
+                                { icon: Star, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900', title: 'Five Star Helper', desc: 'Received excellent reviews', pts: '+75 pts' },
+                              ].map((badge, i) => (
+                                <div key={i} className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-xl">
+                                  <div className={`w-8 h-8 ${badge.bg} rounded-lg flex items-center justify-center`}>
+                                    <badge.icon className={`w-4 h-4 ${badge.color}`} />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-800 dark:text-white">{badge.title}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{badge.desc}</p>
+                                  </div>
+                                  <span className="text-xs text-green-600 dark:text-green-400">{badge.pts}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Expandable Sections */}
-        {activeSection === 'toys' && (
-          <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">My Active Listings</h3>
-            {Array.isArray(userToys) && userToys.length > 0 ? (
-              <div className="space-y-3">
-                {userToys.map((toy: any) => (
-                  <div key={toy.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg overflow-hidden">
-                      {toy.imageUrls && toy.imageUrls[0] ? (
-                        <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">🧸</div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-800 dark:text-white">{toy.name}</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{toy.category} • {toy.condition}</p>
-                    </div>
-                    <div className={`px-2 py-1 rounded-full text-xs ${toy.isAvailable ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}>
-                      {toy.isAvailable ? 'Available' : 'Unavailable'}
-                    </div>
-                  </div>
-                ))}
+        {/* Subscription Plan */}
+        <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Subscription</h3>
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-xl mb-3">
+            <div>
+              <div className="font-medium text-gray-800 dark:text-white capitalize">
+                {(user as any)?.plan || "free"}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h4 className="font-medium text-gray-800 dark:text-white mb-2">No toys listed</h4>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Start sharing toys with the community!</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeSection === 'history' && (
-          <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Exchange History</h3>
-            {completedExchanges.length > 0 ? (
-              <div className="space-y-3">
-                {completedExchanges.map((exchange: any) => (
-                  <div key={exchange.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                      <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-800 dark:text-white">Exchange completed</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(exchange.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <MessageSquare className="w-5 h-5 text-gray-400" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <History className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h4 className="font-medium text-gray-800 dark:text-white mb-2">No completed exchanges yet</h4>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Your exchange history will appear here once you complete trades.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeSection === 'reviews' && (
-          <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Reviews & Ratings</h3>
-            
-            {/* Average Rating */}
-            <div className="text-center mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
-              <div className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-                {userStats.rating.toFixed(1)}
-              </div>
-              <div className="flex justify-center mb-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-5 h-5 ${
-                      star <= userStats.rating
-                        ? 'text-yellow-400 fill-yellow-400'
-                        : 'text-gray-300 dark:text-gray-600'
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Based on {userStats.reviewCount} reviews
-              </p>
-            </div>
-
-            {/* Reviews List */}
-            {Array.isArray(userReviews) && userReviews.length > 0 ? (
-              <div className="space-y-3">
-                {userReviews.map((review: any) => (
-                  <div key={review.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`w-4 h-4 ${
-                                star <= review.rating
-                                  ? 'text-yellow-400 fill-yellow-400'
-                                  : 'text-gray-300 dark:text-gray-600'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                    {review.comment && (
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{review.comment}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Star className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h4 className="font-medium text-gray-800 dark:text-white mb-2">No reviews yet</h4>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Complete exchanges to start receiving reviews from other parents.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeSection === 'rewards' && (
-          <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Rewards & Points</h3>
-            
-            {/* Points Balance */}
-            <div className="text-center mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">150</div>
-              <p className="text-sm text-green-700 dark:text-green-300">Total Points Earned</p>
-            </div>
-
-            {/* Achievement Badges */}
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                  <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-800 dark:text-white">First Exchange</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Completed your first toy exchange</p>
-                </div>
-                <div className="text-sm text-green-600 dark:text-green-400">+50 pts</div>
-              </div>
-              
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                  <Award className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-800 dark:text-white">Community Member</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Listed your first toy for sharing</p>
-                </div>
-                <div className="text-sm text-green-600 dark:text-green-400">+25 pts</div>
-              </div>
-
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
-                  <Star className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-800 dark:text-white">Five Star Helper</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Received excellent reviews</p>
-                </div>
-                <div className="text-sm text-green-600 dark:text-green-400">+75 pts</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+                {(user as any)?.subscriptionStatus || "inactive"}
               </div>
             </div>
+            {(user as any)?.plan === "free" ? (
+              <a
+                href="/pricing"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:shadow-lg transition-all"
+              >
+                Upgrade
+              </a>
+            ) : (
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-200 dark:hover:bg-red-800 transition-all"
+              >
+                Cancel
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Account Actions */}
         <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 mb-6">
@@ -967,29 +946,40 @@ export default function Profile() {
                       type="text"
                       value={editForm.location}
                       onChange={(e) => handleLocationChange(e.target.value)}
-                      onFocus={() => editForm.location.length > 2 && setShowLocationSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
+                      onFocus={() => editForm.location.length > 1 && setShowLocationSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
                       className="w-full pr-10"
                       placeholder="Enter your city, state or address"
                     />
                     <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     
                     {/* Location Suggestions Dropdown */}
-                    {showLocationSuggestions && locationSuggestions.length > 0 && (
+                    {showLocationSuggestions && (
                       <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {locationSuggestions.map((suggestion, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => selectLocation(suggestion)}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-300"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <MapPin className="w-3 h-3 text-gray-400" />
-                              <span>{suggestion}</span>
-                            </div>
-                          </button>
-                        ))}
+                        {searchingLocation ? (
+                          <div className="flex items-center justify-center py-3">
+                            <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                          </div>
+                        ) : locationSuggestions.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-gray-500">No locations found</div>
+                        ) : (
+                          locationSuggestions.map((result, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                selectLocation(result);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-300"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span>{result.displayName}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
@@ -1051,6 +1041,111 @@ export default function Profile() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Toy Overlay */}
+      {showEditToy && (
+        <UploadOverlay toy={showEditToy} onClose={() => { setShowEditToy(null); queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); }} />
+      )}
+
+      {/* Delete Toy Confirmation Modal */}
+      {confirmDeleteToyId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="text-red-500 w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Delete Listing</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">Are you sure you want to delete this toy listing? This action cannot be undone.</p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setConfirmDeleteToyId(null)}
+                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteToyMutation.mutate(confirmDeleteToyId)}
+                disabled={deleteToyMutation.isPending}
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {deleteToyMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Subscription Confirmation Modal */}
+      {showCancelModal && !cancelConfirmed && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut className="text-red-500 w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Cancel Subscription</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                Are you sure you want to cancel your Premium subscription? You'll lose access to unlimited listings and exchanges, and be switched back to the Free plan.
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Keep Premium
+              </button>
+              <button
+                onClick={async () => {
+                  setCancellingSub(true);
+                  try {
+                    const res = await fetch("/api/billing/paystack/cancel", {
+                      method: "POST",
+                      credentials: "include",
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                      setCancellingSub(false);
+                      setCancelConfirmed(true);
+                    }
+                  } catch {
+                    setCancellingSub(false);
+                    setShowCancelModal(false);
+                    toast({ title: "Error", description: "Failed to cancel subscription.", variant: "destructive" });
+                  }
+                }}
+                disabled={cancellingSub}
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {cancellingSub ? "Cancelling..." : "Yes, Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Success Modal */}
+      {cancelConfirmed && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm text-center">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="text-green-500 w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Subscription Canceled</h3>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+              Your Premium subscription has been canceled. You've been switched back to the Free plan. You can upgrade again anytime.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

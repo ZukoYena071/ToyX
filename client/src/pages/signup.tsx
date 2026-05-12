@@ -22,13 +22,48 @@ export default function Signup() {
   };
 
   const handleSubmit = async () => {
+    if (!formData.agreeToTerms) return;
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, firstName: formData.firstName }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        window.location.href = "/";
+      } else {
+        const err = await res.json();
+        alert(err.message || "Signup failed");
+      }
+    } catch (err) {
+      alert("Signup failed. Please try again.");
+    } finally {
       setIsLoading(false);
-      // Navigate to main app - for now redirect to Replit auth
-      window.location.href = "/api/login";
-    }, 2000);
+    }
+  };
+
+  const loginRedirect = async (email: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: "" }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        window.location.href = "/";
+      } else {
+        const err = await res.json();
+        alert(err.message || "Login failed");
+      }
+    } catch (err) {
+      alert("Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -48,7 +83,7 @@ export default function Signup() {
           <img 
             src={toyxLogo} 
             alt="ToyX Logo" 
-            className="h-16 w-auto drop-shadow-lg"
+            className="h-48 w-auto drop-shadow-lg"
           />
         </div>
         <h2 className="text-xl font-semibold text-purple-600 mb-8">Create Account</h2>
@@ -60,7 +95,7 @@ export default function Signup() {
           <div className="text-center text-gray-500 text-sm mb-4">Continue with</div>
           
           <button 
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => loginRedirect("demo@gmail.com")}
             className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -73,7 +108,7 @@ export default function Signup() {
           </button>
           
           <button 
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => loginRedirect("parent@gmail.com")}
             className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
@@ -83,7 +118,7 @@ export default function Signup() {
           </button>
           
           <button 
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => loginRedirect("demo@gmail.com")}
             className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#000000">
@@ -111,7 +146,7 @@ export default function Signup() {
               type="text"
               value={formData.firstName}
               onChange={(e) => handleInputChange('firstName', e.target.value)}
-              className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-4 bg-gray-50 text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Enter your first name"
             />
           </div>
@@ -123,7 +158,7 @@ export default function Signup() {
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-4 bg-gray-50 text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Enter your email"
             />
           </div>
@@ -136,7 +171,7 @@ export default function Signup() {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                className="w-full px-4 py-4 bg-gray-50 text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
                 placeholder="Create a password"
               />
               <button
@@ -157,7 +192,7 @@ export default function Signup() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                className="w-full px-4 py-4 bg-gray-50 text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
                 placeholder="Confirm your password"
               />
               <button
