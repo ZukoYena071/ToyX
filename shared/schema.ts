@@ -41,6 +41,8 @@ export const users = pgTable("users", {
   paystackCustomerCode: varchar("paystack_customer_code", { length: 255 }),
   paystackSubscriptionCode: varchar("paystack_subscription_code", { length: 255 }),
   paystackEmailToken: varchar("paystack_email_token", { length: 255 }),
+  premiumPassUntil: timestamp("premium_pass_until"),
+  referralCode: varchar("referral_code", { length: 32 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -58,6 +60,7 @@ export const toys = pgTable("toys", {
   location: varchar("location", { length: 255 }),
   latitude: real("latitude"),
   longitude: real("longitude"),
+  boostedUntil: timestamp("boosted_until"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -182,6 +185,49 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
+// Rewards tables
+export const userRewards = pgTable("user_rewards", {
+  userId: varchar("user_id").primaryKey().notNull().references(() => users.id),
+  pointsBalance: integer("points_balance").notNull().default(0),
+  pointsLifetime: integer("points_lifetime").notNull().default(0),
+  badges: jsonb("badges").notNull().default([]),
+  lastPremiumRedeemAt: timestamp("last_premium_redeem_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const rewardLedger = pgTable("reward_ledger", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  points: integer("points").notNull(),
+  referenceType: varchar("reference_type", { length: 32 }).notNull(),
+  referenceId: varchar("reference_id", { length: 64 }).notNull(),
+  meta: jsonb("meta"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("idx_ledger_unique").on(table.userId, table.eventType, table.referenceId)]);
+
+export const rewardRedemptions = pgTable("reward_redemptions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  rewardType: varchar("reward_type", { length: 64 }).notNull(),
+  costPoints: integer("cost_points").notNull(),
+  meta: jsonb("meta"),
+  startsAt: timestamp("starts_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: varchar("referrer_id").notNull().references(() => users.id),
+  refereeId: varchar("referee_id").references(() => users.id),
+  refereeEmail: varchar("referee_email"),
+  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  qualifiedAt: timestamp("qualified_at"),
+});
+
 // Insert schemas
 export const insertToySchema = createInsertSchema(toys).omit({
   id: true,
@@ -215,7 +261,7 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertToy = z.infer<typeof insertToySchema>;
 export type Toy = typeof toys.$inferSelect;
-export type ToyWithOwner = Toy & { owner: User; isFavorited?: boolean };
+export type ToyWithOwner = Toy & { owner: User; isFavorited?: boolean; ownerRating?: number };
 export type InsertExchange = z.infer<typeof insertExchangeSchema>;
 export type Exchange = typeof exchanges.$inferSelect;
 export type ExchangeWithDetails = Exchange & { 

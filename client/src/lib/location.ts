@@ -13,7 +13,7 @@ export async function searchLocations(query: string): Promise<LocationResult[]> 
   if (GOOGLE_API_KEY) {
     try {
       const res = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=(cities)&components=country:za&key=${GOOGLE_API_KEY}`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}`
       );
       const data = await res.json();
       if (data.predictions) {
@@ -40,7 +40,7 @@ export async function searchLocations(query: string): Promise<LocationResult[]> 
   // Fallback: Nominatim (OpenStreetMap) - free, no key required
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1&countrycodes=za`,
       { headers: { "User-Agent": "ToyX/1.0" } }
     );
     const data = await res.json();

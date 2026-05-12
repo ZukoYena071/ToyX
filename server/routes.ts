@@ -2,21 +2,17 @@ import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, messages } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
+import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards } from "./rewards";
 
-function isPremiumUser(user: any): boolean {
-  if (!user) return false;
-  return (
-    typeof user.plan === "string" &&
-    user.plan.startsWith("premium_") &&
-    user.subscriptionStatus === "active" &&
-    (!user.currentPeriodEnd || new Date(user.currentPeriodEnd) > new Date())
-  );
+async function getPremiumStatus(userId: string) {
+  const e = await computeEntitlements(userId);
+  return e.isPremium;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -188,17 +184,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toys = await storage.getToys();
       }
       
-      // Add favorite status for authenticated users
-      if (req.user?.claims?.sub) {
-        const userId = req.user.claims.sub;
-        for (const toy of toys) {
-          toy.isFavorited = await storage.isFavorite(userId, toy.id);
-        }
-      } else {
-        // Set default favorite status for unauthenticated users
-        for (const toy of toys) {
-          toy.isFavorited = false;
-        }
+      // Add favorite status and owner rating for all toys
+      const userId = req.user?.claims?.sub;
+      for (const toy of toys) {
+        toy.isFavorited = userId ? await storage.isFavorite(userId, toy.id) : false;
+        toy.ownerRating = await storage.getUserAverageRating(toy.ownerId);
       }
       
       res.json(toys);
@@ -233,18 +223,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!isPremiumUser(user)) {
+      const entitlements = await computeEntitlements(userId);
+      if (!entitlements.isPremium) {
         const activeCount = await storage.countActiveListings(userId);
-        if (activeCount >= 5) {
+        if (activeCount >= entitlements.maxActiveListings) {
           return res.status(403).json({
             code: "LIMIT_ACTIVE_LISTINGS",
-            message: "Free tier allows up to 5 active listings. Upgrade to Premium to list more.",
+            message: "Free tier allows up to " + entitlements.maxActiveListings + " active listings. Upgrade to Premium or redeem points to list more.",
             upgradeUrl: "/pricing",
           });
         }
       }
       const toyData = insertToySchema.parse({ ...req.body, ownerId: userId });
       const toy = await storage.createToy(toyData);
+      // Award quality listing points
+      const isQuality = (toyData.imageUrls?.length || 0) >= 2 && (toyData.description?.length || 0) >= 30;
+      if (isQuality && await checkDailyCap(userId, "TOY_LISTED", 5)) {
+        await awardPoints({ userId, eventType: "TOY_LISTED", referenceType: "toy", referenceId: String(toy.id), points: 5 });
+      }
       res.status(201).json(toy);
     } catch (error) {
       console.error("Error creating toy:", error);
@@ -323,12 +319,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!isPremiumUser(user)) {
+      const entitlements = await computeEntitlements(userId);
+      if (!entitlements.isPremium) {
         const monthlyRequests = await storage.countOutgoingExchangeRequestsThisMonth(userId);
-        if (monthlyRequests >= 3) {
+        if (monthlyRequests >= entitlements.maxMonthlyRequests) {
           return res.status(403).json({
             code: "LIMIT_MONTHLY_REQUESTS",
-            message: "Free tier allows up to 3 outgoing exchange requests per month. Upgrade to Premium for unlimited requests.",
+            message: "Free tier allows up to " + entitlements.maxMonthlyRequests + " outgoing exchange requests per month. Upgrade to Premium or redeem points for more.",
             upgradeUrl: "/pricing",
           });
         }
@@ -403,6 +400,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);
       const exchange = await storage.confirmExchangeCompletion(exchangeId, userId);
+      // If exchange completed, award points to both parties
+      if (exchange.status === "completed") {
+        await awardPoints({ userId: exchange.requesterId, eventType: "EXCHANGE_COMPLETED", referenceType: "exchange", referenceId: `${exchange.id}:requester`, points: 50 });
+        await awardPoints({ userId: exchange.ownerId, eventType: "EXCHANGE_COMPLETED", referenceType: "exchange", referenceId: `${exchange.id}:owner`, points: 50 });
+        // Check for referral qualification
+        await qualifyReferral(exchange.requesterId);
+        await qualifyReferral(exchange.ownerId);
+      }
       res.json(exchange);
     } catch (error) {
       console.error("Error confirming exchange completion:", error);
@@ -571,6 +576,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const review = await storage.createReview(reviewData);
+      // Award points for leaving a review (cap 3/day)
+      if (await checkDailyCap(reviewData.reviewerId, "REVIEW_LEFT", 3)) {
+        await awardPoints({ userId: reviewData.reviewerId, eventType: "REVIEW_LEFT", referenceType: "review", referenceId: String(review.id), points: 10 });
+      }
+      // Award bonus for 5-star review received
+      if (reviewData.rating === 5) {
+        await awardPoints({ userId: reviewData.revieweeId, eventType: "REVIEW_RECEIVED_5STAR", referenceType: "review", referenceId: String(review.id), points: 10 });
+      }
       res.json(review);
     } catch (error) {
       console.error("Error creating review:", error);
@@ -589,6 +602,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking review eligibility:", error);
       res.status(500).json({ message: "Failed to check review eligibility" });
+    }
+  });
+
+  // Rewards endpoints
+  app.get('/api/rewards/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const profile = await getRewardsProfile(req.user.claims.sub);
+      res.json(profile);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  app.post('/api/rewards/redeem', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { rewardType, toyId } = req.body;
+      if (!rewardType) return res.status(400).json({ message: "rewardType required" });
+
+      // Define rewards
+      const rewards: Record<string, { cost: number; expiresDays?: number; cooldownDays?: number }> = {
+        BOOST_LISTING_48H: { cost: 300 },
+        ADD_REQUESTS_5_30D: { cost: 200, expiresDays: 30 },
+        ADD_LISTINGS_5_30D: { cost: 250, expiresDays: 30 },
+        PREMIUM_PASS_7D: { cost: 1200, cooldownDays: 30 },
+      };
+      const def = rewards[rewardType];
+      if (!def) return res.status(400).json({ message: "Unknown reward type" });
+
+      let expiresAt: Date | undefined;
+      if (def.expiresDays) {
+        expiresAt = new Date(Date.now() + def.expiresDays * 24 * 60 * 60 * 1000);
+      }
+
+      // Cooldown check for premium pass
+      if (def.cooldownDays) {
+        const userR = await db.select().from(rewardLedger).where(
+          and(eq(rewardLedger.userId, userId), eq(rewardLedger.eventType, "REDEEM_PREMIUM_PASS"), gte(rewardLedger.createdAt, new Date(Date.now() - def.cooldownDays * 24 * 60 * 60 * 1000)))
+        ).limit(1);
+        if (userR.length) return res.status(400).json({ message: "Premium Pass can only be redeemed once every 30 days" });
+      }
+
+      const result = await spendPoints({ userId, rewardType: rewardType, costPoints: def.cost, meta: rewardType === "BOOST_LISTING_48H" ? { toyId } : undefined, expiresAt });
+      if (!result.ok) return res.status(400).json({ message: "Insufficient points", balance: result.balance });
+
+      // Apply boost listing
+      if (rewardType === "BOOST_LISTING_48H" && toyId) {
+        await db.update(toys).set({ boostedUntil: new Date(Date.now() + 48 * 60 * 60 * 1000) }).where(eq(toys.id, toyId));
+      }
+      if (rewardType === "PREMIUM_PASS_7D") {
+        const existingPass = await db.select({ premiumPassUntil: users.premiumPassUntil }).from(users).where(eq(users.id, userId)).limit(1);
+        const currentEnd = existingPass[0]?.premiumPassUntil || new Date();
+        const newEnd = new Date(Math.max(currentEnd.getTime(), Date.now()) + 7 * 24 * 60 * 60 * 1000);
+        await db.update(users).set({ premiumPassUntil: newEnd }).where(eq(users.id, userId));
+      }
+
+      res.json({ ok: true, balance: result.balance });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  // Referral endpoints
+  app.get('/api/referrals/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      let code = user?.referralCode;
+      if (!code) {
+        code = (user?.firstName || user?.email || "user").substring(0, 4).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+        await db.update(users).set({ referralCode: code }).where(eq(users.id, userId));
+      }
+      const myRefs = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(referrals.createdAt).limit(20);
+      res.json({ referralCode: code, inviteLink: `/welcome?ref=${code}`, referrals: myRefs });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  app.post('/api/referrals/claim', async (req: any, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ message: "Referral code required" });
+      const referrers = await db.select().from(users).where(eq(users.referralCode, code)).limit(1);
+      if (!referrers.length) return res.status(404).json({ message: "Invalid referral code" });
+      const referrer = referrers[0];
+      if (req.user && (req.user as any).claims?.sub === referrer.id) {
+        return res.status(400).json({ message: "Cannot refer yourself" });
+      }
+      if (req.user) {
+        const userId = (req.user as any).claims?.sub;
+        const existing = await db.select().from(referrals).where(
+          and(eq(referrals.referrerId, referrer.id), eq(referrals.refereeId, userId))
+        ).limit(1);
+        if (existing.length) return res.status(400).json({ message: "Already referred" });
+        await db.insert(referrals).values({ referrerId: referrer.id, refereeId: userId, status: "pending" });
+      }
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
     }
   });
 

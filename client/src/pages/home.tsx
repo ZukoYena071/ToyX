@@ -216,7 +216,8 @@ export default function HomePage() {
                       </h3>
                       <div className="flex items-center space-x-1 mb-2">
                         <MapPin className="text-purple-500 w-2.5 h-2.5" />
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.location || '1.2 km'}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.location || 'Unknown location'}</span>
+
                       </div>
                       <div className="flex flex-col space-y-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium text-center ${
@@ -326,7 +327,7 @@ export default function HomePage() {
                       </h3>
                       <div className="flex items-center space-x-1 mb-2">
                         <MapPin className="text-purple-500 w-2.5 h-2.5" />
-                        <span className="text-xs text-gray-500 truncate">{toy.location || '1.2 km'}</span>
+                        <span className="text-xs text-gray-500 truncate">{toy.location || 'Unknown location'}</span>
                       </div>
                       <div className="flex flex-col space-y-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium text-center ${

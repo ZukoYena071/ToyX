@@ -130,9 +130,11 @@ export default function Profile() {
   const userStats = {
     toysShared: Array.isArray(userToys) ? userToys.length : 0,
     toysReceived: completedExchanges.length,
-    rating: (userRating as any)?.averageRating || 0,
+    rating: (userRating as any)?.rating || 0,
     reviewCount: Array.isArray(userReviews) ? userReviews.length : 0,
-    joinDate: 'March 2024'
+    joinDate: (user as any)?.createdAt 
+      ? new Date((user as any).createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      : 'Unknown'
   };
 
   const menuItems = [
@@ -171,10 +173,18 @@ export default function Profile() {
     {
       icon: Gift,
       title: 'Rewards',
-      subtitle: '150 points earned',
+      subtitle: 'Earn & spend points',
       color: 'text-green-500',
       bgColor: 'bg-green-100 dark:bg-green-900',
-      section: 'rewards'
+      href: '/rewards'
+    },
+    {
+      icon: Gift,
+      title: 'Invite Friends',
+      subtitle: 'Earn 200 pts + Premium Pass',
+      color: 'text-pink-500',
+      bgColor: 'bg-pink-100 dark:bg-pink-900',
+      href: '/invite'
     },
     {
       icon: HelpCircle,
@@ -507,7 +517,11 @@ export default function Profile() {
               <div className="text-xs text-gray-500 dark:text-gray-400">Rating</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-800 dark:text-white">6</div>
+              <div className="text-2xl font-bold text-gray-800 dark:text-white">
+                {(user as any)?.createdAt 
+                  ? Math.max(1, Math.floor((Date.now() - new Date((user as any).createdAt).getTime()) / (30 * 24 * 60 * 60 * 1000)))
+                  : 0}
+              </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Months</div>
             </div>
           </div>
@@ -713,33 +727,7 @@ export default function Profile() {
                             )}
                           </>
                         )}
-                        {/* Rewards section */}
-                        {item.section === 'rewards' && (
-                          <>
-                            <div className="text-center mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                              <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">150</div>
-                              <p className="text-xs text-green-700 dark:text-green-300">Total Points Earned</p>
-                            </div>
-                            <div className="space-y-2">
-                              {[
-                                { icon: Trophy, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900', title: 'First Exchange', desc: 'Completed your first toy exchange', pts: '+50 pts' },
-                                { icon: Award, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900', title: 'Community Member', desc: 'Listed your first toy for sharing', pts: '+25 pts' },
-                                { icon: Star, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900', title: 'Five Star Helper', desc: 'Received excellent reviews', pts: '+75 pts' },
-                              ].map((badge, i) => (
-                                <div key={i} className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-xl">
-                                  <div className={`w-8 h-8 ${badge.bg} rounded-lg flex items-center justify-center`}>
-                                    <badge.icon className={`w-4 h-4 ${badge.color}`} />
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium text-gray-800 dark:text-white">{badge.title}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{badge.desc}</p>
-                                  </div>
-                                  <span className="text-xs text-green-600 dark:text-green-400">{badge.pts}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
+                        {/* Rewards section - now navigates to /rewards page */}
                       </div>
                     )}
                   </>
