@@ -95,7 +95,7 @@ export default function Signup() {
           <div className="text-center text-gray-500 text-sm mb-4">Continue with</div>
           
           <button 
-            onClick={() => loginRedirect("demo@gmail.com")}
+            onClick={() => window.location.href = "/api/auth/google"}
             className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">

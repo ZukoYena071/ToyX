@@ -149,7 +149,7 @@ export default function Login() {
           <div className="text-center text-gray-500 text-sm mb-4">Or continue with</div>
           <div className="flex items-center justify-center space-x-4">
             <button 
-              onClick={() => handleDevLogin("demo@gmail.com")}
+              onClick={() => window.location.href = "/api/auth/google"}
               className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
