@@ -93,7 +93,7 @@ export function useOnboarding() {
 
   useEffect(() => {
     // Check if onboarding has been completed
-    const hasCompletedOnboarding = localStorage.getItem("toyxOnboardingCompleted");
+    const hasCompletedOnboarding = localStorage.getItem("toyxOnboardingVersion") === '2';
     if (!hasCompletedOnboarding) {
       setIsActive(true);
     } else {

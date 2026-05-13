@@ -124,7 +124,7 @@ test.describe("Visual regression — light mode", () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page);
     await page.goto("/");
-    await page.evaluate(() => localStorage.setItem("toyxOnboardingCompleted", "true"));
+    await page.evaluate(() => localStorage.setItem("toyxOnboardingVersion", "2"));
     await page.request.get("/api/dev/login/seed_user_1");
     await page.emulateMedia({ colorScheme: "light" });
   });
@@ -143,7 +143,7 @@ test.describe("Visual regression — dark mode", () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page);
     await page.goto("/");
-    await page.evaluate(() => localStorage.setItem("toyxOnboardingCompleted", "true"));
+    await page.evaluate(() => localStorage.setItem("toyxOnboardingVersion", "2"));
     await page.request.get("/api/dev/login/seed_user_1");
     await page.emulateMedia({ colorScheme: "dark" });
   });
