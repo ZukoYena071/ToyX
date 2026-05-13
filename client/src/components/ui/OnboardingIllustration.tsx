@@ -23,20 +23,7 @@ export default function OnboardingIllustration({ stepIndex }: Props) {
         src={img.src}
         alt=""
         className="w-full h-full object-contain"
-        onError={(e) => {
-          const target = e.currentTarget;
-          target.style.display = "none";
-          const fallback = target.nextElementSibling as HTMLElement | null;
-          if (fallback) fallback.style.display = "flex";
-        }}
       />
-      <div className="hidden w-full h-full items-center justify-center">
-        {stepIndex === 0 && <Step0Illo />}
-        {stepIndex === 1 && <Step1Illo />}
-        {stepIndex === 2 && <Step2Illo />}
-        {stepIndex === 3 && <Step3Illo />}
-        {stepIndex === 4 && <Step4Illo />}
-      </div>
     </div>
   );
 }
