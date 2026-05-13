@@ -120,7 +120,16 @@ export default function ExchangeRequest() {
 
   return (
     <PageContainer className="flex flex-col">
-      <PageHeader title="Request Exchange" />
+      <PageHeader
+        title="Request Exchange"
+        rightAction={
+          <Link href="/search">
+            <button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" />
+            </button>
+          </Link>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="p-4 bg-purple-50/50 dark:bg-purple-900/10">
