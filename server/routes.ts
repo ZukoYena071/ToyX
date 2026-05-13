@@ -57,6 +57,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      if (user && user.profileImageUrl) {
+        user.profileImageUrl = user.profileImageUrl.replace(/^http:/, "https:");
+      }
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);

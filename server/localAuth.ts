@@ -102,7 +102,7 @@ export async function setupAuth(app: Express) {
             email: email || `google_${profile.id}@placeholder.com`,
             firstName: name[0] || profile.displayName || "Google",
             lastName: name.slice(1).join(" ") || "",
-            profileImageUrl: profile.photos?.[0]?.value || null,
+            profileImageUrl: profile.photos?.[0]?.value?.replace(/^http:/, "https:") || null,
           });
           user = await storage.getUser(userId);
         }
