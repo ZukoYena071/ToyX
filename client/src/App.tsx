@@ -26,6 +26,7 @@ import BillingSuccess from "@/pages/billing-success";
 import BillingCancel from "@/pages/billing-cancel";
 import Rewards from "@/pages/rewards";
 import Invite from "@/pages/invite";
+import PrivacySafety from "@/pages/privacy-safety";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -91,6 +92,7 @@ function Router() {
         <Route path="/billing-cancel" component={BillingCancel} />
         <Route path="/rewards" component={Rewards} />
         <Route path="/invite" component={Invite} />
+        <Route path="/privacy-safety" component={PrivacySafety} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />
       <Route path="/loading-demo" component={LoadingDemo} />

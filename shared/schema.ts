@@ -43,6 +43,10 @@ export const users = pgTable("users", {
   paystackEmailToken: varchar("paystack_email_token", { length: 255 }),
   premiumPassUntil: timestamp("premium_pass_until"),
   referralCode: varchar("referral_code", { length: 32 }),
+  showLocation: boolean("show_location").default(true),
+  showEmail: boolean("show_email").default(true),
+  showPhone: boolean("show_phone").default(false),
+  messagePrivacy: varchar("message_privacy", { length: 20 }).default("everyone"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

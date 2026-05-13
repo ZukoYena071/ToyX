@@ -170,6 +170,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get privacy settings
+  app.get('/api/users/privacy', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({
+        showLocation: user.showLocation,
+        showEmail: user.showEmail,
+        showPhone: user.showPhone,
+        messagePrivacy: user.messagePrivacy,
+      });
+    } catch (error) {
+      console.error("Error fetching privacy settings:", error);
+      res.status(500).json({ message: "Failed to fetch privacy settings" });
+    }
+  });
+
+  // Update privacy settings
+  app.patch('/api/users/privacy', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { showLocation, showEmail, showPhone, messagePrivacy } = req.body;
+      const updatedUser = await storage.updateUser(userId, {
+        showLocation,
+        showEmail,
+        showPhone,
+        messagePrivacy,
+      });
+      res.json({
+        showLocation: updatedUser.showLocation,
+        showEmail: updatedUser.showEmail,
+        showPhone: updatedUser.showPhone,
+        messagePrivacy: updatedUser.messagePrivacy,
+      });
+    } catch (error) {
+      console.error("Error updating privacy settings:", error);
+      res.status(500).json({ message: "Failed to update privacy settings" });
+    }
+  });
+
   // Toy routes
   app.get('/api/toys', async (req: any, res) => {
     try {

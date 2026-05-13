@@ -678,11 +678,13 @@ export default function Profile() {
       <div className="px-4 mt-4 mb-6">
         <SectionCard>
           <div className="space-y-1">
-            <ListItemRow
-              icon={<div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/30 rounded-xl flex items-center justify-center"><Shield className="text-orange-500 w-5 h-5" /></div>}
-              title="Privacy & Safety"
-              subtitle="Manage your privacy settings"
-            />
+            <Link href="/privacy-safety">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/30 rounded-xl flex items-center justify-center"><Shield className="text-orange-500 w-5 h-5" /></div>}
+                title="Privacy & Safety"
+                subtitle="Manage your privacy settings"
+              />
+            </Link>
             <ListItemRow
               icon={<div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center"><FileText className="text-purple-500 w-5 h-5" /></div>}
               title="Terms & Conditions"
