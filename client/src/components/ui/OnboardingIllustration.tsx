@@ -8,11 +8,11 @@ interface Props {
 
 export default function OnboardingIllustration({ stepIndex }: Props) {
   const images = [
-    { id: "step0", src: "/assets/onboarding/step0.svg" },
-    { id: "step1", src: "/assets/onboarding/step1.svg" },
-    { id: "step2", src: "/assets/onboarding/step2.svg" },
-    { id: "step3", src: "/assets/onboarding/step3.svg" },
-    { id: "step4", src: "/assets/onboarding/step4.svg" },
+    { id: "step0", src: "/assets/onboarding/step0.png" },
+    { id: "step1", src: "/assets/onboarding/step1.png" },
+    { id: "step2", src: "/assets/onboarding/step2.png" },
+    { id: "step3", src: "/assets/onboarding/step3.png" },
+    { id: "step4", src: "/assets/onboarding/step4.png" },
   ];
   const img = images[stepIndex];
 
