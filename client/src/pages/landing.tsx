@@ -58,7 +58,7 @@ export default function Landing() {
           <img
             src={toyxLogo}
             alt="ToyX"
-            className="h-28 w-auto mx-auto mb-3 drop-shadow-[0_12px_34px_rgba(168,85,247,0.35)] dark:brightness-110"
+            className="h-40 w-auto mx-auto mb-4 drop-shadow-[0_12px_34px_rgba(168,85,247,0.35)] dark:brightness-110"
           />
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-1">
             Welcome to ToyX!
