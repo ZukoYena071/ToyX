@@ -1,228 +1,216 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ChevronLeft, Sparkles, Search, RefreshCw, MessageCircle, Shield, Check } from "lucide-react";
 
-interface OnboardingStep {
+interface Step {
   id: string;
   title: string;
   subtitle: string;
   illustration: string;
-  bgGradient: string;
-  features: Array<{
-    icon: string;
-    text: string;
-  }>;
 }
 
+const STEPS: Step[] = [
+  {
+    id: "discover",
+    title: "Discover Amazing Toys",
+    subtitle: "Browse thousands of toys shared by families in your community",
+    illustration: "🔍",
+  },
+  {
+    id: "share",
+    title: "Share Your Toys",
+    subtitle: "List toys your kids have outgrown and give them a second life",
+    illustration: "🎁",
+  },
+  {
+    id: "exchange",
+    title: "Exchange & Connect",
+    subtitle: "Chat with other parents and arrange safe toy exchanges",
+    illustration: "🔄",
+  },
+  {
+    id: "sustainable",
+    title: "Sustainable & Smart",
+    subtitle: "Reduce waste, save money, and make other kids happy",
+    illustration: "🌱",
+  },
+];
+
 export default function Onboarding() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [step, setStep] = useState(() => {
+    const saved = localStorage.getItem("toyxOnboardingStep");
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [loading, setLoading] = useState(false);
 
-  const onboardingSteps: OnboardingStep[] = [
-    {
-      id: 'discover',
-      title: 'Discover Amazing Toys',
-      subtitle: 'Browse thousands of toys shared by parents in your community',
-      illustration: '🔍',
-      bgGradient: 'from-purple-500 to-pink-500',
-      features: [
-        { icon: 'fas fa-search', text: 'Smart search & filters' },
-        { icon: 'fas fa-map-marker-alt', text: 'Find toys nearby' },
-        { icon: 'fas fa-star', text: 'Highly rated toys' }
-      ]
-    },
-    {
-      id: 'exchange',
-      title: 'Exchange & Share',
-      subtitle: 'Trade toys your kids have outgrown for something new and exciting',
-      illustration: '🔄',
-      bgGradient: 'from-green-500 to-blue-500',
-      features: [
-        { icon: 'fas fa-exchange-alt', text: 'Easy toy exchanges' },
-        { icon: 'fas fa-handshake', text: 'Safe meetups' },
-        { icon: 'fas fa-heart', text: 'Make other kids happy' }
-      ]
-    },
-    {
-      id: 'connect',
-      title: 'Connect with Parents',
-      subtitle: 'Build a community of like-minded parents who love sharing joy',
-      illustration: '👥',
-      bgGradient: 'from-pink-500 to-red-500',
-      features: [
-        { icon: 'fas fa-comments', text: 'Chat with other parents' },
-        { icon: 'fas fa-users', text: 'Join parent groups' },
-        { icon: 'fas fa-calendar', text: 'Organize playdates' }
-      ]
-    },
-    {
-      id: 'sustainable',
-      title: 'Sustainable & Smart',
-      subtitle: 'Reduce waste while giving toys a second life and saving money',
-      illustration: '🌱',
-      bgGradient: 'from-emerald-500 to-teal-500',
-      features: [
-        { icon: 'fas fa-recycle', text: 'Eco-friendly sharing' },
-        { icon: 'fas fa-piggy-bank', text: 'Save money' },
-        { icon: 'fas fa-leaf', text: 'Reduce toy waste' }
-      ]
-    },
-    {
-      id: 'safety',
-      title: 'Safe & Secure',
-      subtitle: 'Your family\'s safety is our top priority with verified users and secure exchanges',
-      illustration: '🛡️',
-      bgGradient: 'from-indigo-500 to-purple-500',
-      features: [
-        { icon: 'fas fa-shield-alt', text: 'Verified profiles' },
-        { icon: 'fas fa-lock', text: 'Secure messaging' },
-        { icon: 'fas fa-user-check', text: 'Trusted community' }
-      ]
+  useEffect(() => {
+    if (step < STEPS.length) {
+      localStorage.setItem("toyxOnboardingStep", String(step));
     }
-  ];
+  }, [step]);
 
-  const nextStep = () => {
-    if (currentStep < onboardingSteps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      setIsComplete(true);
+  const complete = () => {
+    localStorage.setItem("toyxOnboardingVersion", "2");
+    localStorage.removeItem("toyxOnboardingStep");
+    setLocation("/");
+  };
+
+  const handlePremium = async (planType: "monthly" | "yearly") => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/billing/paystack/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planType }),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.authorizationUrl) {
+        localStorage.setItem("toyxOnboardingVersion", "2");
+        localStorage.removeItem("toyxOnboardingStep");
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast({ title: "Error", description: data.message || "Failed to initialize payment", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to connect to payment service", variant: "destructive" });
     }
+    setLoading(false);
   };
 
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const skipOnboarding = () => {
-    localStorage.setItem('toyxOnboardingCompleted', 'true');
-    setLocation('/');
-  };
-
-  const goToStep = (stepIndex: number) => {
-    setCurrentStep(stepIndex);
-  };
-
-  const completeOnboarding = () => {
-    localStorage.setItem('toyxOnboardingCompleted', 'true');
-    window.location.href = '/';
-  };
-
-  if (isComplete) {
+  // Steps 1-4
+  if (step < STEPS.length) {
+    const s = STEPS[step];
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 text-center w-full max-w-sm shadow-lg">
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4">You're All Set!</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-            Welcome to the ToyX community! Start exploring amazing toys and connect with other parents.
-          </p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 pt-12 pb-4">
           <button
-            onClick={(e) => { e.preventDefault(); completeOnboarding(); }}
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-xl font-semibold text-base transition-colors min-h-[44px]"
+            onClick={() => step > 0 && setStep(step - 1)}
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center ${step === 0 ? 'opacity-0 pointer-events-none' : ''}`}
           >
-            Start Exploring
+            <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          </button>
+          <button
+            onClick={complete}
+            className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 min-h-[44px] px-4"
+          >
+            Skip
+          </button>
+        </div>
+
+        {/* Progress dots */}
+        <div className="flex items-center justify-center gap-2 mb-12">
+          {STEPS.map((_, i) => (
+            <div
+              key={i}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                i === step ? 'w-8 bg-purple-500' : i < step ? 'w-2 bg-purple-300' : 'w-2 bg-gray-300 dark:bg-gray-700'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8">
+          <div className="text-7xl mb-8">{s.illustration}</div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 text-center mb-3">
+            {s.title}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed max-w-xs">
+            {s.subtitle}
+          </p>
+        </div>
+
+        {/* Continue */}
+        <div className="px-8 pb-12">
+          <button
+            onClick={() => setStep(step + 1)}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-semibold text-sm transition-colors min-h-[44px]"
+          >
+            Continue
           </button>
         </div>
       </div>
     );
   }
 
-  const currentStepData = onboardingSteps[currentStep];
-
+  // Step 5 — Premium
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${currentStepData.bgGradient} flex flex-col relative overflow-hidden`}>
-      <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full" />
-      <div className="absolute top-1/3 right-8 w-24 h-24 bg-white/10 rounded-full" />
-      <div className="absolute bottom-20 left-6 w-40 h-40 bg-white/10 rounded-full" />
-      <div className="absolute bottom-1/3 right-12 w-16 h-16 bg-white/10 rounded-full" />
-
-      <div className="flex items-center justify-between px-6 pt-12 pb-4 relative z-10">
-        <button
-          onClick={prevStep}
-          className={`min-w-[44px] min-h-[44px] bg-white/20 rounded-full flex items-center justify-center ${
-            currentStep === 0 ? 'opacity-50' : 'hover:bg-white/30'
-          } transition-all`}
-          disabled={currentStep === 0}
-        >
-          <ChevronLeft className="w-5 h-5 text-white" />
-        </button>
-
-        <button
-          onClick={skipOnboarding}
-          className="text-white font-medium bg-white/20 px-4 py-2 rounded-full hover:bg-white/30 transition-all min-h-[44px]"
-        >
-          Skip
-        </button>
-      </div>
-
-      <div className="flex items-center justify-center gap-2 mb-8 relative z-10">
-        {onboardingSteps.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToStep(index)}
-            className={`h-3 rounded-full transition-all ${
-              index === currentStep
-                ? 'bg-white w-8'
-                : index < currentStep
-                  ? 'bg-white/70 w-3'
-                  : 'bg-white/30 w-3'
-            }`}
-          />
-        ))}
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center px-8 relative z-10">
-        <div className="text-8xl mb-8 animate-bounce">
-          {currentStepData.illustration}
-        </div>
-
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-white mb-4 leading-tight">
-            {currentStepData.title}
-          </h1>
-          <p className="text-white/90 text-lg leading-relaxed px-4">
-            {currentStepData.subtitle}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
+      <div className="flex-1 flex flex-col px-8 pt-16">
+        <div className="text-center mb-8">
+          <Sparkles className="w-12 h-12 text-purple-500 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-2">Go Premium</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            Unlock unlimited listings and exchanges. Upgrade anytime.
           </p>
         </div>
 
-        <div className="w-full space-y-4 mb-12">
-          {currentStepData.features.map((feature, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-4 bg-white/20 rounded-2xl p-4 backdrop-blur-sm"
+        {/* Welcome bonus */}
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 mb-6 text-center">
+          <p className="text-sm font-medium text-green-700 dark:text-green-300">
+            🎉 Earn +100 points when you complete your first exchange!
+          </p>
+        </div>
+
+        {/* Plan cards */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border-2 border-purple-400 dark:border-purple-500 p-5 text-center">
+            <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide mb-2">Monthly</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-1">R89</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">per month</p>
+            <ul className="space-y-1.5 text-left">
+              {["Unlimited listings", "Unlimited requests", "Priority support"].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
+                  <Check className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => handlePremium("monthly")}
+              disabled={loading}
+              className="w-full mt-4 bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors min-h-[44px] disabled:opacity-50"
             >
-              <div className="min-w-[44px] min-h-[44px] bg-white/30 rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-white rounded-full" />
-              </div>
-              <span className="text-white font-medium text-sm">{feature.text}</span>
-            </div>
-          ))}
+              {loading ? "Please wait..." : "Start Premium"}
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 text-center">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Yearly</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-1">R449</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">per year</p>
+            <ul className="space-y-1.5 text-left">
+              {["Everything in Monthly", "Save 58%", "Exclusive badges"].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
+                  <Check className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => handlePremium("yearly")}
+              disabled={loading}
+              className="w-full mt-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 py-2.5 rounded-xl text-sm font-semibold transition-colors min-h-[44px] disabled:opacity-50 hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              {loading ? "Please wait..." : "Start Premium"}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="px-8 pb-12 relative z-10">
-        <div className="flex items-center gap-4">
-          <div className="bg-white/20 rounded-full px-4 py-2 backdrop-blur-sm">
-            <span className="text-white font-medium text-sm">
-              {currentStep + 1} of {onboardingSteps.length}
-            </span>
-          </div>
-
-          <button
-            onClick={nextStep}
-            className="flex-1 bg-white text-gray-900 py-4 rounded-xl font-semibold text-base shadow-sm hover:shadow-lg transition-all flex items-center justify-center gap-2 min-h-[44px]"
-          >
-            <span>{currentStep === onboardingSteps.length - 1 ? 'Get Started' : 'Next'}</span>
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
+      {/* Continue with Free */}
+      <div className="px-8 pb-12">
+        <button
+          onClick={complete}
+          className="w-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl text-sm font-medium transition-colors min-h-[44px] hover:bg-gray-200 dark:hover:bg-gray-700"
+        >
+          Continue with Free
+        </button>
       </div>
     </div>
   );

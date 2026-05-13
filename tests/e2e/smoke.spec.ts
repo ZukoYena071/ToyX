@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   // Complete onboarding
   await page.goto("/");
   await page.evaluate(() => {
-    localStorage.setItem("toyxOnboardingCompleted", "true");
+    localStorage.setItem("toyxOnboardingVersion", "2");
   });
 
   // Dev login via API
