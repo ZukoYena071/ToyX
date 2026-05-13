@@ -17,7 +17,7 @@ export default function OnboardingIllustration({ stepIndex }: Props) {
   const img = images[stepIndex];
 
   return (
-    <div className="relative z-10 h-[280px] w-full max-w-xs flex items-center justify-center">
+    <div className="relative z-10 h-[45vh] min-h-[260px] max-h-[400px] w-full max-w-xs mx-auto flex items-center justify-center">
       <img
         key={img.id}
         src={img.src}
