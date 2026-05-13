@@ -127,6 +127,13 @@ export default function Profile() {
   });
 
   const completedExchanges = Array.isArray(exchanges) ? exchanges.filter((e: any) => e.status === 'completed') : [];
+  const activeExchanges = Array.isArray(exchanges) ? exchanges.filter((e: any) => e.status === 'pending' || e.status === 'accepted') : [];
+
+  const getToyExchangeStatus = (toyId: number) => {
+    const ex = activeExchanges.find((e: any) => e.toyId === toyId);
+    return ex ? ex.status : null;
+  };
+
   const userStats = {
     toysShared: Array.isArray(userToys) ? userToys.length : 0,
     toysReceived: completedExchanges.length,
@@ -650,9 +657,21 @@ export default function Profile() {
                                       <button onClick={() => setConfirmDeleteToyId(toy.id)} className="w-7 h-7 bg-red-100 dark:bg-red-900/50 rounded-lg flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-900 transition-colors">
                                         <Trash2 className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
                                       </button>
-                                      <div className={`px-2 py-0.5 rounded-full text-xs ${toy.isAvailable ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}>
-                                        {toy.isAvailable ? 'Avail' : 'Unavail'}
-                                      </div>
+                                      {(() => {
+                                        const exStatus = getToyExchangeStatus(toy.id);
+                                        if (exStatus) {
+                                          return (
+                                            <div className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">
+                                              In Exchange
+                                            </div>
+                                          );
+                                        }
+                                        return (
+                                          <div className={`px-2 py-0.5 rounded-full text-xs ${toy.isAvailable ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}>
+                                            {toy.isAvailable ? 'Available' : 'Unavailable'}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 ))}

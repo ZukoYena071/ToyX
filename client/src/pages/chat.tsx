@@ -111,6 +111,27 @@ export default function Chat() {
     },
   });
 
+  const cancelExchangeMutation = useMutation({
+    mutationFn: async (exchangeId: number) => {
+      return await apiRequest("PATCH", `/api/exchanges/${exchangeId}/status`, { status: "canceled" });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Exchange Canceled",
+        description: "The exchange request has been canceled.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel exchange",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendMessage = () => {
     if (message.trim() && exchangeId) {
       sendMessageMutation.mutate(message.trim());
@@ -319,18 +340,43 @@ export default function Chat() {
                 );
               }
               
-              return (
-                <div className="flex justify-center">
-                  <Button
-                    onClick={() => confirmExchangeMutation.mutate(exchange.id)}
-                    disabled={confirmExchangeMutation.isPending}
-                    className="bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white rounded-2xl px-6"
-                  >
-                    {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Exchange Complete"}
-                  </Button>
+               return (
+                <div className="space-y-2">
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={() => confirmExchangeMutation.mutate(exchange.id)}
+                      disabled={confirmExchangeMutation.isPending}
+                      className="bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white rounded-2xl px-6"
+                    >
+                      {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Exchange Complete"}
+                    </Button>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to cancel this exchange request?")) {
+                          cancelExchangeMutation.mutate(exchange.id);
+                        }
+                      }}
+                      disabled={cancelExchangeMutation.isPending}
+                      variant="outline"
+                      className="text-red-500 border-red-200 hover:bg-red-50 rounded-2xl text-sm px-4"
+                    >
+                      {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel Exchange"}
+                    </Button>
+                  </div>
                 </div>
               );
             })()
+          )}
+
+          {/* Canceled message */}
+          {exchange?.status === "canceled" && (
+            <div className="flex justify-center">
+              <div className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-4 py-2 rounded-2xl border border-red-200 dark:border-red-700">
+                ✕ This exchange has been canceled
+              </div>
+            </div>
           )}
 
           {/* Review Button for Completed Exchanges */}

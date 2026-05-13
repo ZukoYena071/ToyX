@@ -88,6 +88,7 @@ export default function ToyDetail() {
       }
       return await apiRequest("POST", "/api/exchanges", {
         toyId: parseInt(id!),
+        offeredToyId: selectedToyForExchange?.id,
         requestMessage: exchangeMessage || "Hi! I'd love to exchange toys with you. My kid would really enjoy your toy, and I think yours would like mine too!",
       });
     },
@@ -421,7 +422,12 @@ export default function ToyDetail() {
               <MessageCircle className="w-4 h-4" />
               <span>Message</span>
             </button>
-            {hasExistingRequest ? (
+            {(toy as any)?.isAvailable === false ? (
+              <div className="flex-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 py-3 rounded-xl font-medium flex items-center justify-center space-x-2">
+                <Clock className="w-4 h-4" />
+                <span>Exchange In Progress</span>
+              </div>
+            ) : hasExistingRequest ? (
               <div className="flex-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 py-3 rounded-xl font-medium flex items-center justify-center space-x-2">
                 <Check className="w-4 h-4" />
                 <span>Exchange Requested</span>

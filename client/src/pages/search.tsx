@@ -367,16 +367,23 @@ export default function BrowsePage() {
                         <MapPin className="text-purple-500 w-3 h-3" />
                         <span className="text-xs text-gray-500 dark:text-gray-400">{toy.location || 'Unknown location'}</span>
                       </div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          toy.condition === 'Like New' 
-                            ? 'bg-green-100 text-green-700'
-                            : toy.condition === 'Excellent'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {toy.condition}
-                        </span>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              toy.condition === 'Like New' 
+                                ? 'bg-green-100 text-green-700'
+                                : toy.condition === 'Excellent'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {toy.condition}
+                            </span>
+                            {toy.inExchange && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                                In Exchange
+                              </span>
+                            )}
+                          </div>
                         <div className="flex items-center space-x-1">
                           <Star className="text-yellow-400 w-3 h-3 fill-current" />
                           <span className="text-xs text-gray-600 dark:text-gray-400">{(toy.ownerRating || 0).toFixed(1)}</span>
@@ -447,15 +454,22 @@ export default function BrowsePage() {
                               <span className="text-xs text-gray-600 dark:text-gray-400">{(toy.ownerRating || 0).toFixed(1)}</span>
                             </div>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            toy.condition === 'Like New' 
-                              ? 'bg-green-100 text-green-700'
-                              : toy.condition === 'Excellent'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {toy.condition}
-                          </span>
+                          <div className="flex items-center space-x-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              toy.condition === 'Like New' 
+                                ? 'bg-green-100 text-green-700'
+                                : toy.condition === 'Excellent'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {toy.condition}
+                            </span>
+                            {toy.inExchange && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                                In Exchange
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <button 
                           onClick={(e) => {
