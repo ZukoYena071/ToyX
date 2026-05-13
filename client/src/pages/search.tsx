@@ -294,7 +294,7 @@ export default function BrowsePage() {
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-1">
                             <MapPin className="text-purple-500 w-3 h-3" />
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{toy.location || 'Unknown location'}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{toy.location || 'Unknown location'}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Star className="text-yellow-400 w-3 h-3 fill-current" />

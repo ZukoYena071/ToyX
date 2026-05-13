@@ -418,7 +418,7 @@ export default function Profile() {
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
               <div className="flex items-center gap-1 mt-1">
                 <MapPin className="text-purple-500 w-3 h-3" />
-                <span className="text-xs text-gray-500 dark:text-gray-400">{(user as any)?.location || 'Location not set'}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{(user as any)?.location || 'Location not set'}</span>
               </div>
             </div>
             <button

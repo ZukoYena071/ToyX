@@ -249,9 +249,9 @@ export default function ToyDetail() {
                   variant={(toy as any)?.condition === 'Like New' ? 'success' : (toy as any)?.condition === 'Excellent' ? 'info' : 'warning'}
                 />
                 {(toy as any)?.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{(toy as any)?.location}</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <MapPin className="w-4 h-4 text-purple-500 shrink-0" />
+                    <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{(toy as any)?.location}</span>
                   </div>
                 )}
               </div>
