@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronLeft, Sparkles, Search, RefreshCw, MessageCircle, Shield, Check } from "lucide-react";
+import { ChevronLeft, Sparkles, Check } from "lucide-react";
 
 interface Step {
   id: string;
@@ -38,7 +37,6 @@ const STEPS: Step[] = [
 ];
 
 export default function Onboarding() {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState(() => {
     const saved = localStorage.getItem("toyxOnboardingStep");
@@ -55,7 +53,7 @@ export default function Onboarding() {
   const complete = () => {
     localStorage.setItem("toyxOnboardingVersion", "2");
     localStorage.removeItem("toyxOnboardingStep");
-    setLocation("/");
+    window.location.href = "/";
   };
 
   const handlePremium = async (planType: "monthly" | "yearly") => {
