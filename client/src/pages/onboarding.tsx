@@ -148,7 +148,7 @@ export default function Onboarding() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col items-center px-6 relative">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={`illo-${step}`}
@@ -234,7 +234,7 @@ export default function Onboarding() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col px-6 pt-10 relative z-10">
+      <div className="flex-1 flex flex-col items-center px-6 pt-10 relative z-10">
         {/* Title */}
         <div className="text-center mb-4">
           <Sparkles className="w-10 h-10 text-purple-500 mx-auto mb-3" />
