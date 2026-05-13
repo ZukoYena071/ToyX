@@ -48,6 +48,8 @@ const ILLO_VARIANTS = {
   center: { opacity: 1, scale: 1 },
 };
 
+const TOTAL_STEPS = STEPS.length + 1; // 4 content + 1 premium
+
 export default function Onboarding() {
   const { toast } = useToast();
   const [step, setStep] = useState(() => {
@@ -131,7 +133,7 @@ export default function Onboarding() {
 
         {/* Progress dots */}
         <div className="flex items-center justify-center gap-2 mt-8 mb-4 relative z-10">
-          {STEPS.map((_, i) => (
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <motion.div
               key={i}
               animate={{ width: i === step ? 24 : 8 }}
@@ -203,6 +205,34 @@ export default function Onboarding() {
       {/* Gradient blobs */}
       <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-500/10 dark:bg-purple-500/8 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-pink-500/10 dark:bg-pink-500/8 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Back + progress */}
+      <div className="flex flex-col items-center px-6 pt-4 relative z-10">
+        <div className="flex items-center justify-between w-full">
+          <button
+            onClick={() => setStep(step - 1)}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          </button>
+          <div className="w-[44px]" />
+        </div>
+
+        <div className="flex items-center justify-center gap-2 mt-6 mb-2">
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <motion.div
+              key={i}
+              animate={{ width: i === step ? 24 : 8 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className={`h-2 rounded-full ${
+                i <= step
+                  ? "bg-purple-500"
+                  : "bg-gray-200 dark:bg-gray-700"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
 
       <div className="flex-1 flex flex-col px-6 pt-10 relative z-10">
         {/* Title */}
