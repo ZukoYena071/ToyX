@@ -96,7 +96,7 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
           {showReactions && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowReactions(false)} />
-              <div className="absolute z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2.5 py-1.5 flex gap-1">
+              <div className="absolute z-50 bottom-full mb-2 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2.5 py-1.5 flex gap-1">
                 {QUICK_EMOJIS.map((emoji) => (
                   <button
                     key={emoji}
