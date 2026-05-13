@@ -163,6 +163,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+      if (user.profileImageUrl) {
+        user.profileImageUrl = user.profileImageUrl.replace(/^http:/, "https:");
+      }
       res.json(user);
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -205,9 +208,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const updateData = req.body;
-      
-      // Update user profile in storage
+      if (updateData.profileImageUrl) {
+        updateData.profileImageUrl = updateData.profileImageUrl.replace(/^http:/, "https:");
+      }
       const updatedUser = await storage.updateUser(userId, updateData);
+      if (updatedUser.profileImageUrl) {
+        updatedUser.profileImageUrl = updatedUser.profileImageUrl.replace(/^http:/, "https:");
+      }
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user profile:", error);
