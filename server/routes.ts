@@ -2,7 +2,7 @@ import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, or, gte, inArray } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
@@ -184,11 +184,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toys = await storage.getToys();
       }
       
-      // Add favorite status and owner rating
+      // Add favorite status, owner rating, and exchange status
       const uid = req.user?.claims?.sub;
       for (const toy of toys) {
         toy.isFavorited = uid ? await storage.isFavorite(uid, toy.id) : false;
         toy.ownerRating = await storage.getUserAverageRating(toy.ownerId);
+        const activeEx = await db.select({ id: exchanges.id }).from(exchanges).where(
+          and(
+            or(eq(exchanges.toyId, toy.id), eq(exchanges.offeredToyId, toy.id)),
+            inArray(exchanges.status, ["pending", "accepted"])
+          )
+        ).limit(1);
+        toy.inExchange = activeEx.length > 0;
       }
       
       res.json(toys);
@@ -388,6 +395,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exchangeId = parseInt(req.params.id);
       const { status } = req.body;
       const exchange = await storage.updateExchangeStatus(exchangeId, status);
+      // If completed, mark both toys as unavailable
+      if (status === "completed") {
+        const exch = await db.select({ toyId: exchanges.toyId, offeredToyId: exchanges.offeredToyId }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
+        if (exch.length) {
+          await db.update(toys).set({ isAvailable: false }).where(eq(toys.id, exch[0].toyId));
+          if (exch[0].offeredToyId) {
+            await db.update(toys).set({ isAvailable: false }).where(eq(toys.id, exch[0].offeredToyId));
+          }
+        }
+      }
       res.json(exchange);
     } catch (error) {
       console.error("Error updating exchange status:", error);
@@ -400,8 +417,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);
       const exchange = await storage.confirmExchangeCompletion(exchangeId, userId);
-      // If exchange completed, award points to both parties
+      // If exchange completed, mark toys as unavailable and award points
       if (exchange.status === "completed") {
+        await db.update(toys).set({ isAvailable: false }).where(eq(toys.id, exchange.toyId));
+        if (exchange.offeredToyId) {
+          await db.update(toys).set({ isAvailable: false }).where(eq(toys.id, exchange.offeredToyId));
+        }
         await awardPoints({ userId: exchange.requesterId, eventType: "EXCHANGE_COMPLETED", referenceType: "exchange", referenceId: `${exchange.id}:requester`, points: 50 });
         await awardPoints({ userId: exchange.ownerId, eventType: "EXCHANGE_COMPLETED", referenceType: "exchange", referenceId: `${exchange.id}:owner`, points: 50 });
         // Check for referral qualification

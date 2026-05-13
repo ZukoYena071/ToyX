@@ -70,6 +70,7 @@ export const exchanges = pgTable("exchanges", {
   requesterId: varchar("requester_id").notNull().references(() => users.id),
   ownerId: varchar("owner_id").notNull().references(() => users.id),
   toyId: integer("toy_id").notNull().references(() => toys.id),
+  offeredToyId: integer("offered_toy_id").references(() => toys.id),
   status: varchar("status", { length: 50 }).default("pending"),
   requestMessage: text("request_message"),
   requesterConfirmed: boolean("requester_confirmed").default(false),
