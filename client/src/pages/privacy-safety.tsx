@@ -90,7 +90,7 @@ export default function PrivacySafety() {
             <ListItemRow
               icon={<div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center"><MapPin className="text-blue-500 w-5 h-5" /></div>}
               title="Show location on listings"
-              subtitle="Display your city on toy listings"
+              subtitle="Hide your city from your public profile (toy locations are always shown)"
               right={<ToggleSwitch enabled={settings.showLocation} onToggle={() => updateSetting("showLocation", !settings.showLocation)} />}
             />
             <ListItemRow
