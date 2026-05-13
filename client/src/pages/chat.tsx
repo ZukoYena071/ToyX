@@ -266,18 +266,6 @@ export default function Chat() {
                     </div>
                   );
                 }
-                return (
-                  <div className="flex justify-center">
-                    <Button
-                      onClick={() => confirmExchangeMutation.mutate(exchange.id)}
-                      disabled={confirmExchangeMutation.isPending}
-                      className="bg-purple-500 hover:bg-purple-600 text-white rounded-2xl px-6"
-                    >
-                      {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Exchange Complete"}
-                    </Button>
-                  </div>
-                );
-              }
               return (
                 <div className="space-y-2">
                   <div className="flex justify-center">
