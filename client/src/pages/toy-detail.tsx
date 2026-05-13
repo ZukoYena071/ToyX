@@ -3,13 +3,15 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, MessageCircle, MapPin, User, Star, ChevronLeft, ChevronRight, Share2, CheckCircle, Clock, Check } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, MapPin, ChevronLeft, ChevronRight, Share2, CheckCircle, Star, User, Check } from "lucide-react";
 import { useState } from "react";
 import BottomNav from "@/components/bottom-nav";
+import PageContainer from "@/components/ui/PageContainer";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import BadgePill from "@/components/ui/BadgePill";
 
 export default function ToyDetail() {
   const { id } = useParams();
@@ -35,7 +37,6 @@ export default function ToyDetail() {
     enabled: !!user && !!id,
   });
 
-  // Get current user's toys for exchange selection
   const { data: userExchanges } = useQuery({
     queryKey: ["/api/exchanges"],
     enabled: !!user,
@@ -45,7 +46,6 @@ export default function ToyDetail() {
     ? userExchanges.some((ex: any) => ex.toyId === parseInt(id!) && ex.requesterId === (user as any)?.id && ex.status !== "canceled")
     : false;
 
-  // Owner rating
   const ownerId = (toy as any)?.ownerId;
   const { data: ownerRating } = useQuery({
     queryKey: ["/api/users", ownerId, "rating"],
@@ -74,18 +74,14 @@ export default function ToyDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
       toast({
         title: (favoriteStatus as any)?.isFavorite ? "Removed from favorites" : "Added to favorites",
-        description: (favoriteStatus as any)?.isFavorite 
-          ? "Toy removed from your favorites" 
-          : "Toy added to your favorites",
+        description: (favoriteStatus as any)?.isFavorite ? "Toy removed from your favorites" : "Toy added to your favorites",
       });
     },
   });
 
   const exchangeMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedToyForExchange) {
-        throw new Error("Please select a toy to offer in exchange");
-      }
+      if (!selectedToyForExchange) throw new Error("Please select a toy to offer in exchange");
       return await apiRequest("POST", "/api/exchanges", {
         toyId: parseInt(id!),
         offeredToyId: selectedToyForExchange?.id,
@@ -93,10 +89,7 @@ export default function ToyDetail() {
       });
     },
     onSuccess: () => {
-      toast({
-        title: "Exchange request sent!",
-        description: "Your exchange request has been sent to the toy owner.",
-      });
+      toast({ title: "Exchange request sent!", description: "Your exchange request has been sent to the toy owner." });
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
       setShowRequestModal(false);
       setShowToySelectionModal(false);
@@ -112,16 +105,11 @@ export default function ToyDetail() {
         setLimitModal({ message: body.message, upgradeUrl: body.upgradeUrl });
         setTimeout(() => window.location.href = body.upgradeUrl, 4000);
       } else {
-        toast({
-          title: "Error",
-          description: body?.message || "Failed to send exchange request.",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: body?.message || "Failed to send exchange request.", variant: "destructive" });
       }
     },
   });
 
-  // Image navigation helpers
   const nextImage = () => {
     if ((toy as any)?.imageUrls && (toy as any).imageUrls.length > 0) {
       setCurrentImageIndex((prev) => (prev + 1) % (toy as any).imageUrls.length);
@@ -134,70 +122,42 @@ export default function ToyDetail() {
     }
   };
 
-  const handleRequestExchange = () => {
-    setShowToySelectionModal(true);
-  };
-
-  const handleMessage = () => {
-    setShowMessageModal(true);
-  };
-
-  const sendMessage = () => {
-    // TODO: Implement message sending
-    setShowMessageModal(false);
-    setMessage('');
-  };
-
-  const confirmExchangeRequest = () => {
-    exchangeMutation.mutate();
-  };
-
-  const handleToySelection = (selectedToy: any) => {
-    setSelectedToyForExchange(selectedToy);
-    setShowToySelectionModal(false);
-    setShowRequestModal(true);
-  };
-
   if (!id) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <PageContainer className="flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-2">Invalid toy ID</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">No toy ID provided in the URL.</p>
-          <Link href="/">
-            <Button>Back to Home</Button>
-          </Link>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Invalid toy ID</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">No toy ID provided in the URL.</p>
+          <Link href="/"><Button>Back to Home</Button></Link>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800">
+      <PageContainer>
         <div className="animate-pulse">
-          <div className="h-80 bg-gray-200 dark:bg-gray-700" />
+          <div className="h-80 bg-gray-200 dark:bg-gray-800" />
           <div className="px-4 py-6 space-y-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded" />
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
-            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded" />
+            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-2/3" />
+            <div className="h-20 bg-gray-200 dark:bg-gray-800 rounded" />
           </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (error || !toy) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <PageContainer className="flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-2">Toy not found</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">This toy might have been removed or doesn't exist.</p>
-          <Link href="/">
-            <Button>Back to Home</Button>
-          </Link>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Toy not found</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">This toy might have been removed or doesn't exist.</p>
+          <Link href="/"><Button>Back to Home</Button></Link>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -206,236 +166,201 @@ export default function ToyDetail() {
   const currentImage = imageUrls[currentImageIndex] || imageUrls[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 pb-24">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-100 dark:border-gray-700">
-        <div className="px-4 py-4 max-w-sm mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Link href="/search">
-                <button className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                  <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                </button>
-              </Link>
-              <h1 className="text-xl font-bold text-gray-800 dark:text-white">Toy Details</h1>
-            </div>
-            <div className="flex items-center space-x-2">
+    <PageContainer className="pb-24">
+      <PageHeader
+        title="Toy Details"
+        rightAction={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/toy/${id}`;
+                navigator.clipboard.writeText(url).then(() => {
+                  toast({ title: "Link copied!", description: "Toy listing link copied to clipboard. Share it anywhere!" });
+                }).catch(() => {
+                  toast({ title: "Could not copy", description: "Please copy the URL manually.", variant: "destructive" });
+                });
+              }}
+              className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px] min-w-[44px]"
+            >
+              <Share2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </button>
+            {!isOwner && (
               <button
-                onClick={() => {
-                  const url = `${window.location.origin}/toy/${id}`;
-                  navigator.clipboard.writeText(url).then(() => {
-                    toast({ title: "Link copied!", description: "Toy listing link copied to clipboard. Share it anywhere!" });
-                  }).catch(() => {
-                    toast({ title: "Could not copy", description: "Please copy the URL manually.", variant: "destructive" });
-                  });
-                }}
-                className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                onClick={() => favoriteMutation.mutate()}
+                className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px] min-w-[44px]"
               >
-                <Share2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <Heart className={`w-4 h-4 ${(favoriteStatus as any)?.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600 dark:text-gray-300'}`} />
               </button>
-              {!isOwner && (
-                <button 
-                  onClick={() => favoriteMutation.mutate()}
-                  className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  <Heart className={`w-4 h-4 ${(favoriteStatus as any)?.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600 dark:text-gray-300'}`} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="max-w-sm mx-auto">
-
-        {/* Image Gallery */}
-        <div className="relative">
-          <div className="aspect-square bg-white">
-            {currentImage ? (
-              <img
-                src={currentImage}
-                alt={(toy as any)?.name || "Toy"}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
-                <div className="text-6xl">🧸</div>
-              </div>
             )}
-          
-          {/* Image Navigation */}
+            <Link href="/search">
+              <button className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px] min-w-[44px]">
+                <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              </button>
+            </Link>
+          </div>
+        }
+      />
+
+      {/* Image Gallery */}
+      <div className="relative">
+        <div className="aspect-square bg-white dark:bg-gray-900">
+          {currentImage ? (
+            <img src={currentImage} alt={(toy as any)?.name || "Toy"} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+              <div className="text-6xl">🧸</div>
+            </div>
+          )}
+
           {imageUrls.length > 1 && (
             <>
-              <button
-                onClick={prevImage}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white bg-opacity-80 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
-              >
+              <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 dark:bg-gray-800/80 rounded-full flex items-center justify-center shadow-sm hover:bg-white dark:hover:bg-gray-800 transition-colors min-h-[44px] min-w-[44px]">
                 <ChevronLeft className="w-5 h-5 text-gray-600" />
               </button>
-              <button
-                onClick={nextImage}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white bg-opacity-80 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-100 transition-all"
-              >
+              <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 dark:bg-gray-800/80 rounded-full flex items-center justify-center shadow-sm hover:bg-white dark:hover:bg-gray-800 transition-colors min-h-[44px] min-w-[44px]">
                 <ChevronRight className="w-5 h-5 text-gray-600" />
               </button>
             </>
           )}
 
-          {/* Image Indicators */}
           {imageUrls.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
               {imageUrls.map((_: any, index: number) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
-                  }`}
+                  className={`w-2 h-2 rounded-full transition-all ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
                 />
               ))}
             </div>
           )}
-          </div>
         </div>
+      </div>
 
-        {/* Toy Information */}
-        <div className="bg-white dark:bg-gray-800 mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-        {/* Title and Condition */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-gray-800 dark:text-white mb-2">{(toy as any)?.name}</h1>
-            <div className="flex items-center space-x-3 mb-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                (toy as any)?.condition === 'Like New' 
-                  ? 'bg-green-100 text-green-700'
-                  : (toy as any)?.condition === 'Excellent'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-yellow-100 text-yellow-700'
-              }`}>
-                {(toy as any)?.condition}
-              </span>
-              {(toy as any)?.location && (
-                <div className="flex items-center space-x-1">
-                  <MapPin className="w-4 h-4 text-purple-500" />
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{(toy as any)?.location}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Description */}
-        {(toy as any)?.description && (
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-800 dark:text-white mb-2">Description</h3>
-            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{(toy as any)?.description}</p>
-          </div>
-        )}
-
-        {/* Toy Details */}
-        <div className="mb-6">
-          <div className="mb-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Categories</div>
-            <div className="flex flex-wrap gap-2">
-              {((toy as any)?.category || "").split(", ").filter(Boolean).map((cat: string) => (
-                <span key={cat} className="px-3 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
-                  {cat}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="mb-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Age Range</div>
-            <div className="flex flex-wrap gap-2">
-              {((toy as any)?.ageGroup || "").split(", ").filter(Boolean).map((age: string) => (
-                <span key={age} className="px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
-                  Ages {age}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Condition</div>
-            <div className="font-medium text-gray-800 dark:text-white">{(toy as any)?.condition}</div>
-          </div>
-        </div>
-
-          {/* Posted Date */}
-          <div className="text-sm text-gray-500 dark:text-gray-400">Posted {(toy as any)?.createdAt ? new Date((toy as any).createdAt).toLocaleDateString() : 'Unknown'}</div>
-        </div>
-
-        {/* Owner Information */}
-        <Link href={`/users/${(toy as any)?.ownerId}`}>
-          <div className="bg-white dark:bg-gray-800 mx-4 mt-4 mb-24 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg transition-all duration-200">
-            <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Toy Owner</h3>
-            
-            <div className="flex items-center space-x-4 mb-4">
-          <div className="relative">
-            <Avatar className="w-16 h-16">
-              <AvatarImage src={(toy as any)?.owner?.profileImageUrl || undefined} />
-              <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-bold">
-                {(toy as any)?.owner?.firstName?.[0] || (toy as any)?.owner?.email?.[0] || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-              <CheckCircle className="w-3 h-3 text-white" />
-            </div>
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-1">
-              <h4 className="font-semibold text-gray-800 dark:text-white">
-                {(toy as any)?.owner?.firstName && (toy as any)?.owner?.lastName 
-                  ? `${(toy as any).owner.firstName} ${(toy as any).owner.lastName}`
-                  : (toy as any)?.owner?.email
-                }
-              </h4>
-              <CheckCircle className="w-4 h-4 text-blue-500" />
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">@{(toy as any)?.owner?.email?.split('@')[0] || 'user'}</p>
-            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-              <div className="flex items-center space-x-1">
-                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                <span>{((ownerRating as any)?.rating || 0).toFixed(1)} ({(ownerReviews as any)?.length || 0} reviews)</span>
+      {/* Toy Information */}
+      <div className="px-4 mt-4 space-y-4">
+        <SectionCard className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">{(toy as any)?.name}</h1>
+              <div className="flex items-center gap-3 mb-3">
+                <BadgePill
+                  label={(toy as any)?.condition}
+                  variant={(toy as any)?.condition === 'Like New' ? 'success' : (toy as any)?.condition === 'Excellent' ? 'info' : 'warning'}
+                />
+                {(toy as any)?.location && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4 text-purple-500" />
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{(toy as any)?.location}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-              <div className="text-gray-500 dark:text-gray-400 mb-1">Member Since</div>
-              <div className="font-medium text-gray-800 dark:text-white">{(toy as any)?.owner?.createdAt ? new Date((toy as any).owner.createdAt).toLocaleDateString() : 'Unknown'}</div>
+          {(toy as any)?.description && (
+            <div className="mb-6">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-2">Description</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{(toy as any)?.description}</p>
+            </div>
+          )}
+
+          <div className="mb-6 space-y-4">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Categories</p>
+              <div className="flex flex-wrap gap-2">
+                {((toy as any)?.category || "").split(", ").filter(Boolean).map((cat: string) => (
+                  <span key={cat} className="px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">{cat}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Age Range</p>
+              <div className="flex flex-wrap gap-2">
+                {((toy as any)?.ageGroup || "").split(", ").filter(Boolean).map((age: string) => (
+                  <span key={age} className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">Ages {age}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Condition</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-50">{(toy as any)?.condition}</p>
             </div>
           </div>
-          </div>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400">Posted {(toy as any)?.createdAt ? new Date((toy as any).createdAt).toLocaleDateString() : 'Unknown'}</p>
+        </SectionCard>
+
+        {/* Owner Information */}
+        <Link href={`/users/${(toy as any)?.ownerId}`}>
+          <SectionCard className="p-6 cursor-pointer hover:shadow-sm transition-all duration-200">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Toy Owner</h3>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={(toy as any)?.owner?.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-purple-500 text-white text-lg font-bold">
+                    {(toy as any)?.owner?.firstName?.[0] || (toy as any)?.owner?.email?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
+                  <CheckCircle className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                    {(toy as any)?.owner?.firstName && (toy as any)?.owner?.lastName
+                      ? `${(toy as any).owner.firstName} ${(toy as any).owner.lastName}`
+                      : (toy as any)?.owner?.email
+                    }
+                  </h4>
+                  <CheckCircle className="w-4 h-4 text-blue-500 shrink-0" />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">@{(toy as any)?.owner?.email?.split('@')[0] || 'user'}</p>
+                <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                    <span>{((ownerRating as any)?.rating || 0).toFixed(1)} ({(ownerReviews as any)?.length || 0} reviews)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-4 text-sm">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Member Since</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-50">{(toy as any)?.owner?.createdAt ? new Date((toy as any).owner.createdAt).toLocaleDateString() : 'Unknown'}</p>
+              </div>
+            </div>
+          </SectionCard>
         </Link>
+      </div>
 
       {/* Action Buttons */}
       {!isOwner && (
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3 z-40">
-          <div className="flex space-x-3">
+        <div className="fixed bottom-20 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 py-3 z-40">
+          <div className="max-w-lg mx-auto flex gap-3">
             <button
-              onClick={handleMessage}
-              className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center space-x-2 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              onClick={() => setShowMessageModal(true)}
+              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]"
             >
               <MessageCircle className="w-4 h-4" />
               <span>Message</span>
             </button>
             {(toy as any)?.isAvailable === false ? (
-              <div className="flex-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 py-3 rounded-xl font-medium flex items-center justify-center space-x-2">
-                <Clock className="w-4 h-4" />
+              <div className="flex-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 min-h-[44px]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <span>Exchange In Progress</span>
               </div>
             ) : hasExistingRequest ? (
-              <div className="flex-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 py-3 rounded-xl font-medium flex items-center justify-center space-x-2">
+              <div className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 min-h-[44px]">
                 <Check className="w-4 h-4" />
                 <span>Exchange Requested</span>
               </div>
             ) : (
               <button
-                onClick={handleRequestExchange}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
+                onClick={() => setShowToySelectionModal(true)}
+                className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors min-h-[44px]"
               >
                 <User className="w-4 h-4" />
                 <span>Request Exchange</span>
@@ -447,66 +372,58 @@ export default function ToyDetail() {
 
       {/* Limit Reached Modal */}
       {limitModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm text-center shadow-xl">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <SectionCard className="p-6 w-full max-w-sm text-center">
+            <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-3">Upgrade Required</h3>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">{limitModal.message}</p>
-            <p className="text-gray-500 dark:text-gray-400 text-xs mb-6">Redirecting to pricing...</p>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-50 mb-3">Upgrade Required</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{limitModal.message}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">Redirecting to pricing...</p>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }} />
+              <div className="bg-purple-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }} />
             </div>
-          </div>
+          </SectionCard>
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <BottomNav />
-
       {/* Toy Selection Modal */}
       {showToySelectionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col shadow-lg">
             <div className="p-6 pb-0 shrink-0">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <User className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Select Your Toy to Offer</h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Choose one of your toys to offer in exchange</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Select Your Toy to Offer</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Choose one of your toys to offer in exchange</p>
               </div>
             </div>
-            
             <div className="flex-1 overflow-y-auto px-6">
               {myToys && Array.isArray(myToys) && myToys.length > 0 ? (
                 <div className="space-y-3">
-                  {myToys.filter((toy: any) => toy.isAvailable).map((myToy: any) => (
+                  {myToys.filter((t: any) => t.isAvailable).map((myToy: any) => (
                     <button
                       key={myToy.id}
-                      onClick={() => handleToySelection(myToy)}
-                      className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-gray-700 transition-all text-left"
+                      onClick={() => { setSelectedToyForExchange(myToy); setShowToySelectionModal(false); setShowRequestModal(true); }}
+                      className="w-full p-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-gray-800 transition-all text-left min-h-[44px]"
                     >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
                           {myToy.imageUrls && myToy.imageUrls[0] ? (
-                            <img
-                              src={myToy.imageUrls[0]}
-                              alt={myToy.name}
-                              className="w-full h-full object-cover"
-                            />
+                            <img src={myToy.imageUrls[0]} alt={myToy.name} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center">
                               <span className="text-lg">🧸</span>
                             </div>
                           )}
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-800 dark:text-white text-sm">{myToy.name}</h4>
-                          <p className="text-gray-500 dark:text-gray-400 text-xs">{myToy.category} • {myToy.condition}</p>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50">{myToy.name}</h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{myToy.category} • {myToy.condition}</p>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                        <ChevronLeft className="w-4 h-4 text-gray-400 shrink-0" />
                       </div>
                     </button>
                   ))}
@@ -514,16 +431,15 @@ export default function ToyDetail() {
               ) : (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">📦</div>
-                  <h4 className="font-medium text-gray-800 dark:text-white mb-2">No toys available</h4>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">You need to list some toys before making exchange requests.</p>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50 mb-2">No toys available</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">You need to list some toys before making exchange requests.</p>
                 </div>
               )}
             </div>
-            
             <div className="p-6 shrink-0">
               <button
                 onClick={() => setShowToySelectionModal(false)}
-                className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="w-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]"
               >
                 Cancel
               </button>
@@ -534,113 +450,90 @@ export default function ToyDetail() {
 
       {/* Request Modal */}
       {showRequestModal && selectedToyForExchange && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <SectionCard className="p-6 w-full max-w-sm mx-4">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <User className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Confirm Exchange Request</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Confirm Exchange Request</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Offer your <strong>{selectedToyForExchange.name}</strong> in exchange for <strong>{(toy as any)?.name}</strong>
               </p>
-              
-              {/* Exchange Preview */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 mb-4">
+
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-4">
                 <div className="flex items-center justify-between">
                   <div className="text-center flex-1">
-                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg mx-auto mb-2 overflow-hidden">
+                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-2 overflow-hidden">
                       {selectedToyForExchange.imageUrls && selectedToyForExchange.imageUrls[0] ? (
                         <img src={selectedToyForExchange.imageUrls[0]} alt={selectedToyForExchange.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">🧸</div>
                       )}
                     </div>
-                    <p className="text-xs font-medium text-gray-800 dark:text-white">Your Toy</p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-gray-50">Your Toy</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{selectedToyForExchange.name}</p>
                   </div>
                   <div className="px-3">
-                    <ChevronRight className="w-4 h-4 text-purple-500" />
+                    <ChevronLeft className="w-4 h-4 text-purple-500 rotate-180" />
                   </div>
                   <div className="text-center flex-1">
-                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg mx-auto mb-2 overflow-hidden">
+                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-2 overflow-hidden">
                       {(toy as any)?.imageUrls && (toy as any).imageUrls[0] ? (
                         <img src={(toy as any).imageUrls[0]} alt={(toy as any).name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">🧸</div>
                       )}
                     </div>
-                    <p className="text-xs font-medium text-gray-800 dark:text-white">Their Toy</p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-gray-50">Their Toy</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{(toy as any)?.name}</p>
                   </div>
                 </div>
               </div>
-              
-              {/* Optional Message */}
+
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Add a message (optional)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Add a message (optional)</label>
                 <textarea
                   value={exchangeMessage}
                   onChange={(e) => setExchangeMessage(e.target.value)}
                   placeholder="Hi! I'd love to exchange toys with you. My kid would really enjoy your toy, and I think yours would like mine too!"
-                  className="w-full h-20 p-3 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                  className="w-full h-20 p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                 />
               </div>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowRequestModal(false)}
-                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmExchangeRequest}
-                disabled={exchangeMutation.isPending}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50"
-              >
+            <div className="flex gap-3">
+              <button onClick={() => setShowRequestModal(false)} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">Cancel</button>
+              <button onClick={() => exchangeMutation.mutate()} disabled={exchangeMutation.isPending} className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-medium transition-colors disabled:opacity-50 min-h-[44px]">
                 {exchangeMutation.isPending ? 'Sending...' : 'Send Request'}
               </button>
             </div>
-          </div>
+          </SectionCard>
         </div>
       )}
 
       {/* Message Modal */}
       {showMessageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <SectionCard className="p-6 w-full max-w-sm mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Send Message</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">Send a message to {(toy as any)?.owner?.firstName || (toy as any)?.owner?.email}</p>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Send Message</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Send a message to {(toy as any)?.owner?.firstName || (toy as any)?.owner?.email}</p>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Hi! I'm interested in this toy..."
-                className="w-full h-24 p-3 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full h-24 p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
               />
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowMessageModal(false)}
-                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={sendMessage}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all"
-              >
-                Send Message
-              </button>
+            <div className="flex gap-3">
+              <button onClick={() => setShowMessageModal(false)} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">Cancel</button>
+              <button onClick={() => { setShowMessageModal(false); setMessage(''); }} className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]">Send Message</button>
             </div>
-          </div>
+          </SectionCard>
         </div>
       )}
 
-      </div>
-    </div>
+      <BottomNav />
+    </PageContainer>
   );
 }

@@ -7,24 +7,23 @@ export default function AppHeader() {
   const { user } = useAuth();
 
   return (
-    <header className="bg-white/95 dark:bg-background/95 backdrop-blur-lg px-6 py-5 flex items-center justify-between relative z-10 shadow-sm border-b border-gray-100 dark:border-border">
+    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg px-6 py-5 flex items-center justify-between relative z-10 shadow-sm border-b border-gray-200 dark:border-gray-800">
       <div className="w-6"></div>
-      
-      {/* ToyX Logo */}
+
       <Link href="/">
         <div className="cursor-pointer group">
-          <img 
-            src={toyxLogo} 
-            alt="ToyX" 
-            className="h-20 w-auto transform group-hover:scale-110 transition-transform duration-300 drop-shadow-lg"
+          <img
+            src={toyxLogo}
+            alt="ToyX"
+            className="h-16 w-auto transform group-hover:scale-110 transition-transform duration-300 dark:brightness-0 dark:invert"
           />
         </div>
       </Link>
-      
+
       <Link href="/profile">
-        <Avatar className="w-12 h-12 cursor-pointer border-3 border-white shadow-xl hover:scale-110 transition-transform">
+        <Avatar className="w-10 h-10 cursor-pointer hover:scale-110 transition-transform">
           <AvatarImage src={user?.profileImageUrl || undefined} />
-          <AvatarFallback className="bg-gradient-to-br from-royal via-powder to-mint text-white text-lg font-bold">
+          <AvatarFallback className="bg-purple-500 text-white text-sm font-bold">
             {user?.firstName?.[0] || user?.email?.[0] || 'U'}
           </AvatarFallback>
         </Avatar>

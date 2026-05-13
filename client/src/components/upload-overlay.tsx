@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Camera, X, Trash2, MapPin, Loader2, Navigation, Check, ChevronDown, Search } from "lucide-react";
 import { searchLocations } from "@/lib/location";
 import { insertToySchema } from "@shared/schema";
@@ -27,8 +26,6 @@ const categories = [
 
 const ageGroups = ["0-2", "3-6", "7-12", "13+"];
 const conditions = ["Like New", "Good", "Fair", "Poor"];
-
-
 
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
   const zaLocations = [
@@ -73,7 +70,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const [searchingLocation, setSearchingLocation] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const locationDebounceRef = useRef<ReturnType<typeof setTimeout>>();
-  
+
   const { latitude, longitude, error: locationError, loading: locationLoading, requestLocation } = useGeolocation();
   const [detectedLocation, setDetectedLocation] = useState<string>("");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
@@ -85,9 +82,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       reverseGeocode(latitude, longitude).then(location => {
         setDetectedLocation(location);
         setFormData(prev => {
-          if (!prev.location) {
-            return { ...prev, location };
-          }
+          if (!prev.location) return { ...prev, location };
           return prev;
         });
         setIsDetectingLocation(false);
@@ -97,33 +92,20 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
 
   const createToyMutation = useMutation({
     mutationFn: async (toyData: any) => {
-      if (toy) {
-        return await apiRequest("PATCH", `/api/toys/${toy.id}`, toyData);
-      }
+      if (toy) return await apiRequest("PATCH", `/api/toys/${toy.id}`, toyData);
       return await apiRequest("POST", "/api/toys", toyData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/toys"] });
-      if (user?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/users", user.id, "toys"] });
-      }
-      toast({
-        title: toy ? "Toy updated!" : "Toy listed successfully!",
-        description: toy ? "Your toy has been updated." : "Your toy is now available for exchange.",
-      });
+      if (user?.id) queryClient.invalidateQueries({ queryKey: ["/api/users", user.id, "toys"] });
+      toast({ title: toy ? "Toy updated!" : "Toy listed successfully!", description: toy ? "Your toy has been updated." : "Your toy is now available for exchange." });
       onClose();
     },
     onError: (error: any) => {
       const msg = error?.message || "";
       const body = msg.includes("{") ? JSON.parse(msg.substring(msg.indexOf("{"))) : null;
-      toast({
-        title: body?.code === "LIMIT_ACTIVE_LISTINGS" ? "Upgrade Required" : "Error",
-        description: body?.message || (toy ? "Failed to update toy." : "Failed to list toy."),
-        variant: "destructive",
-      });
-      if (body?.upgradeUrl) {
-        setTimeout(() => window.location.href = body.upgradeUrl, 2000);
-      }
+      toast({ title: body?.code === "LIMIT_ACTIVE_LISTINGS" ? "Upgrade Required" : "Error", description: body?.message || (toy ? "Failed to update toy." : "Failed to list toy."), variant: "destructive" });
+      if (body?.upgradeUrl) setTimeout(() => window.location.href = body.upgradeUrl, 2000);
     },
   });
 
@@ -132,38 +114,27 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     if (files) {
       Array.from(files).forEach(file => {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          setImages(prev => [...prev, result]);
-        };
+        reader.onload = (e) => { const result = e.target?.result as string; setImages(prev => [...prev, result]); };
         reader.readAsDataURL(file);
       });
     }
   };
 
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
+  const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
   const toggleCategory = (cat: string) => {
     const current = formData.category ? formData.category.split(", ") : [];
     const idx = current.indexOf(cat);
-    if (idx >= 0) {
-      current.splice(idx, 1);
-    } else {
-      current.push(cat);
-    }
+    if (idx >= 0) current.splice(idx, 1);
+    else current.push(cat);
     setFormData(prev => ({ ...prev, category: current.join(", ") }));
   };
 
   const toggleAgeGroup = (age: string) => {
     const current = formData.ageGroup ? formData.ageGroup.split(", ") : [];
     const idx = current.indexOf(age);
-    if (idx >= 0) {
-      current.splice(idx, 1);
-    } else {
-      current.push(age);
-    }
+    if (idx >= 0) current.splice(idx, 1);
+    else current.push(age);
     setFormData(prev => ({ ...prev, ageGroup: current.join(", ") }));
   };
 
@@ -187,28 +158,13 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const handleSubmit = () => {
     const coords = selectedCoords || (latitude && longitude ? { lat: latitude, lng: longitude } : { lat: null, lng: null });
     if (toy) {
-      createToyMutation.mutate({
-        ...formData,
-        imageUrls: images,
-        latitude: coords.lat,
-        longitude: coords.lng,
-      });
+      createToyMutation.mutate({ ...formData, imageUrls: images, latitude: coords.lat, longitude: coords.lng });
     } else {
       try {
-        const toyData = insertToySchema.parse({
-          ...formData,
-          ownerId: user?.id || "",
-          imageUrls: images,
-          latitude: coords.lat,
-          longitude: coords.lng,
-        });
+        const toyData = insertToySchema.parse({ ...formData, ownerId: user?.id || "", imageUrls: images, latitude: coords.lat, longitude: coords.lng });
         createToyMutation.mutate(toyData);
       } catch (error) {
-        toast({
-          title: "Validation Error",
-          description: "Please fill in all required fields.",
-          variant: "destructive",
-        });
+        toast({ title: "Validation Error", description: "Please fill in all required fields.", variant: "destructive" });
       }
     }
   };
@@ -216,169 +172,122 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const handleUseDetectedLocation = () => {
     if (detectedLocation) {
       setFormData(prev => ({ ...prev, location: detectedLocation }));
-      if (latitude && longitude) {
-        setSelectedCoords({ lat: latitude, lng: longitude });
-      }
+      if (latitude && longitude) setSelectedCoords({ lat: latitude, lng: longitude });
     }
   };
 
   const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
-      <div className="w-full max-w-sm mx-auto bg-white rounded-t-3xl shadow-2xl animate-slide-up">
-        {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-t-3xl p-6">
-          <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4"></div>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-gray-900 rounded-t-2xl shadow-lg animate-slide-up">
+        {/* Header */}
+        <div className="bg-purple-500 rounded-t-2xl p-6">
+          <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4" />
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-white mb-1">{toy ? "Edit Toy" : "List a Toy"}</h2>
+              <h2 className="text-lg font-bold text-white mb-1">{toy ? "Edit Toy" : "List a Toy"}</h2>
               <p className="text-sm text-purple-100">{toy ? "Update your toy listing" : "Share your toy with the community"}</p>
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
+            <button onClick={onClose} className="min-w-[44px] min-h-[44px] bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors">
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
 
-        {/* Content with padding */}
+        {/* Content */}
         <div className="p-6">
           <div className="space-y-5 mb-6 max-h-96 overflow-y-auto">
-          {/* Photo Upload */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          
+            {/* Photo Upload */}
+            <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
+
             <div>
-              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
                 Add Photos <span className="text-red-500">*</span>
               </label>
-              <p className="text-sm text-gray-500 mb-4">Add up to 5 photos. The first photo will be your main image.</p>
-              
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Add up to 5 photos. The first photo will be your main image.</p>
+
               {images.length > 0 ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     {images.map((image, index) => (
-                      <div key={index} className="relative aspect-square bg-gray-100 rounded-xl overflow-hidden">
-                        <img 
-                          src={image} 
-                          alt={`Upload ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                        >
-                          <X className="w-3 h-3 text-white" />
+                      <div key={index} className="relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden">
+                        <img src={image} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+                        <button onClick={() => removeImage(index)} className="absolute top-2 right-2 min-w-[44px] min-h-[44px] bg-red-500 rounded-xl flex items-center justify-center hover:bg-red-600 transition-colors">
+                          <X className="w-4 h-4 text-white" />
                         </button>
                         {index === 0 && (
-                          <div className="absolute bottom-2 left-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                            Main
-                          </div>
+                          <div className="absolute bottom-2 left-2 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-medium">Main</div>
                         )}
                       </div>
                     ))}
-                    
                     {images.length < 5 && (
-                      <div
-                        className="aspect-square border-2 border-dashed border-purple-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
+                      <div className="aspect-square border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all" onClick={() => fileInputRef.current?.click()}>
                         <Camera className="w-6 h-6 text-purple-400 mb-2" />
-                        <span className="text-sm text-purple-600 text-center px-2">
-                          Tap to add
-                        </span>
+                        <span className="text-xs text-purple-600 dark:text-purple-400 text-center px-2">Tap to add</span>
                       </div>
                     )}
                   </div>
                   {images.length < 5 && (
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full p-3 border-2 border-dashed border-purple-300 rounded-xl text-purple-600 hover:border-purple-400 hover:bg-purple-50 transition-all"
-                    >
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full p-3 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl text-purple-600 dark:text-purple-400 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all min-h-[44px]">
                       <Camera className="w-4 h-4 inline mr-2" />
                       Add more photos
                     </button>
                   )}
                 </div>
               ) : (
-                <div
-                  className="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all"
-                  onClick={() => fileInputRef.current?.click()}
-                >
+                <div className="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all" onClick={() => fileInputRef.current?.click()}>
                   <Camera className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-600 mb-2">Add your toy photos</p>
-                  <p className="text-xs text-purple-600 font-medium">Tap to choose from gallery</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Add your toy photos</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Tap to choose from gallery</p>
                 </div>
               )}
             </div>
 
             {/* Toy Name */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
                 Toy Title <span className="text-red-500">*</span>
               </label>
-              <input
+              <Input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., LEGO Creator 3-in-1 Deep Sea Creatures"
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                Description
-              </label>
-              <textarea
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Description</label>
+              <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe your toy's condition, what's included, and why kids would love it..."
                 rows={4}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
               />
-              <div className="text-right text-sm text-gray-500 mt-1">
-                {formData.description.length}/500
-              </div>
+              <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">{formData.description.length}/500</div>
             </div>
 
-            {/* Category - Multi Select */}
+            {/* Category */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
                 Categories <span className="text-red-500">*</span>
               </label>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Select one or more categories</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Select one or more categories</p>
               <div className="grid grid-cols-2 gap-3">
                 {categories.map((category) => {
                   const selected = formData.category.split(", ").includes(category);
                   return (
-                    <button
-                      key={category}
-                      onClick={() => toggleCategory(category)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left relative ${
-                        selected
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                    <button key={category} onClick={() => toggleCategory(category)}
+                      className={`p-4 rounded-xl border-2 transition-all text-left relative min-h-[44px] ${
+                        selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
-                      <div className={`text-sm font-medium ${
-                        selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
-                      }`}>
+                      <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
                         {category}
                       </div>
-                      {selected && (
-                        <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />
-                      )}
+                      {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
                     </button>
                   );
                 })}
@@ -388,7 +297,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
                   {formData.category.split(", ").map(c => (
                     <Badge key={c} variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
                       {c}
-                      <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600">
+                      <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600 min-h-[24px] min-w-[24px]">
                         <X className="w-3 h-3" />
                       </button>
                     </Badge>
@@ -400,53 +309,39 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
             {/* Age Group and Condition */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Age Range</label>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Select one or more</p>
+                <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Age Range</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select one or more</p>
                 <div className="space-y-2">
                   {ageGroups.map((age) => {
                     const selected = formData.ageGroup.split(", ").includes(age);
                     return (
-                      <button
-                        key={age}
-                        onClick={() => toggleAgeGroup(age)}
-                        className={`w-full p-3 rounded-xl border-2 text-left transition-all relative ${
-                          selected
-                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
-                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                      <button key={age} onClick={() => toggleAgeGroup(age)}
+                        className={`w-full p-3 rounded-xl border-2 text-left transition-all relative min-h-[44px] ${
+                          selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                       >
-                        <div className={`text-sm font-medium ${
-                          selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
-                        }`}>
+                        <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
                           Ages {age}
                         </div>
-                        {selected && (
-                          <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />
-                        )}
+                        {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
                       </button>
                     );
                   })}
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
                   Condition <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
                   {conditions.map((condition) => (
-                    <button
-                      key={condition}
-                      onClick={() => setFormData({ ...formData, condition })}
-                      className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
-                        formData.condition === condition
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                    <button key={condition} onClick={() => setFormData({ ...formData, condition })}
+                      className={`w-full p-3 rounded-xl border-2 text-left transition-all min-h-[44px] ${
+                        formData.condition === condition ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
-                      <div className={`text-sm font-medium ${
-                        formData.condition === condition ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
-                      }`}>
+                      <div className={`text-sm font-medium ${formData.condition === condition ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
                         {condition}
                       </div>
                     </button>
@@ -457,7 +352,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
 
             {/* Location */}
             <div>
-              <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Location</label>
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Location</label>
               <div className="space-y-3">
                 <div className="relative">
                   <input
@@ -465,51 +360,32 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
                     type="text"
                     placeholder="Search for a city or suburb..."
                     value={formData.location}
-                    onChange={(e) => {
-                      setFormData((prev: any) => ({ ...prev, location: e.target.value }));
-                      setShowLocationSuggestions(e.target.value.length > 1);
-                    }}
-                    onFocus={() => {
-                      if (formData.location.length > 1) setShowLocationSuggestions(true);
-                    }}
+                    onChange={(e) => { setFormData((prev: any) => ({ ...prev, location: e.target.value })); setShowLocationSuggestions(e.target.value.length > 1); }}
+                    onFocus={() => { if (formData.location.length > 1) setShowLocationSuggestions(true); }}
                     onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+                    className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm text-gray-900 dark:text-gray-50 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => requestLocation()}
                     disabled={locationLoading || isDetectingLocation}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 flex items-center justify-center text-purple-500 hover:text-purple-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center text-purple-500 hover:text-purple-600"
                     title="Detect my location"
                   >
-                    {locationLoading || isDetectingLocation ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Navigation className="w-4 h-4" />
-                    )}
+                    {locationLoading || isDetectingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
                   </button>
 
-                  {/* Location Suggestions Dropdown */}
                   {showLocationSuggestions && (
-                    <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm max-h-48 overflow-y-auto">
                       {searchingLocation ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
-                        </div>
+                        <div className="flex items-center justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-purple-500" /></div>
                       ) : locationResults.length === 0 ? (
                         <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">No locations found</div>
                       ) : (
                         locationResults.map((result, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setFormData((prev: any) => ({ ...prev, location: result.displayName }));
-                              setSelectedCoords({ lat: result.lat, lng: result.lng });
-                              setShowLocationSuggestions(false);
-                            }}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                          <button key={idx} type="button"
+                            onMouseDown={(e) => { e.preventDefault(); setFormData((prev: any) => ({ ...prev, location: result.displayName })); setSelectedCoords({ lat: result.lat, lng: result.lng }); setShowLocationSuggestions(false); }}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2 min-h-[44px]"
                           >
                             <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                             <span>{result.displayName}</span>
@@ -519,37 +395,28 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
                     </div>
                   )}
                 </div>
-                
+
                 {detectedLocation && detectedLocation !== formData.location && (
-                  <button
-                    type="button"
-                    onClick={handleUseDetectedLocation}
-                    className="w-full p-3 border border-purple-200 dark:border-purple-800 rounded-xl text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                  <button type="button" onClick={handleUseDetectedLocation}
+                    className="w-full p-3 border border-purple-200 dark:border-purple-800 rounded-xl text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors min-h-[44px]"
                   >
                     <MapPin className="w-4 h-4 inline mr-2" />
                     Use detected: {detectedLocation}
                   </button>
                 )}
-                
-                {locationError && (
-                  <p className="text-xs text-red-500">{locationError}</p>
-                )}
+
+                {locationError && <p className="text-xs text-red-500">{locationError}</p>}
               </div>
             </div>
           </div>
 
           {/* Bottom Actions */}
-          <div className="flex space-x-3 pt-4 border-t border-gray-100">
-            <button 
-              onClick={onClose} 
-              className="flex-1 py-3 px-4 border border-gray-300 rounded-2xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
+          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <button onClick={onClose} className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
               Cancel
             </button>
-            <button 
-              onClick={handleSubmit}
-              disabled={!isFormValid || createToyMutation.isPending}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            <button onClick={handleSubmit} disabled={!isFormValid || createToyMutation.isPending}
+              className="flex-1 py-3 px-4 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
               {createToyMutation.isPending ? "Saving..." : toy ? "Save Changes" : "List Toy"}
             </button>

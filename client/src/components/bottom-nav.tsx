@@ -1,5 +1,4 @@
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,31 +44,31 @@ export default function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3 max-w-sm mx-auto safe-area-inset-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 py-2 max-w-lg mx-auto">
         <div className="flex items-center justify-around">
           {navItems.map((item) => {
             const isActive = location === item.path;
             const Icon = item.icon;
-            
+
             return (
               <button
                 key={item.path + item.label}
-                className="flex flex-col items-center space-y-1 py-1"
+                className="flex flex-col items-center gap-1 py-1 min-h-[44px] min-w-[44px]"
                 onClick={() => handleNavClick(item)}
                 data-onboarding={item.onboarding}
               >
                 {item.action === "upload" ? (
-                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                    <Icon className="text-white w-4 h-4" />
+                  <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <Icon className="text-white w-5 h-5" />
                   </div>
                 ) : (
                   <div className="relative">
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                      isActive 
-                        ? "bg-gradient-to-r from-purple-500 to-pink-500"
-                        : "bg-gray-100 dark:bg-gray-700"
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 ${
+                      isActive
+                        ? "bg-purple-500"
+                        : "bg-gray-100 dark:bg-gray-800"
                     }`}>
-                      <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400 dark:text-gray-300"}`} />
+                      <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400 dark:text-gray-500"}`} />
                     </div>
                     {item.icon === MessageCircle && unreadCount > 0 && (
                       <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center px-1">
@@ -80,10 +79,10 @@ export default function BottomNav() {
                     )}
                   </div>
                 )}
-                <span className={`text-xs ${
-                  isActive 
-                    ? "font-medium text-purple-500" 
-                    : "text-gray-400 dark:text-gray-300"
+                <span className={`text-[10px] leading-none transition-colors duration-150 ${
+                  isActive
+                    ? "font-medium text-purple-500"
+                    : "text-gray-400 dark:text-gray-500"
                 }`}>
                   {item.label}
                 </span>
@@ -92,7 +91,7 @@ export default function BottomNav() {
           })}
         </div>
       </nav>
-      
+
       {showUpload && (
         <UploadOverlay onClose={() => setShowUpload(false)} />
       )}
