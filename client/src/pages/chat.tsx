@@ -54,7 +54,9 @@ export default function Chat() {
 
   useWebSocket((data) => {
     if (data.type === 'new_message' && data.data.exchangeId === parseInt(exchangeId!)) {
+      markExchangeRead(parseInt(exchangeId!));
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
     }
   });
 
@@ -65,6 +67,7 @@ export default function Chat() {
     onSuccess: () => {
       setMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
     },
   });
 
@@ -141,6 +144,9 @@ export default function Chat() {
           ) : (
             <div className="space-y-3">
               {[...(exchanges || [])].sort((a, b) => {
+                const aUnread = isExchangeUnread(a, (user as any)?.id) ? 1 : 0;
+                const bUnread = isExchangeUnread(b, (user as any)?.id) ? 1 : 0;
+                if (aUnread !== bUnread) return bUnread - aUnread;
                 const aTime = a.messages?.length ? new Date(a.messages[a.messages.length - 1].createdAt).getTime() : new Date(a.createdAt).getTime();
                 const bTime = b.messages?.length ? new Date(b.messages[b.messages.length - 1].createdAt).getTime() : new Date(b.createdAt).getTime();
                 return bTime - aTime;
