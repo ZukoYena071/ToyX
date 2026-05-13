@@ -26,6 +26,7 @@ export default function ToyDetail() {
   const [message, setMessage] = useState('');
   const [exchangeMessage, setExchangeMessage] = useState('');
   const [limitModal, setLimitModal] = useState<{ message: string; upgradeUrl: string } | null>(null);
+  const [showFullLocation, setShowFullLocation] = useState(false);
 
   const { data: toy, isLoading, error } = useQuery({
     queryKey: ["/api/toys", id],
@@ -249,10 +250,14 @@ export default function ToyDetail() {
                   variant={(toy as any)?.condition === 'Like New' ? 'success' : (toy as any)?.condition === 'Excellent' ? 'info' : 'warning'}
                 />
                 {(toy as any)?.location && (
-                  <div className="flex items-center gap-1 min-w-0">
+                  <button
+                    onClick={() => setShowFullLocation(!showFullLocation)}
+                    className="flex items-center gap-1 min-w-0 min-h-[44px] hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-2 -mx-2 transition-colors"
+                    title={showFullLocation ? "" : "Click to see full location"}
+                  >
                     <MapPin className="w-4 h-4 text-purple-500 shrink-0" />
-                    <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{(toy as any)?.location}</span>
-                  </div>
+                    <span className={`text-sm text-gray-500 dark:text-gray-400 ${showFullLocation ? "" : "truncate max-w-[200px]"}`}>{(toy as any)?.location}</span>
+                  </button>
                 )}
               </div>
             </div>
