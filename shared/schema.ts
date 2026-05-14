@@ -234,7 +234,9 @@ export const referrals = pgTable("referrals", {
 });
 
 // Insert schemas
-export const insertToySchema = createInsertSchema(toys).omit({
+export const insertToySchema = createInsertSchema(toys, {
+  imageUrls: z.array(z.string().min(1)).min(1, "At least 1 image is required"),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

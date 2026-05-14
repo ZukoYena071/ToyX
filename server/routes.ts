@@ -302,6 +302,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(201).json(toy);
     } catch (error) {
+      if ((error as any).name === "ZodError") {
+        return res.status(400).json({ code: "VALIDATION_ERROR", message: "Please add at least 1 photo before listing." });
+      }
       console.error("Error creating toy:", error);
       res.status(500).json({ message: "Failed to create toy" });
     }

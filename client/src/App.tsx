@@ -26,6 +26,7 @@ import BillingSuccess from "@/pages/billing-success";
 import BillingCancel from "@/pages/billing-cancel";
 import Rewards from "@/pages/rewards";
 import Invite from "@/pages/invite";
+import LoadingLogo from "@/components/ui/LoadingLogo";
 import PrivacySafety from "@/pages/privacy-safety";
 
 function Router() {
@@ -39,11 +40,8 @@ function Router() {
   // Show loading screen while auth is loading
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
+        <LoadingLogo label="Loading..." />
       </div>
     );
   }

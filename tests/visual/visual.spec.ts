@@ -2,6 +2,8 @@ import { test, expect, Page } from "@playwright/test";
 
 const PAGES = ["/", "/profile", "/search", "/pricing"];
 
+const IMG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='100%25' height='100%25' fill='%23ddd'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='24'>ToyX</text></svg>";
+
 const SCREENSHOT_OPTS = {
   fullPage: true,
   animations: "disabled",
@@ -16,7 +18,7 @@ const MOCK_TOYS = [
     ageGroup: "3-5",
     location: "Cape Town, SA",
     description: "A classic Lego building set with 500 pieces.",
-    imageUrls: [],
+    imageUrls: [IMG],
     isAvailable: true,
     ownerId: "seed_user_2",
     owner: { firstName: "Jane", email: "parent2@test.com" },
@@ -33,7 +35,7 @@ const MOCK_TOYS = [
     ageGroup: "0-3",
     location: "Johannesburg, SA",
     description: "Large soft teddy bear, great condition.",
-    imageUrls: [],
+    imageUrls: [IMG],
     isAvailable: true,
     ownerId: "seed_user_3",
     owner: { firstName: "Bob", email: "parent3@test.com" },
@@ -50,7 +52,7 @@ const MOCK_TOYS = [
     ageGroup: "5-8",
     location: "Durban, SA",
     description: "Fast RC car with rechargeable battery.",
-    imageUrls: [],
+    imageUrls: [IMG],
     isAvailable: true,
     ownerId: "seed_user_2",
     owner: { firstName: "Jane", email: "parent2@test.com" },
@@ -67,7 +69,7 @@ const MOCK_TOYS = [
     ageGroup: "8+",
     location: "Pretoria, SA",
     description: "Collection of 5 family board games.",
-    imageUrls: [],
+    imageUrls: [IMG],
     isAvailable: true,
     ownerId: "seed_user_3",
     owner: { firstName: "Bob", email: "parent3@test.com" },

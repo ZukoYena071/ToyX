@@ -160,6 +160,10 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     if (toy) {
       createToyMutation.mutate({ ...formData, imageUrls: images, latitude: coords.lat, longitude: coords.lng });
     } else {
+      if (images.length < 1) {
+        toast({ title: "Photo required", description: "Please add at least 1 photo before listing.", variant: "destructive" });
+        return;
+      }
       try {
         const toyData = insertToySchema.parse({ ...formData, ownerId: user?.id || "", imageUrls: images, latitude: coords.lat, longitude: coords.lng });
         createToyMutation.mutate(toyData);
@@ -176,7 +180,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     }
   };
 
-  const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition;
+  const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition && images.length >= 1;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
