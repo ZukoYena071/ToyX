@@ -7,6 +7,7 @@ import {
   messages,
   favorites,
   reviews,
+  toyInteractions,
 } from "@shared/schema";
 import { and, eq, inArray, gte, lt, sql, or } from "drizzle-orm";
 
@@ -19,9 +20,10 @@ function randInt(min: number, max: number) {
 }
 
 function picsum(seed: string) {
-  // Public placeholder images
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/900/700`;
 }
+
+const FALLBACK_IMG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='100%25' height='100%25' fill='%23ddd'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='24'>ToyX</text></svg>";
 
 const ZA_LOCATIONS = [
   { label: "Cape Town, Western Cape", lat: -33.9249, lng: 18.4241 },
@@ -89,11 +91,13 @@ async function clearSeedData() {
   }
 
   if (seedToyIds.length) {
+    await db.delete(toyInteractions).where(inArray(toyInteractions.toyId, seedToyIds));
     await db.delete(favorites).where(inArray(favorites.toyId, seedToyIds));
     await db.delete(toys).where(inArray(toys.id, seedToyIds));
   }
 
   await db.delete(favorites).where(inArray(favorites.userId, seedUserIds));
+  await db.delete(toyInteractions).where(inArray(toyInteractions.userId, seedUserIds));
   await db.delete(users).where(inArray(users.id, seedUserIds));
 }
 
