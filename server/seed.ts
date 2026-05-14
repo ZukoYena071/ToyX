@@ -8,7 +8,7 @@ import {
   favorites,
   reviews,
 } from "@shared/schema";
-import { and, eq, inArray, gte, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, gte, lt, sql, or } from "drizzle-orm";
 
 function pick<T>(arr: T[]) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -69,14 +69,17 @@ async function clearSeedData() {
     .where(inArray(toys.ownerId, seedUserIds))).map(r => r.id);
 
   // Find exchanges involving seed users or seed toys
+  const exchangeConditions = [];
+  if (seedToyIds.length) {
+    exchangeConditions.push(inArray(exchanges.toyId, seedToyIds));
+  }
+  exchangeConditions.push(inArray(exchanges.requesterId, seedUserIds));
+  exchangeConditions.push(inArray(exchanges.ownerId, seedUserIds));
   const seedExchangeIds = (await db
     .select({ id: exchanges.id })
     .from(exchanges)
-    .where(
-      seedToyIds.length
-        ? sql`(${exchanges.toyId} = ANY(${seedToyIds})) OR (${exchanges.requesterId} = ANY(${seedUserIds})) OR (${exchanges.ownerId} = ANY(${seedUserIds}))`
-        : sql`(${exchanges.requesterId} = ANY(${seedUserIds})) OR (${exchanges.ownerId} = ANY(${seedUserIds}))`
-    )).map(r => r.id);
+    .where(or(...exchangeConditions))
+  ).map(r => r.id);
 
   if (seedExchangeIds.length) {
     await db.delete(messages).where(inArray(messages.exchangeId, seedExchangeIds));
