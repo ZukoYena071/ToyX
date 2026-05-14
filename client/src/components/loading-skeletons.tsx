@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import LoadingLogo from "@/components/ui/LoadingLogo";
 
 // Base skeleton component with toy-themed animations
 const Skeleton = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
@@ -20,7 +21,7 @@ export const ToyCardSkeleton = () => {
       {/* Image skeleton */}
       <div className="aspect-square bg-gradient-to-br from-peach/20 via-mint/20 to-powder/20 rounded-2xl mb-3 relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-4xl animate-bounce">🧸</div>
+          <LoadingLogo label="" className="scale-50" />
         </div>
         <Skeleton className="absolute inset-0 rounded-2xl opacity-30" />
       </div>
