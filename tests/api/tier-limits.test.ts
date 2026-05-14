@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 
 const BASE = "http://localhost:3001";
+const IMG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='100%25' height='100%25' fill='%23ddd'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='24'>ToyX</text></svg>";
 
 async function devLogin(agent: request.SuperAgentTest, userId: string) {
   const res = await agent.get(`/api/dev/login/${userId}`);
@@ -31,6 +32,7 @@ describe("Free-tier limits", () => {
         category: "Building Blocks",
         ageGroup: "3-5",
         condition: "New",
+        imageUrls: [IMG],
       });
       expect(res.status).toBe(201);
     }
@@ -41,6 +43,7 @@ describe("Free-tier limits", () => {
       category: "Building Blocks",
       ageGroup: "3-5",
       condition: "New",
+      imageUrls: [IMG],
     });
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("LIMIT_ACTIVE_LISTINGS");
@@ -57,6 +60,7 @@ describe("Free-tier limits", () => {
       category: "Vehicles",
       ageGroup: "3-5",
       condition: "New",
+      imageUrls: [IMG],
     });
     expect(res.status).toBe(201);
   });
