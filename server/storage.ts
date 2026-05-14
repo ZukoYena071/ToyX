@@ -5,6 +5,7 @@ import {
   messages,
   favorites,
   reviews,
+  toyInteractions,
   type User,
   type UpsertUser,
   type Toy,
@@ -23,7 +24,7 @@ import {
   type ReviewWithUser,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, ilike, sql } from "drizzle-orm";
+import { eq, desc, and, or, ilike, sql, inArray, lte, gte, count } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -522,6 +523,72 @@ export class DatabaseStorage implements IStorage {
       );
     
     return !existingReview;
+  }
+
+  // ---- Personalization methods ----
+
+  async logToyInteraction(userId: string, toyId: number, eventType: string): Promise<void> {
+    await db.insert(toyInteractions).values({ userId, toyId, eventType, createdAt: new Date() });
+  }
+
+  async updateUserLocation(userId: string, payload: { enabled: boolean; latitude?: number | null; longitude?: number | null; location?: string | null }): Promise<User> {
+    const updateData: any = { locationEnabled: payload.enabled, locationUpdatedAt: new Date() };
+    if (payload.enabled && payload.latitude != null && payload.longitude != null) {
+      updateData.latitude = Number(payload.latitude.toFixed(3));
+      updateData.longitude = Number(payload.longitude.toFixed(3));
+      if (payload.location !== undefined) updateData.location = payload.location;
+    } else if (!payload.enabled) {
+      updateData.latitude = null;
+      updateData.longitude = null;
+    }
+    const [user] = await db.update(users).set(updateData).where(eq(users.id, userId)).returning();
+    return user;
+  }
+
+  async getUserTasteProfile(userId: string): Promise<{ topAges: string[]; topCategories: string[] }> {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const weights: Record<string, number> = { TOY_VIEW: 1, TOY_FAVORITE: 5, TOY_UNFAVORITE: -3, EXCHANGE_REQUEST_CREATED: 10, EXCHANGE_COMPLETED: 20 };
+    const rows = await db
+      .select({ eventType: toyInteractions.eventType, category: toys.category, ageGroup: toys.ageGroup })
+      .from(toyInteractions)
+      .innerJoin(toys, eq(toyInteractions.toyId, toys.id))
+      .where(and(eq(toyInteractions.userId, userId), gte(toyInteractions.createdAt, cutoff)));
+    const catScores: Record<string, number> = {};
+    const ageScores: Record<string, number> = {};
+    for (const r of rows) {
+      const w = weights[r.eventType] || 1;
+      if (r.category) {
+        for (const c of r.category.split(/[,|/;]/).map(s => s.trim()).filter(Boolean)) { catScores[c] = (catScores[c] || 0) + w; }
+      }
+      if (r.ageGroup) {
+        for (const a of r.ageGroup.split(/[,|/;]/).map(s => s.trim()).filter(Boolean)) { ageScores[a] = (ageScores[a] || 0) + w; }
+      }
+    }
+    return {
+      topCategories: Object.entries(catScores).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]),
+      topAges: Object.entries(ageScores).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]),
+    };
+  }
+
+  async getToysWithOwners(whereClause?: any, limitVal?: number): Promise<ToyWithOwner[]> {
+    let query = db.select().from(toys).leftJoin(users, eq(toys.ownerId, users.id));
+    if (whereClause) query = (query as any).where(whereClause);
+    if (limitVal) query = (query as any).limit(limitVal);
+    return (await query.orderBy(desc(toys.createdAt))).map((r: any) => ({ ...r.toys, owner: r.users! }));
+  }
+
+  async getCandidateToysNearUser(userId: string, lat: number, lng: number, radiusKm = 20): Promise<(ToyWithOwner & { distanceKm: number })[]> {
+    const rows = await db.execute(sql`
+      SELECT t.*, row_to_json(u.*) as owner,
+        (6371 * acos(cos(radians(${lat})) * cos(radians(t.latitude)) * cos(radians(t.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(t.latitude)))) AS distance_km
+      FROM toys t
+      LEFT JOIN users u ON u.id = t.owner_id
+      WHERE t.is_available = true AND t.latitude IS NOT NULL AND t.longitude IS NOT NULL
+        AND (6371 * acos(cos(radians(${lat})) * cos(radians(t.latitude)) * cos(radians(t.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(t.latitude)))) <= ${radiusKm}
+      ORDER BY distance_km ASC, t.created_at DESC
+      LIMIT 200
+    `);
+    return rows.map((r: any) => ({ ...r, owner: r.owner, distanceKm: Number(r.distance_km) }));
   }
 }
 

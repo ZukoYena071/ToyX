@@ -47,6 +47,10 @@ export const users = pgTable("users", {
   showEmail: boolean("show_email").default(true),
   showPhone: boolean("show_phone").default(false),
   messagePrivacy: varchar("message_privacy", { length: 20 }).default("everyone"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  locationEnabled: boolean("location_enabled").default(false),
+  locationUpdatedAt: timestamp("location_updated_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -160,6 +164,19 @@ export const favoritesRelations = relations(favorites, ({ one }) => ({
     references: [toys.id],
   }),
 }));
+
+// Toy interactions for personalization
+export const toyInteractions = pgTable("toy_interactions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  toyId: integer("toy_id").notNull().references(() => toys.id),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_interactions_user").on(table.userId, table.createdAt),
+  index("idx_interactions_user_event").on(table.userId, table.eventType, table.createdAt),
+  index("idx_interactions_toy_event").on(table.toyId, table.eventType),
+]);
 
 // User reviews and ratings system
 export const reviews = pgTable("reviews", {
@@ -288,3 +305,5 @@ export type ReviewWithUser = Review & {
   reviewer: User;
   reviewee: User;
 };
+export type Interaction = typeof toyInteractions.$inferSelect;
+export type InsertInteraction = typeof toyInteractions.$inferInsert;

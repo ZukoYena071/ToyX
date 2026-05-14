@@ -12,6 +12,7 @@ import { PageLoadingSkeleton } from "@/components/loading-skeletons";
 import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import BadgePill from "@/components/ui/BadgePill";
+import ToyFeedCard from "@/components/toys/ToyFeedCard";
 import { apiRequest } from "@/lib/queryClient";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 
@@ -22,6 +23,11 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const { data: toys, isLoading } = useQuery({
     queryKey: ["/api/toys"],
+  });
+
+  const { data: recs } = useQuery({
+    queryKey: ["/api/recommendations/home"],
+    enabled: !!user,
   });
 
   const favoriteMutation = useMutation({
@@ -129,6 +135,30 @@ export default function HomePage() {
       </div>
 
       <div className="px-4 py-6 space-y-6">
+        {/* For You section */}
+        {!!((recs as any)?.forYou?.length) && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50">For You</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {(recs as any).meta?.usedLocation ? "Near you, matched to your tastes" : "Matched to your preferences"}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {(recs as any).forYou.slice(0, 6).map((toy: any) => (
+                <ToyFeedCard
+                  key={toy.id}
+                  toy={toy}
+                  onOpen={() => window.location.href = `/toy/${toy.id}`}
+                  onToggleFavorite={() => favoriteMutation.mutate({ toyId: toy.id, isFavorited: toy.isFavorited || false })}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>

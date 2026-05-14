@@ -178,51 +178,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toys = await storage.getToysByUser(req.params.id);
       res.json(toys);
     } catch (error) {
-      console.error("Error fetching user toys:", error);
-      res.status(500).json({ message: "Failed to fetch user toys" });
+      console.error("Error fetching toys:", error);
+      res.status(500).json({ message: "Failed to fetch toys" });
     }
   });
 
-  app.get('/api/users/:id/reviews', async (req, res) => {
-    try {
-      const reviews = await storage.getReviews(req.params.id);
-      res.json(reviews);
-    } catch (error) {
-      console.error("Error fetching user reviews:", error);
-      res.status(500).json({ message: "Failed to fetch user reviews" });
-    }
-  });
+  // ---- Personalization routes ----
 
-  app.get('/api/users/:id/rating', async (req, res) => {
-    try {
-      const rating = await storage.getUserAverageRating(req.params.id);
-      res.json({ rating });
-    } catch (error) {
-      console.error("Error fetching user rating:", error);
-      res.status(500).json({ message: "Failed to fetch user rating" });
-    }
-  });
-
-  // Update user profile
-  app.patch('/api/users/profile', isAuthenticated, async (req: any, res) => {
+  // Update user location
+  app.post('/api/users/location', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const updateData = req.body;
-      if (updateData.profileImageUrl) {
-        updateData.profileImageUrl = updateData.profileImageUrl.replace(/^http:/, "https:");
-      }
-      const updatedUser = await storage.updateUser(userId, updateData);
-      if (updatedUser.profileImageUrl) {
-        updatedUser.profileImageUrl = updatedUser.profileImageUrl.replace(/^http:/, "https:");
-      }
-      res.json(updatedUser);
+      const user = await storage.updateUserLocation(userId, req.body);
+      res.json(user);
     } catch (error) {
-      console.error("Error updating user profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      console.error("Error updating location:", error);
+      res.status(500).json({ message: "Failed to update location" });
     }
   });
 
-  // Toy routes
+  // Log interaction event
+  app.post('/api/interactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { toyId, eventType } = req.body;
+      if (!toyId || !eventType) return res.status(400).json({ message: "toyId and eventType required" });
+      await storage.logToyInteraction(userId, toyId, eventType);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error logging interaction:", error);
+      res.status(500).json({ message: "Failed to log interaction" });
+    }
+  });
+
+  // Home recommendations
+  app.get('/api/recommendations/home', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const usedLocation = !!(user.locationEnabled && user.latitude && user.longitude);
+      const taste = await storage.getUserTasteProfile(userId);
+
+      // Recently added — always
+      let recentlyAdded = await storage.getToysWithOwners(eq(toys.isAvailable, true), 10);
+
+      let nearYou: any[] = [];
+      let forYou: any[] = [];
+
+      if (usedLocation) {
+        nearYou = await storage.getCandidateToysNearUser(userId, user.latitude!, user.longitude!, 20);
+        // Score candidates for "For You"
+        const threeDaysAgo = Date.now() - 3 * 86400000;
+        const sevenDaysAgo = Date.now() - 7 * 86400000;
+        const scored = nearYou.map((t: any) => {
+          let score = 0;
+          score += Math.max(0, 20 - t.distanceKm); // closer = more points
+          if (taste.topCategories.some((c: string) => t.category?.includes(c))) score += 20;
+          if (taste.topAges.some((a: string) => t.ageGroup?.includes(a))) score += 15;
+          const created = new Date(t.createdAt).getTime();
+          if (created > threeDaysAgo) score += 10;
+          else if (created > sevenDaysAgo) score += 5;
+          return { ...t, _score: score };
+        });
+        scored.sort((a: any, b: any) => b._score - a._score);
+        forYou = scored.slice(0, 10);
+      } else {
+        const allToys = await storage.getToysWithOwners(eq(toys.isAvailable, true));
+        const scored = allToys.map((t: any) => {
+          let score = 0;
+          if (taste.topCategories.some((c: string) => t.category?.includes(c))) score += 20;
+          if (taste.topAges.some((a: string) => t.ageGroup?.includes(a))) score += 15;
+          const created = new Date(t.createdAt).getTime();
+          if (created > Date.now() - 3 * 86400000) score += 10;
+          else if (created > Date.now() - 7 * 86400000) score += 5;
+          return { ...t, _score: score };
+        });
+        scored.sort((a: any, b: any) => b._score - a._score);
+        forYou = scored.slice(0, 10);
+        nearYou = recentlyAdded;
+      }
+
+      // Add isFavorited for each toy
+      const addFav = async (toy: any) => { toy.isFavorited = await storage.isFavorite(userId, toy.id); return toy; };
+      forYou = await Promise.all(forYou.map(addFav));
+      nearYou = await Promise.all(nearYou.map(addFav));
+      recentlyAdded = await Promise.all(recentlyAdded.map(addFav));
+
+      res.json({ forYou, nearYou, recentlyAdded, meta: { usedLocation, radiusKm: 20, topAges: taste.topAges, topCategories: taste.topCategories } });
+    } catch (error) {
+      console.error("Error getting recommendations:", error);
+      res.status(500).json({ message: "Failed to get recommendations" });
+    }
+  });
+
+  // ---- Toy routes ----
   app.get('/api/toys', async (req: any, res) => {
     try {
       const { search, category } = req.query;
@@ -420,6 +470,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Exchange data to insert:", exchangeData);
       const exchange = await storage.createExchange(exchangeData);
       console.log("Exchange created:", exchange);
+      // Log interaction
+      await storage.logToyInteraction(userId, exchangeData.toyId, "EXCHANGE_REQUEST_CREATED").catch(() => {});
       
       // If there's a request message, create it as the first chat message
       if (exchangeData.requestMessage && exchangeData.requestMessage.trim()) {
@@ -480,6 +532,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         await awardPoints({ userId: exchange.requesterId, eventType: "EXCHANGE_COMPLETED", referenceType: "exchange", referenceId: `${exchange.id}:requester`, points: 50 });
         await awardPoints({ userId: exchange.ownerId, eventType: "EXCHANGE_COMPLETED", referenceType: "exchange", referenceId: `${exchange.id}:owner`, points: 50 });
+        await storage.logToyInteraction(exchange.requesterId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
+        await storage.logToyInteraction(exchange.ownerId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
         // Check for referral qualification
         await qualifyReferral(exchange.requesterId);
         await qualifyReferral(exchange.ownerId);

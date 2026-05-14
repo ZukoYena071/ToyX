@@ -9,7 +9,7 @@ import {
   ArrowLeft, Heart, MessageCircle, MapPin, ChevronLeft, ChevronRight,
   Share2, CheckCircle, Star, User, Check, ChevronDown
 } from "lucide-react";
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
@@ -75,7 +75,9 @@ export default function ToyDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
-      toast({ title: (favoriteStatus as any)?.isFavorite ? "Removed from favorites" : "Added to favorites", description: (favoriteStatus as any)?.isFavorite ? "Toy removed from your favorites" : "Toy added to your favorites" });
+      const wasFav = (favoriteStatus as any)?.isFavorite;
+      toast({ title: wasFav ? "Removed from favorites" : "Added to favorites", description: wasFav ? "Toy removed from your favorites" : "Toy added to your favorites" });
+      fetch("/api/interactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toyId: parseInt(id!), eventType: wasFav ? "TOY_UNFAVORITE" : "TOY_FAVORITE" }), credentials: "include" }).catch(() => {});
     },
   });
 
@@ -156,6 +158,13 @@ export default function ToyDetail() {
   const descLong = desc.length > 140;
   const rating = (ownerRating as any)?.rating || 0;
   const reviewCount = (ownerReviews as any)?.length || 0;
+
+  // Log TOY_VIEW once when toy loads
+  useEffect(() => {
+    if (toy && id && !isOwner) {
+      fetch("/api/interactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toyId: parseInt(id), eventType: "TOY_VIEW" }), credentials: "include" }).catch(() => {});
+    }
+  }, [toy, id, isOwner]);
 
   const OverlayBtn = ({ onClick, children, className }: any) => (
     <button onClick={onClick} className={`min-w-[44px] min-h-[44px] flex items-center justify-center ${className}`}>{children}</button>
