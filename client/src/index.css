@@ -227,6 +227,15 @@ button:hover, .button:hover {
   display: none;
 }
 
+/* Hide scrollbar for feed card carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Line clamp utility */
 .line-clamp-2 {
   display: -webkit-box;

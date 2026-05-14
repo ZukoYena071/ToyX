@@ -5,7 +5,6 @@ import { Link } from "wouter";
 import { Search, Filter, Heart, MapPin, Star, ArrowLeft, Grid3X3, List } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageLoadingSkeleton } from "@/components/loading-skeletons";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
@@ -13,6 +12,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import BadgePill from "@/components/ui/BadgePill";
 import EmptyState from "@/components/ui/EmptyState";
+import ToyFeedCard from "@/components/toys/ToyFeedCard";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function BrowsePage() {
@@ -266,60 +266,12 @@ export default function BrowsePage() {
         ) : (
           <div className="space-y-4 mb-8">
             {filteredToys.map((toy: any) => (
-              <Link key={toy.id} href={`/toy/${toy.id}`}>
-                <SectionCard className="p-4">
-                  <div className="flex gap-4">
-                    <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0">
-                      {toy.imageUrls && toy.imageUrls[0] ? (
-                        <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <span className="text-2xl">🧸</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 line-clamp-1">{toy.name}</h3>
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); favoriteMutation.mutate({ toyId: toy.id, isFavorited: toy.isFavorited || false }); }}
-                          className="ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                          disabled={favoriteMutation.isPending}
-                        >
-                          <Heart className={`w-4 h-4 ${toy.isFavorited ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{toy.description}</p>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="text-purple-500 w-3 h-3" />
-                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{toy.location || 'Unknown location'}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Star className="text-yellow-400 w-3 h-3 fill-current" />
-                            <span className="text-xs text-gray-600 dark:text-gray-400">{(toy.ownerRating || 0).toFixed(1)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <BadgePill label={toy.condition} variant={toy.condition === 'Like New' ? 'success' : toy.condition === 'Excellent' ? 'info' : 'warning'} />
-                          {toy.inExchange && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
-                              In Exchange
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/toy/${toy.id}`; }}
-                        className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px]"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </SectionCard>
-              </Link>
+              <ToyFeedCard
+                key={toy.id}
+                toy={toy}
+                onOpen={() => window.location.href = `/toy/${toy.id}`}
+                onToggleFavorite={() => favoriteMutation.mutate({ toyId: toy.id, isFavorited: toy.isFavorited || false })}
+              />
             ))}
           </div>
         )}
