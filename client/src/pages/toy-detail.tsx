@@ -165,6 +165,10 @@ export default function ToyDetail() {
     <PageContainer className="pb-40">
       {/* Hero image carousel */}
       <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800">
+        {/* Hero scrims */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 via-black/15 to-transparent z-[1]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 via-black/10 to-transparent z-[1]" />
+
         {imageUrls.length > 0 ? (
           <>
             <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar h-full">
@@ -175,9 +179,13 @@ export default function ToyDetail() {
               ))}
             </div>
             {imageUrls.length > 1 && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                 {imageUrls.map((_: any, i: number) => (
-                  <span key={i} className={`block rounded-full transition-all duration-200 ${i === currentImageIndex ? "w-5 h-2 bg-white shadow-sm" : "w-2 h-2 bg-white/50"}`} />
+                  <span key={i} className={`block rounded-full transition-all duration-200 shadow-sm ${
+                    i === currentImageIndex
+                      ? "w-6 h-1.5 bg-white/90"
+                      : "w-1.5 h-1.5 bg-white/50"
+                  }`} />
                 ))}
               </div>
             )}
@@ -189,7 +197,7 @@ export default function ToyDetail() {
         {/* Overlay buttons */}
         <div className="absolute top-3 left-3 z-10">
           <Link href="/search">
-            <OverlayBtn className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full">
+            <OverlayBtn className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
               <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
             </OverlayBtn>
           </Link>
@@ -198,11 +206,11 @@ export default function ToyDetail() {
         <div className="absolute top-3 right-3 flex gap-2 z-10">
           <OverlayBtn onClick={() => {
             navigator.clipboard.writeText(`${window.location.origin}/toy/${id}`).then(() => toast({ title: "Link copied!" }));
-          }} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full">
+          }} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
             <Share2 className="w-5 h-5 text-gray-900 dark:text-white" />
           </OverlayBtn>
           {!isOwner && (
-            <OverlayBtn onClick={() => favoriteMutation.mutate()} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full">
+            <OverlayBtn onClick={() => favoriteMutation.mutate()} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
               <Heart className={`w-5 h-5 ${(favoriteStatus as any)?.isFavorite ? "fill-red-500 text-red-500" : "text-gray-900 dark:text-white"}`} />
             </OverlayBtn>
           )}
@@ -222,10 +230,9 @@ export default function ToyDetail() {
         )}
       </div>
 
-      {/* Info content */}
-      <div className="px-4 pt-4 space-y-4">
-        {/* Title + chips */}
-        <SectionCard className="p-4 space-y-3">
+      {/* Info content - floating sheet */}
+      <div className="px-4 -mt-4 relative z-10">
+        <div className="rounded-2xl border bg-white/80 backdrop-blur-xl border-gray-200 dark:bg-gray-900/70 dark:border-white/10 shadow-sm p-5 space-y-3">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
             {(toy as any)?.name}
           </h1>
@@ -247,7 +254,7 @@ export default function ToyDetail() {
               )}
             </div>
           )}
-        </SectionCard>
+        </div>
 
         {/* Owner card */}
         <Link href={`/users/${(toy as any)?.ownerId}`}>
