@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { Search, Filter, Heart, MapPin, Star, ArrowLeft, Grid3X3, List } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { PageLoadingSkeleton } from "@/components/loading-skeletons";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
@@ -14,6 +13,14 @@ import BadgePill from "@/components/ui/BadgePill";
 import EmptyState from "@/components/ui/EmptyState";
 import ToyFeedCard from "@/components/toys/ToyFeedCard";
 import { apiRequest } from "@/lib/queryClient";
+import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
+
+function goToToy(toyId: number) {
+  if (typeof window !== "undefined" && window.scrollY > 0) {
+    sessionStorage.setItem("toyx_search_scroll", String(window.scrollY));
+  }
+  window.location.href = `/toy/${toyId}`;
+}
 
 export default function BrowsePage() {
   const { user } = useAuth();
@@ -101,6 +108,15 @@ export default function BrowsePage() {
   };
 
   const activeFiltersCount = [selectedCategory, selectedCondition, selectedDistance, selectedDateAdded].filter(f => f !== 'All').length;
+
+  // Restore scroll position when returning from toy detail
+  useEffect(() => {
+    const saved = sessionStorage.getItem("toyx_search_scroll");
+    if (saved) {
+      sessionStorage.removeItem("toyx_search_scroll");
+      requestAnimationFrame(() => window.scrollTo(0, parseInt(saved, 10)));
+    }
+  }, []);
 
   if (isLoading) {
     return <PageLoadingSkeleton />;
@@ -253,7 +269,7 @@ export default function BrowsePage() {
                       </div>
                     </div>
                     <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/toy/${toy.id}`; }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToToy(toy.id); }}
                       className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px]"
                     >
                       View Details
@@ -269,7 +285,7 @@ export default function BrowsePage() {
               <ToyFeedCard
                 key={toy.id}
                 toy={toy}
-                onOpen={() => window.location.href = `/toy/${toy.id}`}
+                onOpen={() => goToToy(toy.id)}
                 onToggleFavorite={() => favoriteMutation.mutate({ toyId: toy.id, isFavorited: toy.isFavorited || false })}
               />
             ))}
