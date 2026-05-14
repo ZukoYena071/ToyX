@@ -109,14 +109,16 @@ export default function BrowsePage() {
 
   const activeFiltersCount = [selectedCategory, selectedCondition, selectedDistance, selectedDateAdded].filter(f => f !== 'All').length;
 
-  // Restore scroll position when returning from toy detail
+  // Restore scroll position when returning from toy detail (after data loads so page is full height)
   useEffect(() => {
     const saved = sessionStorage.getItem("toyx_search_scroll");
-    if (saved) {
+    if (saved && !isLoading && filteredToys.length > 0) {
       sessionStorage.removeItem("toyx_search_scroll");
-      requestAnimationFrame(() => window.scrollTo(0, parseInt(saved, 10)));
+      const pos = parseInt(saved, 10);
+      // Small timeout to ensure layout is fully settled
+      setTimeout(() => window.scrollTo(0, pos), 50);
     }
-  }, []);
+  }, [isLoading, filteredToys]);
 
   if (isLoading) {
     return <PageLoadingSkeleton />;
