@@ -157,6 +157,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user profile
+  app.patch('/api/users/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const updateData = req.body;
+      if (updateData.profileImageUrl) {
+        updateData.profileImageUrl = updateData.profileImageUrl.replace(/^http:/, "https:");
+      }
+      const updatedUser = await storage.updateUser(userId, updateData);
+      if (updatedUser.profileImageUrl) {
+        updatedUser.profileImageUrl = updatedUser.profileImageUrl.replace(/^http:/, "https:");
+      }
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   app.get('/api/users/:id', async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
