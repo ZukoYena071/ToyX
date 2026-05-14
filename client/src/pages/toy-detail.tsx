@@ -159,13 +159,6 @@ export default function ToyDetail() {
   const rating = (ownerRating as any)?.rating || 0;
   const reviewCount = (ownerReviews as any)?.length || 0;
 
-  // Log TOY_VIEW once when toy loads
-  useEffect(() => {
-    if (toy && id && !isOwner) {
-      fetch("/api/interactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toyId: parseInt(id), eventType: "TOY_VIEW" }), credentials: "include" }).catch(() => {});
-    }
-  }, [toy, id, isOwner]);
-
   const OverlayBtn = ({ onClick, children, className }: any) => (
     <button onClick={onClick} className={`min-w-[44px] min-h-[44px] flex items-center justify-center ${className}`}>{children}</button>
   );
