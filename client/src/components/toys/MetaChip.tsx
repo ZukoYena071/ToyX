@@ -26,10 +26,10 @@ export function ChipRow({ ages, categories }: { ages: string[]; categories: stri
   return (
     <div data-testid="toy-meta-chips" className="flex flex-wrap gap-1.5">
       {ageToShow.map((a) => (
-        <MetaChip key={`age-${a}`} variant="age">Age {a}</MetaChip>
+        <MetaChip key={`age-${a}`} variant="age">Age: {a}</MetaChip>
       ))}
       {catToShow.map((c) => (
-        <MetaChip key={`cat-${c}`} variant="cat">Cat {c}</MetaChip>
+        <MetaChip key={`cat-${c}`} variant="cat">Cat: {c}</MetaChip>
       ))}
       {hiddenCount > 0 && <MetaChip variant="more">+{hiddenCount}</MetaChip>}
     </div>
