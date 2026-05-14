@@ -63,7 +63,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     category: toy?.category || "",
     ageGroup: toy?.ageGroup || "",
     condition: toy?.condition || "",
-    location: toy?.location || "",
+    location: toy?.location || (user as any)?.location || "",
   });
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationResults, setLocationResults] = useState<{ displayName: string; lat: number; lng: number }[]>([]);
@@ -180,7 +180,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     }
   };
 
-  const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition && images.length >= 1;
+  const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition && formData.location && images.length >= 1;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
