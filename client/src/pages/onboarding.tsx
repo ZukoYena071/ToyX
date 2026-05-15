@@ -67,9 +67,12 @@ export default function Onboarding() {
     }
   }, [step]);
 
-  const complete = () => {
-    localStorage.setItem("toyxOnboardingVersion", "2");
-    localStorage.removeItem("toyxOnboardingStep");
+  const complete = async () => {
+    try {
+      await fetch("/api/users/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboardingVersion: 2 }), credentials: "include" });
+    } catch {
+      // API failure shouldn't block the user
+    }
     window.location.href = "/";
   };
 
@@ -84,8 +87,7 @@ export default function Onboarding() {
       });
       const data = await res.json();
       if (data.authorizationUrl) {
-        localStorage.setItem("toyxOnboardingVersion", "2");
-        localStorage.removeItem("toyxOnboardingStep");
+        await fetch("/api/users/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboardingVersion: 2 }), credentials: "include" }).catch(() => {});
         window.location.href = data.authorizationUrl;
       } else {
         toast({

@@ -30,12 +30,12 @@ import LoadingLogo from "@/components/ui/LoadingLogo";
 import PrivacySafety from "@/pages/privacy-safety";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // Check if user has completed onboarding (versioned so future updates can re-run)
-  const hasCompletedOnboarding = localStorage.getItem('toyxOnboardingVersion') === '2';
+  // Check if user has completed onboarding from their profile
+  const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2;
 
   // Show loading screen while auth is loading
   if (isLoading) {
