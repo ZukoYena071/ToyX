@@ -376,11 +376,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toyData = insertToySchema.parse({ ...req.body, ownerId: userId });
       const toy = await storage.createToy(toyData);
       // Award quality listing points
-      const isQuality = (toyData.imageUrls?.length || 0) >= 2 && (toyData.description?.length || 0) >= 30;
-      if (isQuality && await checkDailyCap(userId, "TOY_LISTED", 5)) {
-        await awardPoints({ userId, eventType: "TOY_LISTED", referenceType: "toy", referenceId: String(toy.id), points: 5 });
+      const imagesCount = Array.isArray(toy.imageUrls) ? toy.imageUrls.filter(Boolean).length : 0;
+      const descLen = (toy.description ?? "").trim().length;
+      const qualifies = imagesCount >= 2 && descLen >= 30;
+      let awarded = false;
+      if (qualifies && await checkDailyCap(userId, "TOY_LISTED_QUALITY", 5)) {
+        const result = await awardPoints({ userId, eventType: "TOY_LISTED_QUALITY", referenceType: "toy", referenceId: String(toy.id), points: 5 });
+        awarded = result.awarded;
       }
-      res.status(201).json(toy);
+      res.status(201).json({
+        ...toy,
+        reward: { awarded, points: awarded ? 5 : 0, criteria: { minImagesForReward: 2, minDescriptionChars: 30 } },
+      });
     } catch (error) {
       if ((error as any).name === "ZodError") {
         return res.status(400).json({ code: "VALIDATION_ERROR", message: "Please add at least 1 photo before listing." });

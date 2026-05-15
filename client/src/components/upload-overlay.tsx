@@ -101,10 +101,16 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       if (toy) return await apiRequest("PATCH", `/api/toys/${toy.id}`, toyData);
       return await apiRequest("POST", "/api/toys", toyData);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/toys"] });
       if (user?.id) queryClient.invalidateQueries({ queryKey: ["/api/users", user.id, "toys"] });
-      toast({ title: toy ? "Toy updated!" : "Toy listed successfully!", description: toy ? "Your toy has been updated." : "Your toy is now available for exchange." });
+      const msg = toy ? "Your toy has been updated." : "Your toy is now available for exchange.";
+      toast({ title: toy ? "Toy updated!" : "Toy listed successfully!", description: msg });
+      if (data?.reward?.awarded) {
+        setTimeout(() => toast({ title: "Nice!", description: "You earned +5 points for a quality listing." }), 500);
+      } else if (!toy) {
+        setTimeout(() => toast({ title: "Tip", description: "Add 2 photos + a 30+ character description to earn +5 points next time." }), 1000);
+      }
       onClose();
     },
     onError: (error: any) => {
@@ -418,6 +424,42 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               </div>
             </div>
           </div>
+
+          {/* Quality reward checklist */}
+          {!toy && (
+            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">Earn +5 points for this listing</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${images.length >= 2 ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+                    {images.length >= 2 && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                  <span className={`text-xs ${images.length >= 2 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    Add 2 photos ({Math.min(images.length, 2)}/2)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${formData.description.trim().length >= 30 ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+                    {formData.description.trim().length >= 30 && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                  <span className={`text-xs ${formData.description.trim().length >= 30 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    Write 30+ characters ({Math.min(formData.description.trim().length, 30)}/30)
+                  </span>
+                </div>
+              </div>
+              {images.length >= 2 && formData.description.trim().length >= 30 ? (
+                <p className="text-xs font-medium text-green-600 dark:text-green-400">Ready to earn +5 points!</p>
+              ) : (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {images.length < 2 && formData.description.trim().length < 30
+                    ? "Add 1 more photo and more description to earn points."
+                    : images.length < 2
+                    ? "Add 1 more photo to earn points."
+                    : "Write more description to earn points."}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Bottom footer */}
           <div className="shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
