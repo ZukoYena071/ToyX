@@ -232,9 +232,12 @@ export default function BrowsePage() {
             {filteredToys.map((toy: any) => (
               <Link key={toy.id} href={`/toy/${toy.id}`}>
                 <SectionCard className="overflow-hidden p-0">
-                  <div className="aspect-square bg-gray-50 dark:bg-gray-800 relative">
+                  <div className="aspect-square bg-gray-50 dark:bg-gray-800 relative overflow-hidden">
                     {toy.imageUrls && toy.imageUrls[0] ? (
-                      <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 w-full h-full">
+                        <img src={toy.imageUrls[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60" />
+                        <img src={toy.imageUrls[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-contain" />
+                      </div>
                     ) : (
                       <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                         <span className="text-4xl">🧸</span>
