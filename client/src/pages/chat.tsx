@@ -50,6 +50,8 @@ export default function Chat() {
 
   useEffect(() => {
     if (exchangeId) markExchangeRead(parseInt(exchangeId));
+    // Invalidate exchanges list when leaving a conversation so unread indicators update
+    return () => { queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] }); };
   }, [exchangeId]);
 
   useWebSocket((data) => {
