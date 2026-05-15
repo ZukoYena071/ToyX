@@ -190,9 +190,9 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-gray-900 rounded-t-2xl shadow-lg animate-slide-up flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-gray-900 rounded-t-2xl shadow-lg animate-slide-up flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="bg-purple-500 rounded-t-2xl p-6">
+        <div className="bg-purple-500 rounded-t-2xl p-6 shrink-0">
           <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4" />
           <div className="flex items-center justify-between">
             <div>
@@ -206,8 +206,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto space-y-5 mb-4">
+        <div className="flex flex-col flex-1 min-h-0 p-6">
+          <div className="flex-1 overflow-y-auto space-y-5">
             {/* Photo Upload */}
             <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
 
