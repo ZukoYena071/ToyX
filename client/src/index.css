@@ -312,6 +312,12 @@ button:hover, .button:hover {
 }
 .toyx-pulse { animation: toyxPulse 1.2s ease-in-out infinite; }
 
+@keyframes toyxSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.toyx-spin { animation: toyxSpin 1.5s linear infinite; }
+
 .animate-toy-bounce {
   animation: toyBounce 2s infinite ease-in-out;
 }
