@@ -34,8 +34,8 @@ function Router() {
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // Check if user has completed onboarding from their profile
-  const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2;
+  // Check if user has completed onboarding from their profile (with localStorage fallback for migration)
+  const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2 || localStorage.getItem('toyxOnboardingVersion') === '2';
 
   // Show loading screen while auth is loading
   if (isLoading) {
