@@ -56,9 +56,13 @@ export default function Chat() {
 
   // Refetch exchanges list when returning (so list view has fresh data)
   const prevExchangeRef = useRef(exchangeId);
+  const [, forceUpdate] = useState(0);
   useEffect(() => {
     if (prevExchangeRef.current && !exchangeId) {
-      queryClient.refetchQueries({ queryKey: ["/api/exchanges"] });
+      // Mark as read and force refetch
+      markExchangeRead(parseInt(prevExchangeRef.current));
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
+      setTimeout(() => forceUpdate(n => n + 1), 100);
     }
     prevExchangeRef.current = exchangeId;
   }, [exchangeId]);
