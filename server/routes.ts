@@ -49,6 +49,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
+    // Reset onboarding (dev-only)
+    app.post("/api/dev/reset-onboarding", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        await storage.updateUser(userId, { onboardingVersion: 0 });
+        res.json({ ok: true });
+      } catch (e: any) {
+        res.status(500).json({ message: e.message });
+      }
+    });
+
     console.log("DEV_AUTH_BYPASS endpoints registered");
   }
 

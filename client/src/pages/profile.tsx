@@ -746,6 +746,21 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Dev: reset onboarding */}
+      {import.meta.env.DEV && (
+        <div className="px-4 mt-2 mb-6">
+          <button
+            onClick={async () => {
+              await fetch("/api/dev/reset-onboarding", { method: "POST", credentials: "include" });
+              window.location.href = "/";
+            }}
+            className="w-full text-xs text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl py-2 transition-colors"
+          >
+            Reset onboarding (dev)
+          </button>
+        </div>
+      )}
+
       {/* Edit Profile Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
