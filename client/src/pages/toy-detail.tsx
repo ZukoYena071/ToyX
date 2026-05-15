@@ -175,13 +175,14 @@ export default function ToyDetail() {
           <>
             <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar h-full">
               {imageUrls.map((url: string, i: number) => (
-                <div key={i} className="min-w-full snap-center h-full">
-                  <img src={url} alt={(toy as any)?.name} className="w-full h-full object-cover" loading="lazy" />
+                <div key={i} className="min-w-full snap-center h-full relative overflow-hidden">
+                  <img src={url} alt={(toy as any)?.name} className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60" loading="lazy" />
+                  <img src={url} alt={(toy as any)?.name} className="absolute inset-0 w-full h-full object-contain" loading="lazy" />
                 </div>
               ))}
             </div>
             {imageUrls.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/25 px-2 py-1 rounded-full backdrop-blur-sm">
                 {imageUrls.map((_: any, i: number) => (
                   <span key={i} className={`block rounded-full transition-all duration-200 shadow-sm ${
                     i === currentImageIndex
@@ -225,7 +226,7 @@ export default function ToyDetail() {
         )}
 
         {(toy as any)?.location && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10">
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 max-w-[55%] truncate whitespace-nowrap">
             <MapPin className="w-3 h-3" />
             <span className="truncate max-w-[160px]">{(toy as any)?.location}</span>
           </div>
