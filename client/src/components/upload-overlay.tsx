@@ -75,6 +75,12 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const [detectedLocation, setDetectedLocation] = useState<string>("");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
+  // Lock body scroll while overlay is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   useEffect(() => {
     if (latitude && longitude) {
       setIsDetectingLocation(true);

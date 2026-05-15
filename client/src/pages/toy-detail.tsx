@@ -30,6 +30,17 @@ export default function ToyDetail() {
   const [descExpanded, setDescExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Lock body scroll when any modal is open
+  const anyModalOpen = showRequestModal || showMessageModal || showToySelectionModal || limitModal;
+  useEffect(() => {
+    if (anyModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [anyModalOpen]);
+
   const { data: toy, isLoading, error } = useQuery({
     queryKey: ["/api/toys", id],
     enabled: !!id,
