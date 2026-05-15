@@ -70,9 +70,8 @@ export default function Onboarding() {
   const complete = async () => {
     try {
       await fetch("/api/users/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboardingVersion: 2 }), credentials: "include" });
-    } catch {
-      // API failure shouldn't block the user
-    }
+    } catch {}
+    localStorage.removeItem("toyxOnboardingStep");
     window.location.href = "/";
   };
 
@@ -88,6 +87,7 @@ export default function Onboarding() {
       const data = await res.json();
       if (data.authorizationUrl) {
         await fetch("/api/users/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboardingVersion: 2 }), credentials: "include" }).catch(() => {});
+        localStorage.removeItem("toyxOnboardingStep");
         window.location.href = data.authorizationUrl;
       } else {
         toast({
