@@ -32,7 +32,7 @@ export default function BrowsePage() {
   const [selectedDateAdded, setSelectedDateAdded] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
-    return (localStorage.getItem('search-view-mode') as 'grid' | 'list') || 'grid';
+    return (localStorage.getItem('search-view-mode') as 'grid' | 'list') || 'list';
   });
 
   useEffect(() => {
