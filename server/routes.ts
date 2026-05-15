@@ -448,7 +448,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const exchanges = await storage.getExchanges(userId);
-      res.json(exchanges);
+      // Add hasUnread for each exchange
+      const withUnread = exchanges.map((ex: any) => {
+        const lastRead = ex.requesterId === userId ? ex.requesterLastReadAt : ex.ownerLastReadAt;
+        const lastMsg = ex.messages?.[ex.messages.length - 1];
+        const hasUnread = lastMsg && lastMsg.senderId !== userId && (!lastRead || new Date(lastMsg.createdAt) > new Date(lastRead));
+        return { ...ex, hasUnread: !!hasUnread };
+      });
+      res.json(withUnread);
     } catch (error) {
       console.error("Error fetching exchanges:", error);
       res.status(500).json({ message: "Failed to fetch exchanges" });
@@ -526,7 +533,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             content: exchangeData.requestMessage.trim(),
             messageType: "text"
           });
-          const message = await storage.createMessage(messageData);
+            const message = await storage.createMessage(messageData);
+            // Mark requester as read
+            await storage.markExchangeRead(exchange.id, userId).catch(() => {});
           console.log("Initial message created:", message);
         } catch (messageError) {
           console.error("Failed to create initial message:", messageError);
@@ -598,6 +607,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Mark exchange as read
+  app.post('/api/exchanges/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const exchangeId = parseInt(req.params.id);
+      await storage.markExchangeRead(exchangeId, userId);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error marking exchange read:", error);
+      res.status(500).json({ message: "Failed to mark exchange read" });
     }
   });
 

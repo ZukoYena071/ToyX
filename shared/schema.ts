@@ -84,6 +84,8 @@ export const exchanges = pgTable("exchanges", {
   requestMessage: text("request_message"),
   requesterConfirmed: boolean("requester_confirmed").default(false),
   ownerConfirmed: boolean("owner_confirmed").default(false),
+  requesterLastReadAt: timestamp("requester_last_read_at"),
+  ownerLastReadAt: timestamp("owner_last_read_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

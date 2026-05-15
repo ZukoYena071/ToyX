@@ -50,19 +50,18 @@ export default function Chat() {
 
   useEffect(() => {
     if (exchangeId) {
-      markExchangeRead(parseInt(exchangeId));
+      const eid = parseInt(exchangeId);
+      markExchangeRead(eid);
+      // Also mark read server-side so hasUnread updates on refetch
+      fetch(`/api/exchanges/${eid}/read`, { method: "POST", credentials: "include" }).catch(() => {});
     }
   }, [exchangeId]);
 
-  // Refetch exchanges list when returning (so list view has fresh data)
+  // Refetch exchanges list when returning to refresh indicators
   const prevExchangeRef = useRef(exchangeId);
-  const [, forceUpdate] = useState(0);
   useEffect(() => {
     if (prevExchangeRef.current && !exchangeId) {
-      // Mark as read and force refetch
-      markExchangeRead(parseInt(prevExchangeRef.current));
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
-      setTimeout(() => forceUpdate(n => n + 1), 100);
     }
     prevExchangeRef.current = exchangeId;
   }, [exchangeId]);
@@ -159,8 +158,8 @@ export default function Chat() {
           ) : (
             <div className="space-y-3">
               {[...(exchanges || [])].sort((a, b) => {
-                const aUnread = isExchangeUnread(a, (user as any)?.id) ? 1 : 0;
-                const bUnread = isExchangeUnread(b, (user as any)?.id) ? 1 : 0;
+                const aUnread = (a as any).hasUnread ? 1 : 0;
+                const bUnread = (b as any).hasUnread ? 1 : 0;
                 if (aUnread !== bUnread) return bUnread - aUnread;
                 const aTime = a.messages?.length ? new Date(a.messages[a.messages.length - 1].createdAt).getTime() : new Date(a.createdAt).getTime();
                 const bTime = b.messages?.length ? new Date(b.messages[b.messages.length - 1].createdAt).getTime() : new Date(b.createdAt).getTime();
@@ -177,7 +176,7 @@ export default function Chat() {
                           <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
                             <span className="text-white font-bold">{otherUser.firstName?.[0] || otherUser.email?.[0] || 'U'}</span>
                           </div>
-                          {isExchangeUnread(exchange, (user as any)?.id) && (
+                          {(exchange as any).hasUnread && (
                             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900" />
                           )}
                         </div>
