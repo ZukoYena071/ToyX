@@ -49,9 +49,18 @@ export default function Chat() {
   });
 
   useEffect(() => {
-    if (exchangeId) markExchangeRead(parseInt(exchangeId));
-    // Invalidate exchanges list when leaving a conversation so unread indicators update
-    return () => { queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] }); };
+    if (exchangeId) {
+      markExchangeRead(parseInt(exchangeId));
+    }
+  }, [exchangeId]);
+
+  // Refetch exchanges list when returning (so list view has fresh data)
+  const prevExchangeRef = useRef(exchangeId);
+  useEffect(() => {
+    if (prevExchangeRef.current && !exchangeId) {
+      queryClient.refetchQueries({ queryKey: ["/api/exchanges"] });
+    }
+    prevExchangeRef.current = exchangeId;
   }, [exchangeId]);
 
   useWebSocket((data) => {
