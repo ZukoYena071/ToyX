@@ -70,9 +70,12 @@ export default function Onboarding() {
   const complete = async () => {
     try {
       await fetch("/api/users/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboardingVersion: 2 }), credentials: "include" });
-    } catch {}
+    } catch (e) {
+      console.warn("onboarding PATCH failed, but continuing:", e);
+    }
     localStorage.removeItem("toyxOnboardingStep");
-    window.location.href = "/";
+    // Use a timeout to ensure the PATCH has time to persist before navigating
+    setTimeout(() => { window.location.href = "/"; }, 100);
   };
 
   const handlePremium = async (planType: "monthly" | "yearly") => {
