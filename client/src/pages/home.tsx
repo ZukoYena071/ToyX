@@ -108,10 +108,10 @@ export default function HomePage() {
     <PageContainer className="pb-24">
       {/* Sticky header */}
       <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between px-4 py-3">
-          <img src={toyxLogo} alt="ToyX" className="h-12 w-auto dark:brightness-0 dark:invert" />
+        <div className="flex items-center justify-between px-4 py-2">
+          <img src={toyxLogo} alt="ToyX" className="h-20 w-auto dark:brightness-0 dark:invert drop-shadow-sm" />
           <Link href="/profile">
-            <Avatar className="w-8 h-8 cursor-pointer">
+            <Avatar className="w-9 h-9 cursor-pointer">
               <AvatarImage src={u?.profileImageUrl || undefined} />
               <AvatarFallback className="bg-purple-500 text-white text-sm">
                 {u?.firstName?.[0] || u?.email?.[0] || 'U'}
