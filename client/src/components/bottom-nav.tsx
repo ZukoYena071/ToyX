@@ -21,16 +21,14 @@ export default function BottomNav() {
 
   useEffect(() => {
     if (!(user as any)?.id) return;
-    fetch("/api/exchanges", { credentials: "include" })
-      .then(r => r.json())
-      .then(data => setUnreadCount(getUnreadExchanges(data, (user as any).id)))
-      .catch(() => {});
-    const interval = setInterval(() => {
+    const fetchCount = () => {
       fetch("/api/exchanges", { credentials: "include" })
         .then(r => r.json())
         .then(data => setUnreadCount(getUnreadExchanges(data, (user as any).id)))
         .catch(() => {});
-    }, 15000);
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -44,8 +42,8 @@ export default function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 py-2 max-w-lg mx-auto z-50 pb-[env(safe-area-inset-bottom)]">
-        <div className="flex items-center justify-around">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-950/70 backdrop-blur-xl border-t border-gray-200/70 dark:border-white/10 px-4 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex items-center justify-around max-w-lg mx-auto">
           {navItems.map((item) => {
             const isActive = location === item.path;
             const Icon = item.icon;
@@ -53,39 +51,41 @@ export default function BottomNav() {
             return (
               <button
                 key={item.path + item.label}
-                className="flex flex-col items-center gap-1 py-1 min-h-[44px] min-w-[44px]"
+                className="flex flex-col items-center justify-center gap-1 py-2 min-w-0 relative"
                 onClick={() => handleNavClick(item)}
                 data-onboarding={item.onboarding}
               >
                 {item.action === "upload" ? (
-                  <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center shadow-sm">
-                    <Icon className="text-white w-5 h-5" />
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25 flex items-center justify-center -translate-y-3">
+                    <Icon className="w-6 h-6" />
                   </div>
                 ) : (
-                  <div className="relative">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 ${
-                      isActive
-                        ? "bg-purple-500"
-                        : "bg-gray-100 dark:bg-gray-800"
+                  <>
+                    <div className={`rounded-xl px-3 py-2 transition-colors duration-150 ${
+                      isActive ? "bg-purple-500/15 dark:bg-purple-400/15" : ""
                     }`}>
-                      <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400 dark:text-gray-500"}`} />
+                      <Icon className={`w-5 h-5 transition-colors duration-150 ${
+                        isActive ? "text-purple-600 dark:text-purple-300" : "text-gray-500 dark:text-gray-400"
+                      }`} />
                     </div>
                     {item.icon === MessageCircle && unreadCount > 0 && (
-                      <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center px-1">
+                      <div className="absolute top-1 right-1/2 -translate-x-1/2 ml-6 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center px-1">
                         <span className="text-white text-[10px] font-bold leading-none">
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
-                <span className={`text-[10px] leading-none transition-colors duration-150 ${
-                  isActive
-                    ? "font-medium text-purple-500"
-                    : "text-gray-400 dark:text-gray-500"
-                }`}>
-                  {item.label}
-                </span>
+                {item.action !== "upload" && (
+                  <span className={`text-[11px] leading-none transition-colors duration-150 ${
+                    isActive
+                      ? "font-semibold text-purple-600 dark:text-purple-300"
+                      : "text-gray-500 dark:text-gray-400"
+                  }`}>
+                    {item.label}
+                  </span>
+                )}
               </button>
             );
           })}

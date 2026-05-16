@@ -108,21 +108,16 @@ export default function HomePage() {
     <PageContainer className="pb-24">
       {/* Sticky header */}
       <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between px-4 py-2">
-          <img src={toyxLogo} alt="ToyX" className="h-14 w-auto dark:brightness-0 dark:invert" />
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowUpload(true)} className="min-w-[44px] min-h-[44px] bg-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-600 transition-colors shadow-sm">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-            </button>
-            <Link href="/profile">
-              <Avatar className="w-8 h-8 cursor-pointer">
-                <AvatarImage src={u?.profileImageUrl || undefined} />
-                <AvatarFallback className="bg-purple-500 text-white text-sm">
-                  {u?.firstName?.[0] || u?.email?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-          </div>
+        <div className="flex items-center justify-between px-4 py-3">
+          <img src={toyxLogo} alt="ToyX" className="h-12 w-auto dark:brightness-0 dark:invert" />
+          <Link href="/profile">
+            <Avatar className="w-8 h-8 cursor-pointer">
+              <AvatarImage src={u?.profileImageUrl || undefined} />
+              <AvatarFallback className="bg-purple-500 text-white text-sm">
+                {u?.firstName?.[0] || u?.email?.[0] || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
         </div>
       </div>
 
