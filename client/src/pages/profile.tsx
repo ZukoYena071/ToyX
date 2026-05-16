@@ -96,6 +96,24 @@ export default function Profile() {
     setTheme(isDarkMode ? 'light' : 'dark');
   };
 
+  const toggleLocation = () => {
+    const newVal = !locationEnabled;
+    setLocationEnabled(newVal);
+    if (!newVal) {
+      fetch("/api/users/location", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: false }), credentials: "include" }).catch(() => {});
+    } else {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          fetch("/api/users/location", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: true, latitude: pos.coords.latitude, longitude: pos.coords.longitude }), credentials: "include" }).catch(() => {});
+        },
+        () => {
+          setLocationEnabled(false);
+          toast({ title: "Location Error", description: "Couldn't access location. Check browser permissions.", variant: "destructive" });
+        }
+      );
+    }
+  };
+
   const { data: userToys } = useQuery({
     queryKey: ["/api/users", (user as any)?.id, "toys"],
     enabled: !!user,
@@ -473,7 +491,7 @@ export default function Profile() {
               icon={<div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center"><MapPin className="text-green-500 w-5 h-5" /></div>}
               title="Location Services"
               subtitle="Find toys near you"
-              right={<ToggleSwitch enabled={locationEnabled} onToggle={() => setLocationEnabled(!locationEnabled)} />}
+              right={<ToggleSwitch enabled={locationEnabled} onToggle={toggleLocation} />}
             />
             <ListItemRow
               icon={

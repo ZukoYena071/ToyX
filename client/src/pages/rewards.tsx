@@ -1,7 +1,8 @@
 import { Link } from "wouter";
-import { ArrowLeft, Coins, Gift, Zap, Plus, Star, Trophy } from "lucide-react";
+import { ArrowLeft, Coins, Gift, Zap, Plus, Star, Trophy, HelpCircle, Camera, RefreshCw, MessageSquare, Star as StarIcon, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +12,14 @@ import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import LimitMeter from "@/components/ui/LimitMeter";
+
+const EARNING_RULES = [
+  { icon: Camera, label: "List a quality toy", desc: "Include 2+ photos and a description (30+ chars)", points: 5, note: "Once daily" },
+  { icon: RefreshCw, label: "Complete an exchange", desc: "Successfully swap toys with another parent", points: 50, note: "Per exchange" },
+  { icon: MessageSquare, label: "Leave a review", desc: "Review your exchange partner afterward", points: 10, note: "Per review" },
+  { icon: StarIcon, label: "Receive a 5-star review", desc: "Your exchange partner rates you 5 stars", points: 10, note: "Per rating" },
+  { icon: Users, label: "Refer a friend", desc: "Friend completes their first exchange", points: 200, note: "Per referral" },
+];
 
 const REWARDS = [
   { key: "BOOST_LISTING_48H", label: "Boost Listing 48h", desc: "Feature your toy for 48 hours", cost: 300, icon: Zap },
@@ -85,6 +94,40 @@ export default function Rewards() {
                 <div className="text-xs opacity-60 mt-1">Lifetime: {rewardData?.pointsLifetime || 0} pts</div>
               </div>
             </div>
+
+            {/* How to earn points */}
+            <SectionCard>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">How to Earn Points</h3>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                      <HelpCircle className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-[220px] text-xs">
+                    Points never expire. Redeem them for rewards in the store below.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="space-y-3">
+                {EARNING_RULES.map((rule) => (
+                  <div key={rule.label} className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center shrink-0">
+                      <rule.icon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-50">{rule.label}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{rule.desc}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-bold text-green-500">+{rule.points}</div>
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500">{rule.note}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
 
             {rewardData?.entitlements && (
               <SectionCard>

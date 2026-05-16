@@ -120,6 +120,14 @@ async function mockApi(page: Page) {
   await page.route("**/api/exchanges", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
   });
+  await page.route("**/api/recommendations/home", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      forYou: MOCK_TOYS.slice(0, 2),
+      nearYou: MOCK_TOYS.slice(0, 3),
+      recentlyAdded: MOCK_TOYS,
+      meta: { usedLocation: false, radiusKm: 20, topAges: ["3-5", "5-8", "8+"], topCategories: ["Building", "Dolls"] },
+    }) });
+  });
 }
 
 test.describe("Visual regression — light mode", () => {

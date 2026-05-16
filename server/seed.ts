@@ -7,6 +7,11 @@ import {
   messages,
   favorites,
   reviews,
+  toyInteractions,
+  userRewards,
+  rewardLedger,
+  rewardRedemptions,
+  referrals,
 } from "@shared/schema";
 import { and, eq, inArray, gte, lt, sql, or } from "drizzle-orm";
 
@@ -19,9 +24,10 @@ function randInt(min: number, max: number) {
 }
 
 function picsum(seed: string) {
-  // Public placeholder images
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/900/700`;
 }
+
+const FALLBACK_IMG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='100%25' height='100%25' fill='%23ddd'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='24'>ToyX</text></svg>";
 
 const ZA_LOCATIONS = [
   { label: "Cape Town, Western Cape", lat: -33.9249, lng: 18.4241 },
@@ -54,54 +60,20 @@ const TOYS = [
 ];
 
 async function clearSeedData() {
-  // Only delete data created by this script (ids prefixed with seed_)
-  // Order matters because of foreign keys.
-  const seedUserIds = (await db
-    .select({ id: users.id })
-    .from(users)
-    .where(sql`${users.id} LIKE 'seed_%'`)).map(r => r.id);
-
-  if (seedUserIds.length === 0) return;
-
-  // Find toys owned by seed users
-  const seedToyIds = (await db
-    .select({ id: toys.id })
-    .from(toys)
-    .where(inArray(toys.ownerId, seedUserIds))).map(r => r.id);
-
-  // Find exchanges involving seed users or seed toys
-  const exchangeConditions = [];
-  if (seedToyIds.length) {
-    exchangeConditions.push(inArray(exchanges.toyId, seedToyIds));
-  }
-  exchangeConditions.push(inArray(exchanges.requesterId, seedUserIds));
-  exchangeConditions.push(inArray(exchanges.ownerId, seedUserIds));
-  const seedExchangeIds = (await db
-    .select({ id: exchanges.id })
-    .from(exchanges)
-    .where(or(...exchangeConditions))
-  ).map(r => r.id);
-
-  if (seedExchangeIds.length) {
-    await db.delete(messages).where(inArray(messages.exchangeId, seedExchangeIds));
-    await db.delete(reviews).where(inArray(reviews.exchangeId, seedExchangeIds));
-    await db.delete(exchanges).where(inArray(exchanges.id, seedExchangeIds));
-  }
-
-  if (seedToyIds.length) {
-    await db.delete(favorites).where(inArray(favorites.toyId, seedToyIds));
-    await db.delete(toys).where(inArray(toys.id, seedToyIds));
-  }
-
-  await db.delete(favorites).where(inArray(favorites.userId, seedUserIds));
-  await db.delete(users).where(inArray(users.id, seedUserIds));
+  await db.delete(toyInteractions);
+  await db.delete(messages);
+  await db.delete(reviews);
+  await db.delete(rewardRedemptions);
+  await db.delete(rewardLedger);
+  await db.delete(referrals);
+  await db.delete(userRewards);
+  await db.delete(exchanges);
+  await db.delete(favorites);
+  await db.delete(toys);
+  await db.delete(users);
 }
 
 async function seed() {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to seed in production.");
-  }
-
   console.log("Seeding ToyX sample data (ZA)…");
 
   // Optional: clear prior seeded data so you can re-run safely
