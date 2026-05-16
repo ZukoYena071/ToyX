@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Camera, X, Trash2, MapPin, Loader2, Navigation, Check, ChevronDown, Search } from "lucide-react";
 import { searchLocations } from "@/lib/location";
 import { fileToCompressedDataUrl } from "@/lib/imageCompression";
+import { sha256OfFile } from "@/lib/fileHash";
 import { insertToySchema } from "@shared/schema";
 
 interface UploadOverlayProps {
@@ -58,6 +59,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>(toy?.imageUrls || []);
+  const [imageHashes, setImageHashes] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: toy?.name || "",
     description: toy?.description || "",
@@ -132,20 +134,37 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       return;
     }
     setCompressing(true);
+    const existingHashes = new Set(imageHashes);
+    const localSeen = new Set<string>();
+    const newUrls: string[] = [];
+    const newHashes: string[] = [];
     for (const file of Array.from(files)) {
+      const hash = await sha256OfFile(file);
+      if (existingHashes.has(hash) || localSeen.has(hash)) {
+        toast({ title: "Duplicate image", description: "This photo is already added." });
+        continue;
+      }
+      localSeen.add(hash);
       try {
         const dataUrl = await fileToCompressedDataUrl(file);
-        setImages(prev => [...prev, dataUrl]);
+        newUrls.push(dataUrl);
+        newHashes.push(hash);
       } catch {
         toast({ title: "Photo too large", description: "That photo is too large. Please choose a smaller one.", variant: "destructive" });
       }
     }
+    if (newUrls.length) {
+      setImages(prev => [...prev, ...newUrls]);
+      setImageHashes(prev => [...prev, ...newHashes]);
+    }
     setCompressing(false);
-    // Reset the input so the same file can be selected again
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (event.target) event.target.value = "";
   };
 
-  const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setImageHashes(prev => prev.filter((_, i) => i !== index));
+  };
 
   const toggleCategory = (cat: string) => {
     const current = formData.category ? formData.category.split(", ") : [];
