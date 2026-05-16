@@ -25,52 +25,55 @@ export default function Welcome() {
   const [, setLocation] = useLocation();
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 px-4 pt-10 pb-10 flex flex-col">
-      <div className="max-w-md mx-auto w-full flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-gray-950 px-4 pt-10 pb-[calc(24px+env(safe-area-inset-bottom))]">
+      <div className="max-w-md mx-auto">
         {/* Logo */}
-        <div className="text-center mb-4">
-          <img src={toyxLogo} alt="ToyX" className="h-16 w-auto mx-auto mb-4 drop-shadow-sm" />
-          <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 tracking-wide">
-            Welcome to ToyX!
-          </p>
-        </div>
+        <img src={toyxLogo} alt="ToyX" className="h-9 w-auto mx-auto mt-6" />
 
-        {/* Headline */}
-        <h1 className="text-4xl font-extrabold leading-tight text-gray-900 dark:text-gray-50 text-center mb-6">
+        {/* Accent line */}
+        <p className="mt-6 text-sm font-semibold text-purple-600 dark:text-purple-400 text-center">
+          Welcome to ToyX!
+        </p>
+
+        {/* Main headline */}
+        <h1 className="mt-3 text-4xl font-extrabold leading-tight text-gray-900 dark:text-gray-50 text-center">
           Share toys,<br /> spread joy
         </h1>
 
         {/* Hero image */}
-        <div className="w-full rounded-3xl overflow-hidden shadow-sm mb-6">
-          <img src={heroLight} alt="ToyX app preview" className="w-full h-auto" />
+        <div className="mt-8 w-full max-w-md mx-auto p-6 rounded-3xl border border-gray-200/70 shadow-sm">
+          <img src={heroLight} alt="ToyX app preview" className="w-full h-auto rounded-xl" />
         </div>
 
-        {/* Feature list card */}
-        <div className="rounded-3xl bg-white/80 dark:bg-gray-900/60 border border-gray-200/60 dark:border-white/10 shadow-sm backdrop-blur-sm p-2 mb-6">
+        {/* Feature list grouped card */}
+        <div className="mt-6 rounded-3xl border border-gray-200/70 bg-white shadow-sm overflow-hidden">
           {FEATURES.map((f, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-              {f.icon}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">{f.title}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{f.desc}</p>
+            <div key={i}>
+              {i > 0 && <div className="border-t border-gray-200/70 mx-4" />}
+              <div className="flex items-start gap-3 px-4 py-4">
+                {f.icon}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50">{f.title}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-snug mt-0.5">{f.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
               </div>
-              <ChevronRight className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
             </div>
           ))}
         </div>
 
-        {/* CTA */}
+        {/* CTA button */}
         <button
           onClick={() => setLocation("/signup")}
-          className="w-full h-14 rounded-2xl bg-[color:var(--toyx-welcome-cta)] text-slate-900 text-base font-semibold shadow-sm hover:brightness-95 active:brightness-90 transition-all"
+          className="mt-6 w-full h-14 rounded-2xl bg-[color:var(--toyx-welcome-cta)] text-slate-900 text-base font-semibold shadow-sm active:brightness-95 hover:brightness-95 transition-all"
         >
           Get Started with ToyX
         </button>
 
-        {/* Secondary */}
+        {/* Log in */}
         <div className="text-center mt-4">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Already have an account? </span>
-          <button onClick={() => setLocation("/login")} className="text-sm font-semibold text-purple-500 hover:text-purple-600">
+          <span className="text-sm text-gray-600 dark:text-gray-400">Already have an account? </span>
+          <button onClick={() => setLocation("/login")} className="text-sm font-semibold text-purple-600 hover:text-purple-700">
             Log in
           </button>
         </div>
