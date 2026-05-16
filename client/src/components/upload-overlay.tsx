@@ -141,6 +141,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       }
     }
     setCompressing(false);
+    // Reset the input so the same file can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
