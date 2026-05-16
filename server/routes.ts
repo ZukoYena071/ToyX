@@ -9,6 +9,7 @@ import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards } from "./rewards";
+import { haversineKm } from "./utils/distance";
 
 async function getPremiumStatus(userId: string) {
   const e = await computeEntitlements(userId);
@@ -328,6 +329,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         ).limit(1);
         toy.inExchange = activeEx.length > 0;
+      }
+      
+      // Compute distance from viewer if location is enabled
+      const viewer = uid ? await storage.getUser(uid) : null;
+      if (viewer?.locationEnabled && viewer.latitude != null && viewer.longitude != null) {
+        for (const toy of toys) {
+          if (toy.latitude != null && toy.longitude != null) {
+            toy.distanceKm = haversineKm(viewer.latitude, viewer.longitude, toy.latitude, toy.longitude);
+          }
+        }
       }
       
       res.json(toys);
