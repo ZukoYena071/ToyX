@@ -34,6 +34,9 @@
   --ring: hsl(230, 90%, 50%);
   --radius: 1rem;
   
+  /* Welcome screen CTA color — jersey hex from Concept B */
+  --toyx-welcome-cta: #A6E3D5;
+  
   /* ToyX Brand Colors - Exact from mockups */
   --peach: hsl(25, 100%, 78%);      /* #FFC88B */
   --mint: hsl(165, 73%, 77%);       /* #B9F0E4 */
