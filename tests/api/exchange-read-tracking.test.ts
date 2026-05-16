@@ -37,16 +37,6 @@ describe("Exchange read tracking", () => {
     }
     toyId = toyRes.body.id;
   });
-      name: "Trade Toy",
-      category: "Blocks",
-      ageGroup: "3-5",
-      condition: "New",
-      imageUrls: ["data:image/svg+xml,<svg></svg>"],
-      description: "A toy for testing exchange read tracking.",
-    });
-    expect(toyRes.status).toBe(201);
-    toyId = toyRes.body.id;
-  });
 
   it("creates an exchange from requester to owner", async () => {
     await agent.get("/api/dev/login/seed_user_2");

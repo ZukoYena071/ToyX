@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Camera, X, Trash2, MapPin, Loader2, Navigation, Check, ChevronDown, Search } from "lucide-react";
 import { searchLocations } from "@/lib/location";
+import { fileToCompressedDataUrl } from "@/lib/imageCompression";
 import { insertToySchema } from "@shared/schema";
 
 interface UploadOverlayProps {
@@ -74,6 +75,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const { latitude, longitude, error: locationError, loading: locationLoading, requestLocation } = useGeolocation();
   const [detectedLocation, setDetectedLocation] = useState<string>("");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+  const MAX_IMAGES = 6;
 
   // Lock body scroll while overlay is open
   useEffect(() => {
@@ -121,15 +124,23 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     },
   });
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => { const result = e.target?.result as string; setImages(prev => [...prev, result]); };
-        reader.readAsDataURL(file);
-      });
+    if (!files) return;
+    if (images.length + files.length > MAX_IMAGES) {
+      toast({ title: "Too many photos", description: `Maximum ${MAX_IMAGES} photos allowed.`, variant: "destructive" });
+      return;
     }
+    setCompressing(true);
+    for (const file of Array.from(files)) {
+      try {
+        const dataUrl = await fileToCompressedDataUrl(file);
+        setImages(prev => [...prev, dataUrl]);
+      } catch {
+        toast({ title: "Photo too large", description: "That photo is too large. Please choose a smaller one.", variant: "destructive" });
+      }
+    }
+    setCompressing(false);
   };
 
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
@@ -174,6 +185,11 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     } else {
       if (images.length < 1) {
         toast({ title: "Photo required", description: "Please add at least 1 photo before listing.", variant: "destructive" });
+        return;
+      }
+      const totalChars = images.reduce((s, u) => s + u.length, 0);
+      if (totalChars > 8_000_000) {
+        toast({ title: "Photos too large", description: "Too many/too large photos. Please remove one or choose smaller photos.", variant: "destructive" });
         return;
       }
       try {
@@ -251,10 +267,19 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
                   )}
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all" onClick={() => fileInputRef.current?.click()}>
-                  <Camera className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Add your toy photos</p>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Tap to choose from gallery</p>
+                <div className="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all" onClick={() => !compressing && fileInputRef.current?.click()}>
+                  {compressing ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="w-8 h-8 text-purple-500 animate-spin mb-2" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Compressing...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Camera className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Add your toy photos</p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Tap to choose from gallery</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -373,6 +373,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
+      const body = req.body;
+      const imgs = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+      if (imgs.length > 6) {
+        return res.status(400).json({ code: "TOO_MANY_IMAGES", message: "Maximum 6 photos allowed." });
+      }
+      for (const url of imgs) {
+        if (typeof url !== "string" || !url.startsWith("data:image/")) {
+          return res.status(400).json({ code: "INVALID_IMAGE", message: "Invalid image format." });
+        }
+        if (url.length > 1_200_000) {
+          return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "One or more photos exceed the size limit." });
+        }
+      }
+      const totalChars = imgs.reduce((s: number, u: string) => s + u.length, 0);
+      if (totalChars > 8_000_000) {
+        return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "Photos are too large. Please upload fewer or smaller photos." });
+      }
       const toyData = insertToySchema.parse({ ...req.body, ownerId: userId });
       const toy = await storage.createToy(toyData);
       // Award quality listing points
