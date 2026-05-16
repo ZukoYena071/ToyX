@@ -49,8 +49,9 @@ export default function HomePage() {
             credentials: "include",
           });
           toast({ title: "Location enabled", description: "Now you can see how far toys are." });
-          queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/toys"] });
+          queryClient.refetchQueries({ queryKey: ["/api/auth/user"] }).then(() => {
+            queryClient.refetchQueries({ queryKey: ["/api/toys"] });
+          });
         } catch { toast({ title: "Error", description: "Failed to save location.", variant: "destructive" }); }
         setEnablingLoc(false);
       },
