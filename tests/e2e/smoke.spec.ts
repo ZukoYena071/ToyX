@@ -1,14 +1,11 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  // Complete onboarding
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.setItem("toyxOnboardingVersion", "2");
-  });
-
   // Dev login via API
+  await page.goto("/");
   await page.request.get("/api/dev/login/seed_user_1");
+  // Mark onboarding complete via API
+  await page.request.patch("/api/users/profile", { data: { onboardingVersion: 2 } });
 });
 
 test("Pricing page shows plans with ZAR pricing", async ({ page }) => {

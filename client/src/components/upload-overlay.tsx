@@ -75,6 +75,12 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const [detectedLocation, setDetectedLocation] = useState<string>("");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
+  // Lock body scroll while overlay is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   useEffect(() => {
     if (latitude && longitude) {
       setIsDetectingLocation(true);
@@ -183,25 +189,24 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition && formData.location && images.length >= 1;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-gray-900 rounded-t-2xl shadow-lg animate-slide-up">
+    <div className="fixed inset-0 z-[100] h-[100dvh] w-full bg-black/50 flex flex-col">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-gray-900 flex flex-col h-full">
         {/* Header */}
-        <div className="bg-purple-500 rounded-t-2xl p-6">
-          <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4" />
-          <div className="flex items-center justify-between">
+        <div className="bg-purple-500 shrink-0">
+          <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mt-3 mb-3" />
+          <div className="flex items-center justify-between px-6 pb-4">
             <div>
               <h2 className="text-lg font-bold text-white mb-1">{toy ? "Edit Toy" : "List a Toy"}</h2>
               <p className="text-sm text-purple-100">{toy ? "Update your toy listing" : "Share your toy with the community"}</p>
             </div>
-            <button onClick={onClose} className="min-w-[44px] min-h-[44px] bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors">
+            <button onClick={onClose} className="min-w-[44px] min-h-[44px] bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors shrink-0">
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          <div className="space-y-5 mb-6 max-h-96 overflow-y-auto">
+        {/* Scrollable form body */}
+        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5">
             {/* Photo Upload */}
             <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
 
@@ -414,8 +419,9 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
             </div>
           </div>
 
-          {/* Bottom Actions */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+          {/* Bottom footer */}
+          <div className="shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
               Cancel
             </button>

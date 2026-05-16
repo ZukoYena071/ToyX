@@ -47,6 +47,7 @@ export const users = pgTable("users", {
   showEmail: boolean("show_email").default(true),
   showPhone: boolean("show_phone").default(false),
   messagePrivacy: varchar("message_privacy", { length: 20 }).default("everyone"),
+  onboardingVersion: integer("onboarding_version").default(0),
   latitude: real("latitude"),
   longitude: real("longitude"),
   locationEnabled: boolean("location_enabled").default(false),

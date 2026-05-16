@@ -67,10 +67,15 @@ export default function Onboarding() {
     }
   }, [step]);
 
-  const complete = () => {
-    localStorage.setItem("toyxOnboardingVersion", "2");
+  const complete = async () => {
+    try {
+      await fetch("/api/users/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboardingVersion: 2 }), credentials: "include" });
+    } catch (e) {
+      console.warn("onboarding PATCH failed, but continuing:", e);
+    }
     localStorage.removeItem("toyxOnboardingStep");
-    window.location.href = "/";
+    // Use a timeout to ensure the PATCH has time to persist before navigating
+    setTimeout(() => { window.location.href = "/"; }, 100);
   };
 
   const handlePremium = async (planType: "monthly" | "yearly") => {
@@ -84,7 +89,7 @@ export default function Onboarding() {
       });
       const data = await res.json();
       if (data.authorizationUrl) {
-        localStorage.setItem("toyxOnboardingVersion", "2");
+        await fetch("/api/users/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboardingVersion: 2 }), credentials: "include" }).catch(() => {});
         localStorage.removeItem("toyxOnboardingStep");
         window.location.href = data.authorizationUrl;
       } else {

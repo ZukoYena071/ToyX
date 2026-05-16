@@ -98,6 +98,7 @@ async function mockApi(page: Page) {
         plan: "free",
         subscriptionStatus: "inactive",
         createdAt: new Date().toISOString(),
+        onboardingVersion: 2,
       }),
     });
   });
@@ -134,8 +135,8 @@ test.describe("Visual regression — light mode", () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page);
     await page.goto("/");
-    await page.evaluate(() => localStorage.setItem("toyxOnboardingVersion", "2"));
     await page.request.get("/api/dev/login/seed_user_1");
+    await page.request.patch("/api/users/profile", { data: { onboardingVersion: 2 } });
     await page.emulateMedia({ colorScheme: "light" });
   });
 
@@ -153,8 +154,8 @@ test.describe("Visual regression — dark mode", () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page);
     await page.goto("/");
-    await page.evaluate(() => localStorage.setItem("toyxOnboardingVersion", "2"));
     await page.request.get("/api/dev/login/seed_user_1");
+    await page.request.patch("/api/users/profile", { data: { onboardingVersion: 2 } });
     await page.emulateMedia({ colorScheme: "dark" });
   });
 

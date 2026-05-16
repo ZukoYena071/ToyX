@@ -49,6 +49,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
+    // Reset onboarding (dev-only)
+    app.post("/api/dev/reset-onboarding", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        await storage.updateUser(userId, { onboardingVersion: 0 });
+        res.json({ ok: true });
+      } catch (e: any) {
+        res.status(500).json({ message: e.message });
+      }
+    });
+
     console.log("DEV_AUTH_BYPASS endpoints registered");
   }
 
@@ -398,6 +409,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!toy) return res.status(404).json({ message: "Toy not found" });
       if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
       const updated = await storage.updateToy(toyId, req.body);
+      // Award quality listing points if newly qualifying
+      const body = req.body;
+      const imgCount = body.imageUrls?.length || updated.imageUrls?.length || 0;
+      const descLen = (body.description || updated.description || "").length;
+      if (imgCount >= 2 && descLen >= 30 && await checkDailyCap(userId, "TOY_LISTED", 5)) {
+        await awardPoints({ userId, eventType: "TOY_LISTED", referenceType: "toy", referenceId: String(toyId), points: 5 });
+      }
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to update toy" });

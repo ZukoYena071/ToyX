@@ -53,13 +53,9 @@ export default function ToyFeedCard({ toy, onOpen, onToggleFavorite }: ToyFeedCa
               className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar h-full"
             >
               {images.map((url, i) => (
-                <div key={i} className="min-w-full snap-center h-full">
-                  <img
-                    src={url}
-                    alt={toy.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
+                <div key={i} className="min-w-full snap-center h-full relative overflow-hidden">
+                  <img src={url} alt={toy.name} className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60" loading="lazy" />
+                  <img src={url} alt={toy.name} className="absolute inset-0 w-full h-full object-contain" loading="lazy" />
                 </div>
               ))}
             </div>
