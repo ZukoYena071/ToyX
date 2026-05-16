@@ -28,7 +28,7 @@ export default function Welcome() {
     <div className="min-h-screen bg-white dark:bg-gray-950 px-4 pt-10 pb-[calc(24px+env(safe-area-inset-bottom))]">
       <div className="max-w-md mx-auto">
         {/* Logo */}
-        <img src={toyxLogo} alt="ToyX" className="h-10 w-auto mx-auto mt-2" />
+        <img src={toyxLogo} alt="ToyX" className="h-60 w-auto mx-auto mt-2" />
 
         {/* Accent line */}
         <p className="mt-5 text-base font-semibold text-gray-900 dark:text-gray-100 text-center">
