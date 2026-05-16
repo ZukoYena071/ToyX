@@ -28,20 +28,20 @@ export default function Welcome() {
     <div className="min-h-screen bg-white dark:bg-gray-950 px-4 pt-10 pb-[calc(24px+env(safe-area-inset-bottom))]">
       <div className="max-w-md mx-auto">
         {/* Logo */}
-        <img src={toyxLogo} alt="ToyX" className="h-9 w-auto mx-auto mt-6" />
+        <img src={toyxLogo} alt="ToyX" className="h-10 w-auto mx-auto mt-2" />
 
         {/* Accent line */}
-        <p className="mt-6 text-sm font-semibold text-purple-600 dark:text-purple-400 text-center">
+        <p className="mt-5 text-base font-semibold text-gray-900 dark:text-gray-100 text-center">
           Welcome to ToyX!
         </p>
 
-        {/* Main headline */}
-        <h1 className="mt-3 text-4xl font-extrabold leading-tight text-gray-900 dark:text-gray-50 text-center">
-          Share toys,<br /> spread joy
+        {/* Main headline — gradient */}
+        <h1 className="mt-2 text-5xl sm:text-6xl font-extrabold tracking-tight leading-[0.95] text-center bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent">
+          Share toys,<br />spread joy
         </h1>
 
         {/* Hero image */}
-        <div className="mt-8 w-full max-w-md mx-auto p-6 rounded-3xl border border-gray-200/70 shadow-sm">
+        <div className="mt-6 w-full max-w-md mx-auto p-6 rounded-3xl border border-gray-200/70 shadow-sm">
           <img src={heroLight} alt="ToyX app preview" className="w-full h-auto rounded-xl" />
         </div>
 
