@@ -50,8 +50,9 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
-        <Route path="/" component={Landing} />
+        <Route path="/" component={Welcome} />
         <Route path="/welcome" component={Welcome} />
+        <Route path="/landing" component={Landing} />
         <Route path="/signup" component={Signup} />
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
@@ -61,7 +62,7 @@ function Router() {
         <Route path="/rewards" component={Rewards} />
         <Route path="/invite" component={Invite} />
         <Route path="/exchange-request" component={Landing} />
-        <Route component={Landing} />
+        <Route component={Welcome} />
       </Switch>
     );
   }

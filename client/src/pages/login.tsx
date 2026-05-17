@@ -64,7 +64,7 @@ export default function Login() {
 
   return (
     <PageContainer className="flex flex-col">
-      <div className="flex items-center justify-between px-6 pt-12 pb-8">
+      <div className="flex items-center justify-between px-6 pt-6 pb-4">
         <Link href="/welcome">
           <button className="min-w-[44px] min-h-[44px] flex items-center justify-center">
             <svg className="text-gray-500 dark:text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,44 +74,50 @@ export default function Login() {
         </Link>
       </div>
 
-      <div className="text-center mb-12">
-        <div className="flex items-center justify-center mb-6">
-          <img src={toyxLogo} alt="ToyX Logo" className="h-48 w-auto" />
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center mb-4">
+          <img src={toyxLogo} alt="ToyX Logo" className="h-28 w-auto" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">Log In</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Log In</h2>
       </div>
 
       <div className="flex-1 px-8">
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Email Address
+            </label>
             <Input
               type="email"
               value={formData.loginEmail}
-              onChange={(e) => handleInputChange('loginEmail', e.target.value)}
+              onChange={(e) => handleInputChange("loginEmail", e.target.value)}
               placeholder="Enter your email"
+              className="min-h-[48px]"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Password
+              </label>
               <Link href="/forgot-password" className="text-sm font-medium text-purple-500 hover:text-purple-600">
                 Forgot Password?
               </Link>
             </div>
+
             <div className="relative">
               <Input
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 value={formData.loginPassword}
-                onChange={(e) => handleInputChange('loginPassword', e.target.value)}
-                className="pr-12"
+                onChange={(e) => handleInputChange("loginPassword", e.target.value)}
+                className="pr-12 min-h-[48px]"
                 placeholder="Enter your password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -120,11 +126,11 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="px-8 pb-8">
+      <div className="px-8 pb-[calc(24px+env(safe-area-inset-bottom))]">
         <Button
           onClick={handleSubmit}
           disabled={isLoading}
-          className="w-full text-base mb-6"
+          className="w-full text-base h-14 rounded-2xl mb-5"
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
@@ -134,8 +140,10 @@ export default function Login() {
           ) : 'Log In'}
         </Button>
 
-        <div className="mb-6">
-          <div className="text-center text-xs text-gray-500 dark:text-gray-400 mb-4">Or continue with</div>
+        <div className="mb-5">
+          <div className="text-center text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Or continue with
+          </div>
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={() => window.location.href = "/api/auth/google"}

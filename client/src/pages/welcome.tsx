@@ -1,7 +1,8 @@
 import { useLocation } from "wouter";
-import { Search, Plus, MessageCircle, ChevronRight } from "lucide-react";
+import { Search, Plus, MessageCircle } from "lucide-react";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import heroLight from "@/assets/welcome/hero-light.png";
+import heroDark from "@/assets/welcome/hero-dark.png";
 
 const FEATURES = [
   {
@@ -25,38 +26,55 @@ export default function Welcome() {
   const [, setLocation] = useLocation();
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 px-4 pt-10 pb-[calc(24px+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-white dark:bg-gray-950 px-4 pt-6 pb-[calc(24px+env(safe-area-inset-bottom))]">
       <div className="max-w-md mx-auto">
         {/* Logo */}
-        <img src={toyxLogo} alt="ToyX" className="h-60 w-auto mx-auto mt-2" />
+        <img src={toyxLogo} alt="ToyX" className="h-[200px] w-auto mx-auto mt-0 -mb-6" />
 
         {/* Accent line */}
-        <p className="mt-5 text-base font-semibold text-gray-900 dark:text-gray-100 text-center">
+        <p className="mt-0 text-xl font-semibold text-gray-900 dark:text-gray-100 text-center">
           Welcome to ToyX!
         </p>
 
         {/* Main headline — gradient */}
-        <h1 className="mt-2 text-5xl sm:text-6xl font-extrabold tracking-tight leading-[0.95] text-center bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent">
+        <h1
+          className="
+            mt-1 text-5xl sm:text-6xl font-extrabold tracking-tight leading-[1] text-center
+            pb-1
+            bg-gradient-to-r from-purple-700 via-fuchsia-500 to-orange-500
+            bg-clip-text text-transparent
+          "
+        >
           Share toys,<br />spread joy
         </h1>
 
         {/* Hero image */}
-        <div className="mt-6 w-full max-w-md mx-auto p-6 rounded-3xl border border-gray-200/70 shadow-sm">
-          <img src={heroLight} alt="ToyX app preview" className="w-full h-auto rounded-xl" />
+        <div className="mt-6 w-full max-w-md mx-auto rounded-3xl border border-gray-200/70 shadow-sm overflow-hidden bg-white dark:bg-gray-900/40 dark:border-white/10">
+          <div className="aspect-[4/3] w-full">
+            <img
+              src={heroLight}
+              alt="ToyX app preview"
+              className="block dark:hidden w-full h-full object-cover object-[50%_35%]"
+            />
+            <img
+              src={heroDark}
+              alt="ToyX app preview"
+              className="hidden dark:block w-full h-full object-cover object-[50%_35%]"
+            />
+          </div>
         </div>
 
         {/* Feature list grouped card */}
-        <div className="mt-6 rounded-3xl border border-gray-200/70 bg-white shadow-sm overflow-hidden">
+        <div className="mt-6 rounded-3xl border border-gray-200/70 bg-white shadow-sm overflow-hidden dark:border-white/10 dark:bg-gray-900/60 dark:backdrop-blur-xl">
           {FEATURES.map((f, i) => (
             <div key={i}>
-              {i > 0 && <div className="border-t border-gray-200/70 mx-4" />}
-              <div className="flex items-start gap-3 px-4 py-4">
+              {i > 0 && <div className="border-t border-gray-200/70 dark:border-white/10 mx-4" />}
+              <div className="flex items-start gap-3 px-4 py-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                 {f.icon}
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50">{f.title}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 leading-snug mt-0.5">{f.desc}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
               </div>
             </div>
           ))}
