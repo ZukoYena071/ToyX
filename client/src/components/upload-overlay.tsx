@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Camera, X, Trash2, MapPin, Loader2, Navigation, Check, ChevronDown, Search } from "lucide-react";
 import { searchLocations } from "@/lib/location";
+import { fileToCompressedDataUrl } from "@/lib/imageCompression";
+import { sha256OfFile } from "@/lib/fileHash";
 import { insertToySchema } from "@shared/schema";
 
 interface UploadOverlayProps {
@@ -57,6 +59,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>(toy?.imageUrls || []);
+  const [imageHashes, setImageHashes] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: toy?.name || "",
     description: toy?.description || "",
@@ -74,6 +77,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const { latitude, longitude, error: locationError, loading: locationLoading, requestLocation } = useGeolocation();
   const [detectedLocation, setDetectedLocation] = useState<string>("");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+  const MAX_IMAGES = 6;
 
   // Lock body scroll while overlay is open
   useEffect(() => {
@@ -101,10 +106,16 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       if (toy) return await apiRequest("PATCH", `/api/toys/${toy.id}`, toyData);
       return await apiRequest("POST", "/api/toys", toyData);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/toys"] });
       if (user?.id) queryClient.invalidateQueries({ queryKey: ["/api/users", user.id, "toys"] });
-      toast({ title: toy ? "Toy updated!" : "Toy listed successfully!", description: toy ? "Your toy has been updated." : "Your toy is now available for exchange." });
+      const msg = toy ? "Your toy has been updated." : "Your toy is now available for exchange.";
+      toast({ title: toy ? "Toy updated!" : "Toy listed successfully!", description: msg });
+      if (data?.reward?.awarded) {
+        setTimeout(() => toast({ title: "Nice!", description: "You earned +5 points for a quality listing." }), 500);
+      } else if (!toy) {
+        setTimeout(() => toast({ title: "Tip", description: "Add 2 photos + a 30+ character description to earn +5 points next time." }), 1000);
+      }
       onClose();
     },
     onError: (error: any) => {
@@ -115,18 +126,45 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     },
   });
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => { const result = e.target?.result as string; setImages(prev => [...prev, result]); };
-        reader.readAsDataURL(file);
-      });
+    if (!files) return;
+    if (images.length + files.length > MAX_IMAGES) {
+      toast({ title: "Too many photos", description: `Maximum ${MAX_IMAGES} photos allowed.`, variant: "destructive" });
+      return;
     }
+    setCompressing(true);
+    const existingHashes = new Set(imageHashes);
+    const localSeen = new Set<string>();
+    const newUrls: string[] = [];
+    const newHashes: string[] = [];
+    for (const file of Array.from(files)) {
+      const hash = await sha256OfFile(file);
+      if (existingHashes.has(hash) || localSeen.has(hash)) {
+        toast({ title: "Duplicate image", description: "This photo is already added." });
+        continue;
+      }
+      localSeen.add(hash);
+      try {
+        const dataUrl = await fileToCompressedDataUrl(file);
+        newUrls.push(dataUrl);
+        newHashes.push(hash);
+      } catch {
+        toast({ title: "Photo too large", description: "That photo is too large. Please choose a smaller one.", variant: "destructive" });
+      }
+    }
+    if (newUrls.length) {
+      setImages(prev => [...prev, ...newUrls]);
+      setImageHashes(prev => [...prev, ...newHashes]);
+    }
+    setCompressing(false);
+    if (event.target) event.target.value = "";
   };
 
-  const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setImageHashes(prev => prev.filter((_, i) => i !== index));
+  };
 
   const toggleCategory = (cat: string) => {
     const current = formData.category ? formData.category.split(", ") : [];
@@ -168,6 +206,11 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     } else {
       if (images.length < 1) {
         toast({ title: "Photo required", description: "Please add at least 1 photo before listing.", variant: "destructive" });
+        return;
+      }
+      const totalChars = images.reduce((s, u) => s + u.length, 0);
+      if (totalChars > 8_000_000) {
+        toast({ title: "Photos too large", description: "Too many/too large photos. Please remove one or choose smaller photos.", variant: "destructive" });
         return;
       }
       try {
@@ -245,10 +288,19 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
                   )}
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all" onClick={() => fileInputRef.current?.click()}>
-                  <Camera className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Add your toy photos</p>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Tap to choose from gallery</p>
+                <div className="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all" onClick={() => !compressing && fileInputRef.current?.click()}>
+                  {compressing ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="w-8 h-8 text-purple-500 animate-spin mb-2" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Compressing...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Camera className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Add your toy photos</p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Tap to choose from gallery</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -418,6 +470,42 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               </div>
             </div>
           </div>
+
+          {/* Quality reward checklist */}
+          {!toy && (
+            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">Earn +5 points for this listing</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${images.length >= 2 ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+                    {images.length >= 2 && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                  <span className={`text-xs ${images.length >= 2 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    Add 2 photos ({Math.min(images.length, 2)}/2)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${formData.description.trim().length >= 30 ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+                    {formData.description.trim().length >= 30 && <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                  <span className={`text-xs ${formData.description.trim().length >= 30 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    Write 30+ characters ({Math.min(formData.description.trim().length, 30)}/30)
+                  </span>
+                </div>
+              </div>
+              {images.length >= 2 && formData.description.trim().length >= 30 ? (
+                <p className="text-xs font-medium text-green-600 dark:text-green-400">Ready to earn +5 points!</p>
+              ) : (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {images.length < 2 && formData.description.trim().length < 30
+                    ? "Add 1 more photo and more description to earn points."
+                    : images.length < 2
+                    ? "Add 1 more photo to earn points."
+                    : "Write more description to earn points."}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Bottom footer */}
           <div className="shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">

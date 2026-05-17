@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { Search, Filter, Heart, MapPin, Star, ArrowLeft, Grid3X3, List } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ function goToToy(toyId: number) {
 
 export default function BrowsePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -31,6 +33,7 @@ export default function BrowsePage() {
   const [selectedDistance, setSelectedDistance] = useState('All');
   const [selectedDateAdded, setSelectedDateAdded] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
+  const [enablingLoc, setEnablingLoc] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     return (localStorage.getItem('search-view-mode') as 'grid' | 'list') || 'list';
   });
@@ -119,6 +122,33 @@ export default function BrowsePage() {
       setTimeout(() => window.scrollTo(0, pos), 50);
     }
   }, [isLoading, filteredToys]);
+
+  const u = user as any;
+  const hasLocation = !!(u?.locationEnabled && u?.latitude != null && u?.longitude != null);
+
+  const handleEnableLocation = useCallback(() => {
+    setEnablingLoc(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await fetch("/api/users/location", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: true, latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+            credentials: "include",
+          });
+          toast({ title: "Location enabled", description: "Now you can see how far toys are." });
+          queryClient.refetchQueries({ queryKey: ["/api/auth/user"] }).then(() => {
+            queryClient.refetchQueries({ queryKey: ["/api/toys"] });
+          });
+        } catch { toast({ title: "Error", description: "Failed to save location.", variant: "destructive" }); }
+        setEnablingLoc(false);
+      },
+      () => {
+        toast({ title: "Location unavailable", description: "Couldn't access location. Check browser permissions.", variant: "destructive" });
+        setEnablingLoc(false);
+      },
+    );
+  }, [queryClient, toast]);
 
   if (isLoading) {
     return <PageLoadingSkeleton />;
@@ -226,7 +256,25 @@ export default function BrowsePage() {
         )}
       </div>
 
-          <div className="px-4 py-6">
+      {/* Enable Location CTA */}
+      {!hasLocation && (
+        <div className="mx-4 my-3 p-4 rounded-2xl border bg-white dark:bg-gray-900/60 border-gray-200 dark:border-white/10 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center shrink-0">
+              <MapPin className="w-5 h-5 text-purple-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-50">Enable location</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">See how far toys are from you.</p>
+            </div>
+            <button onClick={handleEnableLocation} disabled={enablingLoc} className="bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium px-4 py-2 rounded-xl transition-colors min-h-[44px] shrink-0 disabled:opacity-50">
+              {enablingLoc ? "Enabling..." : "Enable now"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 py-6">
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-2 gap-4 mb-8">
             {filteredToys.map((toy: any) => (

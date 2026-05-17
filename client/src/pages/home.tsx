@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
-import { Search } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import UploadOverlay from "@/components/upload-overlay";
 import BottomNav from "@/components/bottom-nav";
@@ -10,12 +11,18 @@ import PageContainer from "@/components/ui/PageContainer";
 import ToyCarouselCard from "@/components/toys/ToyCarouselCard";
 import { apiRequest } from "@/lib/queryClient";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 export default function HomePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
+  const [enablingLoc, setEnablingLoc] = useState(false);
+  const [dismissedCta, setDismissedCta] = useState(false);
+
+  const u = user as any;
+  const hasLocation = !!(u?.locationEnabled && u?.latitude != null && u?.longitude != null);
 
   const { data: toys, isLoading } = useQuery({ queryKey: ["/api/toys"] });
   const { data: recs } = useQuery({ queryKey: ["/api/recommendations/home"], enabled: !!user });
@@ -31,11 +38,38 @@ export default function HomePage() {
     },
   });
 
+  const handleEnableLocation = useCallback(() => {
+    setEnablingLoc(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await fetch("/api/users/location", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: true, latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+            credentials: "include",
+          });
+          toast({ title: "Location enabled", description: "Now you can see how far toys are." });
+          queryClient.refetchQueries({ queryKey: ["/api/auth/user"] }).then(() => {
+            queryClient.refetchQueries({ queryKey: ["/api/toys"] });
+          });
+        } catch { toast({ title: "Error", description: "Failed to save location.", variant: "destructive" }); }
+        setEnablingLoc(false);
+      },
+      () => {
+        toast({ title: "Location unavailable", description: "Couldn't access location. Check browser permissions.", variant: "destructive" });
+        setEnablingLoc(false);
+      },
+    );
+  }, [queryClient, toast]);
+
   const allToys = Array.isArray(toys) ? toys : [];
   const recsData = (recs as any) || {};
   const forYou = recsData.forYou?.slice(0, 10) || [];
-  const nearYou = recsData.nearYou?.slice(0, 10) || [];
-  const recentlyAdded = allToys.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 10);
+  const recentlyAdded = [...allToys].sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 10);
+
+  // Nearest: sort by distance when available, fallback to recently added
+  const nearestWithDistance = [...allToys].filter((t: any) => t.distanceKm != null).sort((a: any, b: any) => a.distanceKm - b.distanceKm).slice(0, 10);
+  const nearestSectionToys = nearestWithDistance.length > 0 ? nearestWithDistance : recentlyAdded;
 
   const CarouselSection = ({ title, subtitle, toys: sectionToys, viewAllHref }: any) => (
     <div>
@@ -75,24 +109,19 @@ export default function HomePage() {
       {/* Sticky header */}
       <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between px-4 py-2">
-          <img src={toyxLogo} alt="ToyX" className="h-14 w-auto dark:brightness-0 dark:invert" />
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowUpload(true)} className="min-w-[44px] min-h-[44px] bg-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-600 transition-colors shadow-sm">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-            </button>
-            <Link href="/profile">
-              <Avatar className="w-8 h-8 cursor-pointer">
-                <AvatarImage src={(user as any)?.profileImageUrl || undefined} />
-                <AvatarFallback className="bg-purple-500 text-white text-sm">
-                  {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-          </div>
+          <img src={toyxLogo} alt="ToyX" className="h-20 w-auto dark:brightness-0 dark:invert drop-shadow-sm" />
+          <Link href="/profile">
+            <Avatar className="w-9 h-9 cursor-pointer">
+              <AvatarImage src={u?.profileImageUrl || undefined} />
+              <AvatarFallback className="bg-purple-500 text-white text-sm">
+                {u?.firstName?.[0] || u?.email?.[0] || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
         </div>
       </div>
 
-      {/* Search bar — navigates to /search */}
+      {/* Search bar */}
       <Link href="/search">
         <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3">
           <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-2.5 min-h-[44px]">
@@ -101,6 +130,27 @@ export default function HomePage() {
           </div>
         </div>
       </Link>
+
+      {/* Enable Location CTA */}
+      {!hasLocation && !dismissedCta && (
+        <div className="mx-4 mt-4 p-4 rounded-2xl border bg-white dark:bg-gray-900/60 border-gray-200 dark:border-white/10 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center shrink-0">
+              <MapPin className="w-5 h-5 text-purple-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-50">Enable location</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">See how far toys are from you.</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => setDismissedCta(true)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 min-h-[36px] px-2">Not now</button>
+              <button onClick={handleEnableLocation} disabled={enablingLoc} className="bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium px-4 py-2 rounded-xl transition-colors min-h-[44px] disabled:opacity-50">
+                {enablingLoc ? "Enabling..." : "Enable now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Carousel sections */}
       <div className="py-5 space-y-6">
@@ -115,8 +165,8 @@ export default function HomePage() {
 
         <CarouselSection
           title="Nearest to you"
-          subtitle="Available toys nearby"
-          toys={nearYou.length > 0 ? nearYou : recentlyAdded}
+          subtitle={hasLocation ? "Sorted by distance" : "Enable location to see nearest toys"}
+          toys={nearestSectionToys}
           viewAllHref="/search?nearest=true"
         />
 

@@ -202,7 +202,7 @@ export const PageLoadingSkeleton = ({ title }: { title?: string }) => {
       <div className="sticky top-0 z-50 bg-white/80 dark:bg-background/80 backdrop-blur-sm border-b border-gray-100 dark:border-border">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <div className="animate-bounce text-2xl">🎯</div>
+            <LoadingLogo label="" className="scale-[0.3] origin-left" />
             <Skeleton className="h-6 w-24 rounded-full" />
           </div>
           <div className="flex gap-2">

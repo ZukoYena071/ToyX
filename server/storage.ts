@@ -345,6 +345,19 @@ export class DatabaseStorage implements IStorage {
     return updatedExchange;
   }
 
+  async markExchangeRead(exchangeId: number, userId: string): Promise<Exchange> {
+    const [ex] = await db.select().from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
+    if (!ex) throw new Error("Exchange not found");
+    if (ex.requesterId === userId) {
+      const [updated] = await db.update(exchanges).set({ requesterLastReadAt: new Date() }).where(eq(exchanges.id, exchangeId)).returning();
+      return updated;
+    } else if (ex.ownerId === userId) {
+      const [updated] = await db.update(exchanges).set({ ownerLastReadAt: new Date() }).where(eq(exchanges.id, exchangeId)).returning();
+      return updated;
+    }
+    throw new Error("User not part of this exchange");
+  }
+
   async confirmExchangeCompletion(exchangeId: number, userId: string): Promise<Exchange> {
     // Get current exchange
     const [currentExchange] = await db

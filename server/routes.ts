@@ -9,6 +9,7 @@ import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards } from "./rewards";
+import { haversineKm } from "./utils/distance";
 
 async function getPremiumStatus(userId: string) {
   const e = await computeEntitlements(userId);
@@ -330,6 +331,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toy.inExchange = activeEx.length > 0;
       }
       
+      // Compute distance from viewer if location is enabled
+      const viewer = uid ? await storage.getUser(uid) : null;
+      if (viewer?.locationEnabled && viewer.latitude != null && viewer.longitude != null) {
+        for (const toy of toys) {
+          if (toy.latitude != null && toy.longitude != null) {
+            toy.distanceKm = haversineKm(viewer.latitude, viewer.longitude, toy.latitude, toy.longitude);
+          }
+        }
+      }
+      
       res.json(toys);
     } catch (error) {
       console.error("Error fetching toys:", error);
@@ -373,14 +384,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
+      const body = req.body;
+      const imgs = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+      if (imgs.length > 6) {
+        return res.status(400).json({ code: "TOO_MANY_IMAGES", message: "Maximum 6 photos allowed." });
+      }
+      for (const url of imgs) {
+        if (typeof url !== "string" || !url.startsWith("data:image/")) {
+          return res.status(400).json({ code: "INVALID_IMAGE", message: "Invalid image format." });
+        }
+        if (url.length > 1_200_000) {
+          return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "One or more photos exceed the size limit." });
+        }
+      }
+      const totalChars = imgs.reduce((s: number, u: string) => s + u.length, 0);
+      if (totalChars > 8_000_000) {
+        return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "Photos are too large. Please upload fewer or smaller photos." });
+      }
       const toyData = insertToySchema.parse({ ...req.body, ownerId: userId });
       const toy = await storage.createToy(toyData);
       // Award quality listing points
-      const isQuality = (toyData.imageUrls?.length || 0) >= 2 && (toyData.description?.length || 0) >= 30;
-      if (isQuality && await checkDailyCap(userId, "TOY_LISTED", 5)) {
-        await awardPoints({ userId, eventType: "TOY_LISTED", referenceType: "toy", referenceId: String(toy.id), points: 5 });
+      const imagesCount = Array.isArray(toy.imageUrls) ? toy.imageUrls.filter(Boolean).length : 0;
+      const descLen = (toy.description ?? "").trim().length;
+      const qualifies = imagesCount >= 2 && descLen >= 30;
+      let awarded = false;
+      if (qualifies && await checkDailyCap(userId, "TOY_LISTED_QUALITY", 5)) {
+        const result = await awardPoints({ userId, eventType: "TOY_LISTED_QUALITY", referenceType: "toy", referenceId: String(toy.id), points: 5 });
+        awarded = result.awarded;
       }
-      res.status(201).json(toy);
+      res.status(201).json({
+        ...toy,
+        reward: { awarded, points: awarded ? 5 : 0, criteria: { minImagesForReward: 2, minDescriptionChars: 30 } },
+      });
     } catch (error) {
       if ((error as any).name === "ZodError") {
         return res.status(400).json({ code: "VALIDATION_ERROR", message: "Please add at least 1 photo before listing." });
@@ -441,7 +476,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const exchanges = await storage.getExchanges(userId);
-      res.json(exchanges);
+      // Add hasUnread for each exchange
+      const withUnread = exchanges.map((ex: any) => {
+        const lastRead = ex.requesterId === userId ? ex.requesterLastReadAt : ex.ownerLastReadAt;
+        const lastMsg = ex.messages?.[ex.messages.length - 1];
+        const hasUnread = lastMsg && lastMsg.senderId !== userId && (!lastRead || new Date(lastMsg.createdAt) > new Date(lastRead));
+        return { ...ex, hasUnread: !!hasUnread };
+      });
+      res.json(withUnread);
     } catch (error) {
       console.error("Error fetching exchanges:", error);
       res.status(500).json({ message: "Failed to fetch exchanges" });
@@ -519,7 +561,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             content: exchangeData.requestMessage.trim(),
             messageType: "text"
           });
-          const message = await storage.createMessage(messageData);
+            const message = await storage.createMessage(messageData);
+            // Mark requester as read
+            await storage.markExchangeRead(exchange.id, userId).catch(() => {});
           console.log("Initial message created:", message);
         } catch (messageError) {
           console.error("Failed to create initial message:", messageError);
@@ -591,6 +635,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Mark exchange as read
+  app.post('/api/exchanges/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const exchangeId = parseInt(req.params.id);
+      await storage.markExchangeRead(exchangeId, userId);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error marking exchange read:", error);
+      res.status(500).json({ message: "Failed to mark exchange read" });
     }
   });
 
