@@ -551,7 +551,7 @@ export default function Profile() {
                                               </button>
                                               <button onClick={() => { setShowToyMenu(null); setConfirmDeleteToyId(toy.id); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors min-h-[44px]">
                                                 <Trash2 className="w-4 h-4" />
-                                                Delete
+                                                Manage
                                               </button>
                                               <div className="border-t border-gray-100 dark:border-gray-800" />
                                               <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
@@ -903,21 +903,60 @@ export default function Profile() {
         <UploadOverlay toy={showEditToy} onClose={() => { setShowEditToy(null); queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); }} />
       )}
 
-      {/* Delete Toy Confirmation Modal */}
+      {/* Manage Listing Modal */}
       {confirmDeleteToyId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <SectionCard className="p-6 w-full max-w-sm text-center">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="text-red-500 w-6 h-6" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Delete Listing</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Are you sure you want to delete this toy listing? This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmDeleteToyId(null)} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">Cancel</button>
-              <button onClick={() => deleteToyMutation.mutate(confirmDeleteToyId)} disabled={deleteToyMutation.isPending} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-medium transition-colors disabled:opacity-50 min-h-[44px]">
-                {deleteToyMutation.isPending ? "Deleting..." : "Delete"}
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Manage Listing</h3>
+            <div className="space-y-2">
+              <button
+                onClick={async () => {
+                  const toysList: any[] = Array.isArray(userToys) ? userToys : [];
+                  const toy = toysList.find((t: any) => t.id === confirmDeleteToyId);
+                  if (toy?.isAvailable) {
+                    await fetch(`/api/toys/${confirmDeleteToyId}/unlist`, { method: "POST", credentials: "include" });
+                    queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                    setConfirmDeleteToyId(null);
+                  }
+                }}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]"
+              >
+                Unlist (Make Unavailable)
+              </button>
+              <button
+                onClick={async () => {
+                  await fetch(`/api/toys/${confirmDeleteToyId}/archive`, { method: "POST", credentials: "include" });
+                  queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                  setConfirmDeleteToyId(null);
+                }}
+                className="w-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors min-h-[44px]"
+              >
+                Archive (Soft Delete)
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/toys/${confirmDeleteToyId}`, { method: "DELETE", credentials: "include" });
+                    const data = res.status !== 204 ? await res.json().catch(() => ({})) : {};
+                    if (res.status === 409) {
+                      alert(data.message || "This listing has exchange history and cannot be deleted. Archive it instead.");
+                    } else if (res.ok) {
+                      queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                      setConfirmDeleteToyId(null);
+                    } else {
+                      alert(data.message || "Failed to delete");
+                    }
+                  } catch { alert("Failed to delete"); }
+                }}
+                className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]"
+              >
+                Delete Permanently
               </button>
             </div>
+            <button onClick={() => setConfirmDeleteToyId(null)} className="mt-3 text-sm text-gray-500 dark:text-gray-400 underline min-h-[44px]">Cancel</button>
           </SectionCard>
         </div>
       )}

@@ -94,3 +94,30 @@ describe("User rating endpoint", () => {
     expect(typeof res.body.averageRating).toBe("number");
   });
 });
+
+describe("Archive / unlist / safe delete", () => {
+  let agent: request.SuperAgentTest;
+  let toyId: number;
+
+  beforeAll(async () => {
+    agent = request.agent(BASE);
+    await devLogin(agent, "seed_user_1");
+    const r = await agent.post("/api/toys").send({ name: "Archive Test", category: "Blocks", ageGroup: "3-5", condition: "New", imageUrls: ["data:image/svg+xml,<svg></svg>"], description: "test" });
+    if (r.status === 201) toyId = r.body.id;
+  });
+
+  it("unlists an available toy", async () => {
+    if (!toyId) return;
+    const r = await agent.post(`/api/toys/${toyId}/unlist`);
+    expect(r.status).toBe(200);
+  });
+
+  it("archives a toy", async () => {
+    if (!toyId) return;
+    const r = await agent.post(`/api/toys/${toyId}/archive`);
+    expect(r.status).toBe(200);
+    // Verify archived toy not in browse
+    const browse = await agent.get("/api/toys");
+    expect(browse.body.find((t: any) => t.id === toyId)).toBeUndefined();
+  });
+});

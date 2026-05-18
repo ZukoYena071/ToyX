@@ -2,7 +2,7 @@ import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq, and, or, gte, inArray } from "drizzle-orm";
+import { eq, and, or, gte, inArray, isNull } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
@@ -276,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const taste = await storage.getUserTasteProfile(userId);
 
       // Recently added — always
-      let recentlyAdded = await storage.getToysWithOwners(eq(toys.isAvailable, true), 10);
+      let recentlyAdded = await storage.getToysWithOwners(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)), 10);
 
       let nearYou: any[] = [];
       let forYou: any[] = [];
@@ -299,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scored.sort((a: any, b: any) => b._score - a._score);
         forYou = scored.slice(0, 10);
       } else {
-        const allToys = await storage.getToysWithOwners(eq(toys.isAvailable, true));
+        const allToys = await storage.getToysWithOwners(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)));
         const scored = allToys.map((t: any) => {
           let score = 0;
           if (taste.topCategories.some((c: string) => t.category?.includes(c))) score += 20;
@@ -506,10 +506,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toy = await storage.getToy(toyId);
       if (!toy) return res.status(404).json({ message: "Toy not found" });
       if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      // Check if toy has any exchanges referencing it
+      const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+        or(eq(exchanges.toyId, toyId), eq(exchanges.offeredToyId, toyId))
+      ).limit(1);
+      if (exch) {
+        return res.status(409).json({ code: "TOY_HAS_EXCHANGES", message: "This listing has exchange history and can't be permanently deleted. Archive it instead." });
+      }
       await storage.deleteToy(toyId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to delete toy" });
+    }
+  });
+
+  // Unlist (set unavailable)
+  app.post('/api/toys/:toyId/unlist', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      await db.update(toys).set({ isAvailable: false, updatedAt: new Date() }).where(eq(toys.id, toyId));
+      res.json({ ok: true, message: "Listing unlisted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to unlist" });
+    }
+  });
+
+  // Archive (soft delete)
+  app.post('/api/toys/:toyId/archive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      await db.update(toys).set({ deletedAt: new Date(), isAvailable: false, updatedAt: new Date() }).where(eq(toys.id, toyId));
+      res.json({ ok: true, message: "Listing archived" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to archive" });
     }
   });
 
