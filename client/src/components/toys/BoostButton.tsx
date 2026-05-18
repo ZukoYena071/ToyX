@@ -102,35 +102,44 @@ export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, 
       </button>
       {showMenu && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-          <div className="absolute right-0 top-10 z-50 w-56 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
-              {active ? "Extend Boost" : "Boost with Points"}
-            </div>
-            <button
-              onClick={handlePointsBoost}
-              disabled={loading === "points"}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px] disabled:opacity-50"
-            >
-              <Coins className="w-4 h-4 text-purple-500" />
-              <span className="flex-1 text-left">Boost Lite 48h</span>
-              <span className="text-xs font-medium text-purple-500">300 pts</span>
-            </button>
-            <div className="border-t border-gray-100 dark:border-gray-800" />
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">Pay to Boost</div>
-            {PAID_PLANS.map((p) => (
-              <button
-                key={p.key}
-                onClick={() => handlePayBoost(p.key, p.hours)}
-                disabled={loading === p.key}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px] disabled:opacity-50"
-              >
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span className="flex-1 text-left">{p.label}</span>
-                <span className="text-xs text-gray-400">{p.desc}</span>
-                <span className="text-xs font-medium text-amber-500">{p.price}</span>
+          <div className="fixed inset-0 z-[90] bg-black/50" onClick={() => setShowMenu(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-[100] rounded-t-2xl bg-white dark:bg-gray-900 shadow-xl pb-[calc(12px+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50">{active ? "Extend Boost" : "Boost"}</h3>
+              <button onClick={() => setShowMenu(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
-            ))}
+            </div>
+            <div className="px-5 py-3">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Boost with Points</p>
+              <button
+                onClick={handlePointsBoost}
+                disabled={loading === "points"}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors min-h-[48px] disabled:opacity-50 mb-3"
+              >
+                <Coins className="w-5 h-5 text-purple-500 shrink-0" />
+                <span className="flex-1 text-left font-medium">Boost Lite 48h</span>
+                <span className="text-xs font-semibold text-purple-500">300 pts</span>
+              </button>
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Pay to Boost</p>
+              <div className="space-y-2">
+                {PAID_PLANS.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => handlePayBoost(p.key, p.hours)}
+                    disabled={loading === p.key}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors min-h-[48px] disabled:opacity-50"
+                  >
+                    <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="font-medium">{p.label}</div>
+                      <div className="text-xs text-gray-400">{p.desc}</div>
+                    </div>
+                    <span className="text-sm font-semibold text-amber-500">{p.price}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </>
       )}
