@@ -177,6 +177,15 @@ export default function HomePage() {
           </div>
         )}
 
+        {(!(matches as any)?.length && (wishlist as any)?.categories?.length > 0 && !!user) && (
+          <div className="px-4">
+            <div className="bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl p-4 border border-purple-100 dark:border-purple-900/20">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-1">Matches for your wishlist</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">No toys match your wishlist categories yet.</p>
+            </div>
+          </div>
+        )}
+
         {forYou.length > 0 && (
           <CarouselSection
             title="For You"

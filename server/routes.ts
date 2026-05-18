@@ -234,8 +234,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cats = Array.from(allCats);
       if (!cats.length) return res.json([]);
       const now = new Date();
-      // Build the SQL for matches using individual category parameters
-      const catConditions = cats.map((c) => sql`t.category = ${c}`);
+      // Build category IN clause safely
+      const catList = cats.map(c => `'${c.replace(/'/g, "''")}'`).join(",");
       const results = await db.execute(sql`
         SELECT t.*, row_to_json(u.*) as owner,
           CASE WHEN t.boosted_until > ${now} THEN 0 ELSE 1 END AS sort_order
@@ -244,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE t.is_available = true
           AND t.deleted_at IS NULL
           AND t.owner_id != ${userId}
-          AND (${sql.join(catConditions, " OR ")})
+          AND t.category IN (${sql.raw(catList)})
         ORDER BY sort_order ASC, t.boosted_until DESC NULLS LAST, t.created_at DESC, t.id DESC
         LIMIT ${Number(limit)}
       `);
