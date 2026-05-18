@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Zap, Sparkles, Coins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isToyBoosted, formatBoostTimeLeft, useNow } from "@/lib/boostUtils";
@@ -26,6 +26,23 @@ export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, 
   const timeLeft = formatBoostTimeLeft(boostedUntil);
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (showMenu) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+      document.body.style.top = `-${scrollY}px`;
+      return () => {
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showMenu]);
 
   const handlePointsBoost = async () => {
     setLoading("points");
@@ -103,14 +120,14 @@ export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, 
       {showMenu && (
         <>
           <div className="fixed inset-0 z-[90] bg-black/50" onClick={() => setShowMenu(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-[100] rounded-t-2xl bg-white dark:bg-gray-900 shadow-xl pb-[calc(12px+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
+          <div className="fixed inset-x-0 bottom-0 z-[100] rounded-t-2xl bg-white dark:bg-gray-900 shadow-xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50">{active ? "Extend Boost" : "Boost"}</h3>
               <button onClick={() => setShowMenu(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="px-5 py-3">
+            <div className="overflow-y-auto overscroll-contain px-5 py-3 pb-[calc(12px+env(safe-area-inset-bottom))]" style={{ WebkitOverflowScrolling: "touch" }}>
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Boost with Points</p>
               <button
                 onClick={handlePointsBoost}

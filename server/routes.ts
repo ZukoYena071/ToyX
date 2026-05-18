@@ -300,7 +300,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/:id/toys', async (req, res) => {
     try {
       const toys = await storage.getToysByUser(req.params.id);
-      res.json(toys);
+      const toysWithMeta = await Promise.all(toys.map(async (t: any) => {
+        const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+          or(eq(exchanges.toyId, t.id), eq(exchanges.offeredToyId, t.id))
+        ).limit(1);
+        return { ...t, hasExchangeHistory: !!exch, canDeletePermanently: !exch };
+      }));
+      res.json(toysWithMeta);
     } catch (error) {
       console.error("Error fetching toys:", error);
       res.status(500).json({ message: "Failed to fetch toys" });
