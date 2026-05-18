@@ -9,6 +9,8 @@ interface BoostButtonProps {
   boostedUntil?: string | null;
   onSuccess?: () => void;
   variant?: "button" | "chip";
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 const PAID_PLANS = [
@@ -17,7 +19,7 @@ const PAID_PLANS = [
   { key: "boost_max", label: "Boost Max", price: "R99", hours: 168, desc: "7 day max" },
 ];
 
-export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, onSuccess, variant = "button" }: BoostButtonProps) {
+export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, onSuccess, variant = "button", disabled, disabledReason }: BoostButtonProps) {
   const { toast } = useToast();
   const now = useNow(60000);
   const active = isToyBoosted(boostedUntil);
@@ -81,15 +83,22 @@ export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, 
   return (
     <div className="relative inline-block">
       <button
-        onClick={() => setShowMenu(!showMenu)}
+        onClick={() => {
+          if (disabled) {
+            toast({ title: "Boost unavailable", description: disabledReason || "Make this listing available to boost it.", variant: "destructive" });
+            return;
+          }
+          setShowMenu(!showMenu);
+        }}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors min-h-[36px] ${
+          disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700' :
           active
             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-700'
             : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700 hover:bg-purple-500/20'
         }`}
       >
         <Zap className="w-3 h-3" />
-        {active ? `Boosted \u00b7 ${timeLeft}` : "Boost"}
+        {disabled ? "Boost disabled" : (active ? `Boosted \u00b7 ${timeLeft}` : "Boost")}
       </button>
       {showMenu && (
         <>

@@ -536,7 +536,7 @@ export default function Profile() {
                                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
-                                      <BoostButton toyId={toy.id} isBoosted={toy.isBoosted} boostedUntil={toy.boostedUntil} onSuccess={() => { queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); queryClient.invalidateQueries({ queryKey: ["/api/toys"] }); }} />
+                                      <BoostButton toyId={toy.id} isBoosted={toy.isBoosted} boostedUntil={toy.boostedUntil} disabled={toy.isAvailable === false} onSuccess={() => { queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); queryClient.invalidateQueries({ queryKey: ["/api/toys"] }); }} />
                                       <div className="relative">
                                         <button onClick={() => setShowToyMenu(showToyMenu === toy.id ? null : toy.id)} className="min-w-[44px] min-h-[44px] bg-gray-50 dark:bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                           <MoreHorizontal className="w-4 h-4 text-gray-500" />

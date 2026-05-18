@@ -1140,6 +1140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toy = await storage.getToy(toyId);
       if (!toy) return res.status(404).json({ message: "Toy not found" });
       if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      if (toy.isAvailable === false) return res.status(400).json({ code: "TOY_UNAVAILABLE", message: "This listing must be available to be boosted." });
       const result = await paystackFetch("/transaction/initialize", {
         method: "POST",
         body: JSON.stringify({
