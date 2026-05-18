@@ -157,7 +157,7 @@ export default function Profile() {
       : 'Unknown'
   };
 
-  const menuItems = [
+  const activityItems = [
     {
       icon: Package,
       title: 'My Toys',
@@ -165,6 +165,14 @@ export default function Profile() {
       iconColor: 'text-purple-500',
       iconBg: 'bg-purple-50 dark:bg-purple-900/30',
       section: 'toys'
+    },
+    {
+      icon: History,
+      title: 'Exchanges',
+      subtitle: `${userStats.toysReceived} completed exchanges`,
+      iconColor: 'text-blue-500',
+      iconBg: 'bg-blue-50 dark:bg-blue-900/30',
+      section: 'history'
     },
     {
       icon: Heart,
@@ -175,43 +183,12 @@ export default function Profile() {
       href: '/favorites'
     },
     {
-      icon: History,
-      title: 'Exchange History',
-      subtitle: `${userStats.toysReceived} completed exchanges`,
-      iconColor: 'text-blue-500',
-      iconBg: 'bg-blue-50 dark:bg-blue-900/30',
-      section: 'history'
-    },
-    {
       icon: Star,
       title: 'Reviews',
       subtitle: `${userStats.rating.toFixed(1)} ⭐ (${userStats.reviewCount} reviews)`,
       iconColor: 'text-yellow-500',
       iconBg: 'bg-yellow-50 dark:bg-yellow-900/30',
       section: 'reviews'
-    },
-    {
-      icon: Gift,
-      title: 'Rewards',
-      subtitle: 'Earn & spend points',
-      iconColor: 'text-green-500',
-      iconBg: 'bg-green-50 dark:bg-green-900/30',
-      href: '/rewards'
-    },
-    {
-      icon: Gift,
-      title: 'Invite Friends',
-      subtitle: 'Earn 200 pts + Premium Pass',
-      iconColor: 'text-pink-500',
-      iconBg: 'bg-pink-50 dark:bg-pink-900/30',
-      href: '/invite'
-    },
-    {
-      icon: HelpCircle,
-      title: 'Help & Support',
-      subtitle: 'Get help with ToyX',
-      iconColor: 'text-indigo-500',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-900/30'
     }
   ];
 
@@ -401,7 +378,7 @@ export default function Profile() {
     return <PageLoadingSkeleton />;
   }
 
-  const renderIcon = (item: typeof menuItems[0]) => (
+  const renderIcon = (item: any) => (
     <div className={`w-10 h-10 ${item.iconBg} rounded-xl flex items-center justify-center`}>
       <item.icon className={`${item.iconColor} w-5 h-5`} />
     </div>
@@ -512,7 +489,7 @@ export default function Profile() {
         <SectionCard>
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Account</h3>
           <div className="space-y-1">
-            {menuItems.map((item, index) => (
+            {activityItems.map((item, index) => (
               <div key={index}>
                 {item.href ? (
                   <Link href={item.href}>
