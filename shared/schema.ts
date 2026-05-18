@@ -71,6 +71,8 @@ export const toys = pgTable("toys", {
   longitude: real("longitude"),
   boostedUntil: timestamp("boosted_until"),
   deletedAt: timestamp("deleted_at"),
+  lookingForCategories: text("looking_for_categories").array(),
+  lookingForDetails: text("looking_for_details"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

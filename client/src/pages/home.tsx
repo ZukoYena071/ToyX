@@ -26,6 +26,8 @@ export default function HomePage() {
 
   const { data: toys, isLoading } = useQuery({ queryKey: ["/api/toys"] });
   const { data: recs } = useQuery({ queryKey: ["/api/recommendations/home"], enabled: !!user });
+  const { data: matches } = useQuery({ queryKey: ["/api/me/matches"], enabled: !!user });
+  const { data: wishlist } = useQuery({ queryKey: ["/api/me/wishlist"], enabled: !!user });
 
   const favoriteMutation = useMutation({
     mutationFn: async ({ toyId, isFavorited }: { toyId: number; isFavorited: boolean }) => {
@@ -154,6 +156,27 @@ export default function HomePage() {
 
       {/* Carousel sections */}
       <div className="py-5 space-y-6">
+        {(matches as any)?.length > 0 && (
+          <CarouselSection
+            title="Matches for your wishlist"
+            subtitle="Toys that match what you're looking for"
+            toys={matches as any[] || []}
+            viewAllHref="/search"
+          />
+        )}
+
+        {(!(matches as any)?.length && (wishlist as any)?.categories?.length === 0 && !!user) && (
+          <div className="px-4">
+            <div className="bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl p-4 border border-purple-100 dark:border-purple-900/20">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-1">Matches for your wishlist</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Add 'Looking for' categories to one of your listings to get matched with other toys.</p>
+              <Link href="/profile">
+                <span className="text-xs font-medium text-purple-500 hover:text-purple-600 transition-colors">Edit a listing</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
         {forYou.length > 0 && (
           <CarouselSection
             title="For You"

@@ -69,6 +69,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     ageGroup: toy?.ageGroup || "",
     condition: toy?.condition || "",
     location: toy?.location || (user as any)?.location || "",
+    lookingForCategories: toy?.lookingForCategories || [],
+    lookingForDetails: toy?.lookingForDetails || "",
   });
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationResults, setLocationResults] = useState<{ displayName: string; lat: number; lng: number }[]>([]);
@@ -330,6 +332,58 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
                 rows={4}
               />
               <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">{formData.description.length}/500</div>
+            </div>
+
+            {/* Looking For */}
+            <div>
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-1">
+                What are you hoping to get in exchange? <span className="text-xs text-gray-400 font-normal">(optional)</span>
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Pick up to 5 categories</p>
+              <div className="grid grid-cols-2 gap-3">
+                {categories.map((category) => {
+                  const selected = (formData.lookingForCategories || []).includes(category);
+                  return (
+                    <button key={category} onClick={() => {
+                      const current = formData.lookingForCategories || [];
+                      if (selected) {
+                        setFormData({ ...formData, lookingForCategories: current.filter((c: string) => c !== category) });
+                      } else if (current.length < 5) {
+                        setFormData({ ...formData, lookingForCategories: [...current, category] });
+                      }
+                    }}
+                      className={`p-3 rounded-xl border-2 transition-all text-left relative min-h-[44px] ${
+                        selected ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <div className={`text-xs font-medium ${selected ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {category}
+                      </div>
+                      {selected && <Check className="absolute top-2 right-2 w-3 h-3 text-green-500" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {(formData.lookingForCategories || []).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {(formData.lookingForCategories || []).map((c: string) => (
+                    <Badge key={c} variant="secondary" className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
+                      {c}
+                      <button onClick={() => setFormData({ ...formData, lookingForCategories: (formData.lookingForCategories || []).filter((x: string) => x !== c) })} className="ml-1 text-green-400 hover:text-green-600 min-h-[24px] min-w-[24px]">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <textarea
+                value={formData.lookingForDetails || ""}
+                onChange={(e) => setFormData({ ...formData, lookingForDetails: e.target.value })}
+                placeholder="Preferably Lego Star Wars, or any building set."
+                className="w-full mt-3 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-gray-50 placeholder:text-gray-400 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all min-h-[44px]"
+                rows={2}
+              />
+              <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">{(formData.lookingForDetails || "").length}/200</div>
             </div>
 
             {/* Category */}

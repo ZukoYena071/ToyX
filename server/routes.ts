@@ -2,7 +2,7 @@ import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq, and, or, gte, inArray, isNull } from "drizzle-orm";
+import { eq, and, or, gte, inArray, isNull, sql } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
@@ -194,6 +194,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { ...t, isBoosted: !!(t as any).boostedUntil && new Date((t as any).boostedUntil) > now, hasExchangeHistory: !!exch, canDeletePermanently: !exch };
       }));
       res.json(toysWithMeta);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get my aggregated wishlist categories
+  app.get('/api/me/wishlist', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const myToys = await db.select({ lookingForCategories: toys.lookingForCategories }).from(toys)
+        .where(and(eq(toys.ownerId, userId), eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+      const allCats = new Set<string>();
+      for (const t of myToys) {
+        if (t.lookingForCategories) {
+          for (const c of t.lookingForCategories) allCats.add(c);
+        }
+      }
+      res.json({ categories: Array.from(allCats) });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get matches for my wishlist
+  app.get('/api/me/matches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { limit = 20 } = req.query;
+      // Compute wishlist categories directly (no internal HTTP fetch)
+      const myToys = await db.select({ lookingForCategories: toys.lookingForCategories }).from(toys)
+        .where(and(eq(toys.ownerId, userId), eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+      const allCats = new Set<string>();
+      for (const t of myToys) {
+        if (t.lookingForCategories) {
+          for (const c of t.lookingForCategories) allCats.add(c);
+        }
+      }
+      const cats = Array.from(allCats);
+      if (!cats.length) return res.json([]);
+      const now = new Date();
+      // Build the SQL for matches using individual category parameters
+      const catConditions = cats.map((c) => sql`t.category = ${c}`);
+      const results = await db.execute(sql`
+        SELECT t.*, row_to_json(u.*) as owner,
+          CASE WHEN t.boosted_until > ${now} THEN 0 ELSE 1 END AS sort_order
+        FROM toys t
+        LEFT JOIN users u ON u.id = t.owner_id
+        WHERE t.is_available = true
+          AND t.deleted_at IS NULL
+          AND t.owner_id != ${userId}
+          AND (${sql.join(catConditions, " OR ")})
+        ORDER BY sort_order ASC, t.boosted_until DESC NULLS LAST, t.created_at DESC, t.id DESC
+        LIMIT ${Number(limit)}
+      `);
+      const matched = (results as any).rows.map((r: any) => ({
+        id: r.id, name: r.name, description: r.description, category: r.category,
+        ageGroup: r.age_group, condition: r.condition, imageUrls: r.image_urls,
+        ownerId: r.owner_id, isAvailable: r.is_available, location: r.location,
+        latitude: r.latitude, longitude: r.longitude, boostedUntil: r.boosted_until,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+        owner: r.owner, isBoosted: !!(r.boosted_until && new Date(r.boosted_until) > now),
+      }));
+      res.json(matched);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -455,6 +518,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (totalChars > 8_000_000) {
         return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "Photos are too large. Please upload fewer or smaller photos." });
       }
+      if (body.lookingForCategories && (!Array.isArray(body.lookingForCategories) || body.lookingForCategories.length > 5)) {
+        return res.status(400).json({ code: "INVALID_LOOKING_FOR", message: "Maximum 5 looking-for categories allowed." });
+      }
+      if (body.lookingForDetails && typeof body.lookingForDetails === "string" && body.lookingForDetails.length > 200) {
+        return res.status(400).json({ code: "LOOKING_FOR_DETAILS_TOO_LONG", message: "Looking for details max 200 characters." });
+      }
       const toyData = insertToySchema.parse({ ...req.body, ownerId: userId });
       const toy = await storage.createToy(toyData);
       // Award quality listing points
@@ -503,9 +572,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toy = await storage.getToy(toyId);
       if (!toy) return res.status(404).json({ message: "Toy not found" });
       if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
-      const updated = await storage.updateToy(toyId, req.body);
-      // Award quality listing points if newly qualifying
       const body = req.body;
+      if (body.lookingForCategories && (!Array.isArray(body.lookingForCategories) || body.lookingForCategories.length > 5)) {
+        return res.status(400).json({ code: "INVALID_LOOKING_FOR", message: "Maximum 5 looking-for categories allowed." });
+      }
+      if (body.lookingForDetails && typeof body.lookingForDetails === "string" && body.lookingForDetails.length > 200) {
+        return res.status(400).json({ code: "LOOKING_FOR_DETAILS_TOO_LONG", message: "Looking for details max 200 characters." });
+      }
+      const updated = await storage.updateToy(toyId, body);
+      // Award quality listing points if newly qualifying
       const imgCount = body.imageUrls?.length || updated.imageUrls?.length || 0;
       const descLen = (body.description || updated.description || "").length;
       if (imgCount >= 2 && descLen >= 30 && await checkDailyCap(userId, "TOY_LISTED", 5)) {

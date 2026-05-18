@@ -654,6 +654,8 @@ export class DatabaseStorage implements IStorage {
       longitude: r.longitude,
       boostedUntil: r.boosted_until,
       deletedAt: r.deleted_at,
+      lookingForCategories: r.looking_for_categories,
+      lookingForDetails: r.looking_for_details,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       owner: r.owner,

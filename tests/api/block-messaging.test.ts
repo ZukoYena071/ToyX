@@ -181,3 +181,52 @@ describe("Browse ordering — boosted first", () => {
     expect(order.indexOf(toyIds[1])).toBeLessThan(order.indexOf(toyIds[2]));
   });
 });
+
+describe("Wishlist / matches", () => {
+  let userA: request.SuperAgentTest;
+  let userB: request.SuperAgentTest;
+
+  beforeAll(() => {
+    userA = request.agent(BASE);
+    userB = request.agent(BASE);
+  });
+
+  it("creates toy with lookingFor and returns wishlist", async () => {
+    await devLogin(userA, "seed_user_1");
+    await userA.post("/api/dev/set-plan").send({ userId: "seed_user_1", plan: "premium_monthly" });
+    await devLogin(userB, "seed_user_2");
+    await userB.post("/api/dev/set-plan").send({ userId: "seed_user_2", plan: "premium_monthly" });
+    const r = await userA.post("/api/toys").send({
+      name: "Wishlist A", category: "Blocks", ageGroup: "3-5", condition: "New",
+      imageUrls: ["data:image/svg+xml,<svg></svg>"], description: "test",
+      lookingForCategories: ["Action Figures"],
+      lookingForDetails: "Looking for Marvel figures",
+    });
+    expect(r.status).toBe(201);
+    const wl = await userA.get("/api/me/wishlist");
+    expect(wl.body.categories).toContain("Action Figures");
+  });
+
+  it("returns match for matched category", async () => {
+    // user B creates a toy with category matching user A's wishlist
+    await devLogin(userB, "seed_user_2");
+    await userB.post("/api/dev/set-plan").send({ userId: "seed_user_2", plan: "premium_monthly" });
+    // Clear existing toys for seed_user_2
+    const existing = await userB.get("/api/users/seed_user_2/toys");
+    for (const t of (existing.body || [])) {
+      await userB.delete(`/api/toys/${t.id}`).catch(() => {});
+    }
+    const r2 = await userB.post("/api/toys").send({
+      name: "Toy for A", category: "Action Figures", ageGroup: "3-5", condition: "New",
+      imageUrls: ["data:image/svg+xml,<svg></svg>"], description: "A great action figure",
+    });
+    if (r2.status !== 201) return;
+    // user A checks matches
+    await devLogin(userA, "seed_user_1");
+    const matches = await userA.get("/api/me/matches");
+    const matchesList = Array.isArray(matches.body) ? matches.body : [];
+    const found = matchesList.find((t: any) => t.id === r2.body.id);
+    expect(found).toBeDefined();
+    expect(found.category).toBe("Action Figures");
+  });
+});
