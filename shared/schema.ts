@@ -210,6 +210,23 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
+// Blocked users
+export const blocks = pgTable("blocks", {
+  id: serial("id").primaryKey(),
+  blockerId: varchar("blocker_id").notNull().references(() => users.id),
+  blockedId: varchar("blocked_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User reports
+export const reports = pgTable("reports", {
+  id: serial("id").primaryKey(),
+  reporterId: varchar("reporter_id").notNull().references(() => users.id),
+  reportedId: varchar("reported_id").notNull().references(() => users.id),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Rewards tables
 export const userRewards = pgTable("user_rewards", {
   userId: varchar("user_id").primaryKey().notNull().references(() => users.id),

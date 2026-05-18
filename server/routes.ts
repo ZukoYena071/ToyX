@@ -545,6 +545,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requesterId: userId,
         ownerId: toy.ownerId
       });
+
+      // Block enforcement: check if either user has blocked the other
+      const [blockedByOwner, blockedByRequester] = await Promise.all([
+        storage.isBlocked(toy.ownerId, userId),
+        storage.isBlocked(userId, toy.ownerId),
+      ]);
+      if (blockedByOwner) return res.status(403).json({ message: "You cannot request an exchange with this user" });
+      if (blockedByRequester) return res.status(403).json({ message: "You have blocked this user. Unblock them to request an exchange." });
       
       console.log("Exchange data to insert:", exchangeData);
       const exchange = await storage.createExchange(exchangeData);
@@ -648,39 +656,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking exchange read:", error);
       res.status(500).json({ message: "Failed to mark exchange read" });
-    }
-  });
-
-  app.post('/api/exchanges/:id/messages', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const exchangeId = parseInt(req.params.id);
-      const messageData = insertMessageSchema.parse({
-        ...req.body,
-        exchangeId,
-        senderId: userId
-      });
-      const message = await storage.createMessage(messageData);
-      
-      // Broadcast message to WebSocket clients
-      const messageWithSender = {
-        ...message,
-        sender: await storage.getUser(userId)
-      };
-      
-      wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({
-            type: 'new_message',
-            data: messageWithSender
-          }));
-        }
-      });
-      
-      res.status(201).json(message);
-    } catch (error) {
-      console.error("Error creating message:", error);
-      res.status(500).json({ message: "Failed to create message" });
     }
   });
 
@@ -826,6 +801,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking review eligibility:", error);
       res.status(500).json({ message: "Failed to check review eligibility" });
+    }
+  });
+
+  // ---- Block / Report routes ----
+
+  app.post('/api/users/:id/block', isAuthenticated, async (req: any, res) => {
+    try {
+      const blockerId = req.user.claims.sub;
+      const blockedId = req.params.id;
+      if (blockerId === blockedId) return res.status(400).json({ message: "Cannot block yourself" });
+      await storage.blockUser(blockerId, blockedId);
+      res.json({ ok: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to block user" });
+    }
+  });
+
+  app.post('/api/users/:id/unblock', isAuthenticated, async (req: any, res) => {
+    try {
+      const blockerId = req.user.claims.sub;
+      const blockedId = req.params.id;
+      await storage.unblockUser(blockerId, blockedId);
+      res.json({ ok: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to unblock user" });
+    }
+  });
+
+  app.get('/api/exchanges/:id/block-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const exchangeId = parseInt(req.params.id);
+      const exchange = await storage.getExchange(exchangeId);
+      if (!exchange) return res.status(404).json({ message: "Exchange not found" });
+      const otherUserId = exchange.requesterId === userId ? exchange.ownerId : exchange.requesterId;
+      const [blockedByMe, blockedMe] = await Promise.all([
+        storage.isBlocked(userId, otherUserId),
+        storage.isBlocked(otherUserId, userId),
+      ]);
+      res.json({ blockedByMe, blockedMe });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to check block status" });
+    }
+  });
+
+  app.get('/api/block/status/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const targetId = req.params.id;
+      const [blockedByMe, blockedMe] = await Promise.all([
+        storage.isBlocked(userId, targetId),
+        storage.isBlocked(targetId, userId),
+      ]);
+      res.json({ blockedByMe, blockedMe });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to check block status" });
+    }
+  });
+
+  app.get('/api/block/list', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const blockedIds = await storage.getBlockedUserIds(userId);
+      const blockedUsers = await Promise.all(blockedIds.map(id => storage.getUser(id)));
+      res.json(blockedUsers.filter(Boolean));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to get blocked users" });
+    }
+  });
+
+  app.post('/api/users/:id/report', isAuthenticated, async (req: any, res) => {
+    try {
+      const reporterId = req.user.claims.sub;
+      const reportedId = req.params.id;
+      if (reporterId === reportedId) return res.status(400).json({ message: "Cannot report yourself" });
+      const { reason } = req.body;
+      await storage.reportUser(reporterId, reportedId, reason);
+      res.json({ ok: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to report user" });
+    }
+  });
+
+  // Block enforcement on message sending
+  app.post('/api/exchanges/:id/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const exchangeId = parseInt(req.params.id);
+      const exchange = await storage.getExchange(exchangeId);
+      if (!exchange) return res.status(404).json({ message: "Exchange not found" });
+      const otherUserId = exchange.requesterId === userId ? exchange.ownerId : exchange.requesterId;
+      // Check if either user has blocked the other
+      const [blockedByOther, blockedOther] = await Promise.all([
+        storage.isBlocked(otherUserId, userId),
+        storage.isBlocked(userId, otherUserId),
+      ]);
+      if (blockedByOther) return res.status(403).json({ message: "You cannot send messages to this user" });
+      if (blockedOther) return res.status(403).json({ message: "You have blocked this user. Unblock them to send messages." });
+      const messageData = insertMessageSchema.parse({
+        ...req.body,
+        exchangeId,
+        senderId: userId
+      });
+      const message = await storage.createMessage(messageData);
+      const messageWithSender = {
+        ...message,
+        sender: await storage.getUser(userId)
+      };
+      wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'new_message',
+            data: messageWithSender
+          }));
+        }
+      });
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ message: "Failed to create message" });
     }
   });
 

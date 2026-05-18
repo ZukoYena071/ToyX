@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -16,16 +16,18 @@ import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import EmptyState from "@/components/ui/EmptyState";
-import { ArrowLeft, Send, Star } from "lucide-react";
+import { ArrowLeft, Send, Star, Flag, Ban } from "lucide-react";
 import type { ExchangeWithDetails, MessageWithSender } from "@shared/schema";
 import { isExchangeUnread, markExchangeRead } from "@/lib/chat-utils";
 
 export default function Chat() {
   const { exchangeId } = useParams();
+  const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: exchanges } = useQuery<ExchangeWithDetails[]>({
@@ -46,6 +48,13 @@ export default function Chat() {
   const { data: canReviewData } = useQuery<{ canReview: boolean }>({
     queryKey: ["/api/exchanges", exchangeId, "can-review"],
     enabled: !!exchangeId && !!user,
+  });
+
+  const blockStatusQueryKey = [`/api/exchanges/${exchangeId}/block-status`] as const;
+
+  const { data: blockStatus } = useQuery<{ blockedByMe: boolean; blockedMe: boolean }>({
+    queryKey: blockStatusQueryKey,
+    enabled: !!exchangeId,
   });
 
   useEffect(() => {
@@ -132,6 +141,10 @@ export default function Chat() {
   });
 
   const handleSendMessage = () => {
+    if (isBlocked) {
+      toast({ title: "Messaging disabled", description: "Messaging is disabled because this user is blocked.", variant: "destructive" });
+      return;
+    }
     if (message.trim() && exchangeId) sendMessageMutation.mutate(message.trim());
   };
 
@@ -226,6 +239,7 @@ export default function Chat() {
   }
 
   const otherUser = exchange.requesterId === (user as any)?.id ? exchange.owner : exchange.requester;
+  const isBlocked = !!(blockStatus?.blockedByMe || blockStatus?.blockedMe);
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
@@ -237,23 +251,104 @@ export default function Chat() {
                 <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
             </Link>
-            <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => setLocation(`/users/${otherUser.id}`)}
+              className="flex items-center gap-2 min-w-0 min-h-[44px] active:scale-[0.99] transition-transform"
+              aria-label="View user profile"
+            >
               <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center shrink-0">
                 <span className="text-white text-sm font-bold">{otherUser.firstName?.[0] || otherUser.email?.[0] || 'U'}</span>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 text-left">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
                   {otherUser.firstName && otherUser.lastName ? `${otherUser.firstName} ${otherUser.lastName}` : otherUser.email}
                 </h3>
                 <p className="text-xs text-purple-600 dark:text-purple-400 truncate">{exchange.toy.name}</p>
               </div>
-            </div>
+            </button>
           </div>
-          <button className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px] min-w-[44px] shrink-0">
-            <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-            </svg>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px] min-w-[44px] shrink-0"
+              aria-label="More options"
+            >
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+              </svg>
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-10 z-50 w-52 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setLocation(`/users/${otherUser.id}`);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
+                  >
+                    <Ban className="w-4 h-4 text-gray-400" />
+                    View Profile
+                  </button>
+                  <div className="border-t border-gray-100 dark:border-gray-800" />
+                  <button
+                    onClick={async () => {
+                      setShowMenu(false);
+                      const action = blockStatus?.blockedByMe ? "unblock" : "block";
+                      try {
+                        const res = await fetch(`/api/users/${otherUser.id}/${action}`, { method: "POST", credentials: "include" });
+                        if (res.ok) {
+                          queryClient.setQueryData(blockStatusQueryKey, (old) => ({
+                            ...(old ?? { blockedByMe: false, blockedMe: false }),
+                            blockedByMe: action === "block",
+                          }));
+                          queryClient.invalidateQueries({ queryKey: blockStatusQueryKey });
+                          toast({ title: blockStatus?.blockedByMe ? "User Unblocked" : "User Blocked", description: blockStatus?.blockedByMe ? "You can now receive messages from this user." : "You have blocked this user." });
+                        } else {
+                          const err = await res.json();
+                          toast({ title: "Error", description: err.message || `Failed to ${action} user`, variant: "destructive" });
+                        }
+                      } catch {
+                        toast({ title: "Error", description: `Failed to ${action} user`, variant: "destructive" });
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors min-h-[44px]"
+                  >
+                    <Ban className="w-4 h-4" />
+                    {blockStatus?.blockedByMe ? "Unblock User" : "Block User"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setShowMenu(false);
+                      const reason = window.prompt("Describe why you are reporting this user (optional):");
+                      if (reason === null) return;
+                      try {
+                        const res = await fetch(`/api/users/${otherUser.id}/report`, {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ reason: reason || undefined }),
+                        });
+                        if (res.ok) {
+                          toast({ title: "Report Submitted", description: "Thank you. Our team will review this report." });
+                        } else {
+                          const err = await res.json();
+                          toast({ title: "Error", description: err.message || "Failed to report user", variant: "destructive" });
+                        }
+                      } catch {
+                        toast({ title: "Error", description: "Failed to report user", variant: "destructive" });
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors min-h-[44px]"
+                  >
+                    <Flag className="w-4 h-4" />
+                    Report User
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -266,6 +361,49 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Blocked banner */}
+      {isBlocked && (
+        <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+          <div className="max-w-lg mx-auto px-4 py-3">
+            <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <Ban className="w-5 h-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                    {blockStatus?.blockedByMe ? "User blocked" : "You can't message this user"}
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                    {blockStatus?.blockedByMe
+                      ? "You won't be able to send or receive messages in this chat."
+                      : "Messaging is unavailable for this chat."}
+                  </p>
+                  {blockStatus?.blockedByMe && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/users/${otherUser.id}/unblock`, { method: "POST", credentials: "include" });
+                          if (res.ok) {
+                            queryClient.setQueryData(blockStatusQueryKey, (old) => ({
+                              ...(old ?? { blockedByMe: false, blockedMe: false }),
+                              blockedByMe: false,
+                            }));
+                            queryClient.invalidateQueries({ queryKey: blockStatusQueryKey });
+                            toast({ title: "User Unblocked", description: "You can now send messages in this chat." });
+                          }
+                        } catch {}
+                      }}
+                      className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400 underline active:opacity-70 min-h-[44px]"
+                    >
+                      Unblock
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Message Input */}
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
@@ -337,15 +475,16 @@ export default function Chat() {
               <EmojiPicker onEmojiSelect={(emoji) => setMessage(prev => prev + emoji)} />
               <input
                 type="text"
-                placeholder="Type a message..."
+                placeholder={isBlocked ? "Messaging disabled" : "Type a message..."}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-2.5 text-sm text-gray-900 dark:text-gray-50 placeholder:text-gray-400 dark:placeholder:text-gray-500 border-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-gray-900 transition-all min-h-[44px]"
+                disabled={isBlocked}
+                className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-2.5 text-sm text-gray-900 dark:text-gray-50 placeholder:text-gray-400 dark:placeholder:text-gray-500 border-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-gray-900 transition-all min-h-[44px] disabled:opacity-40 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleSendMessage}
-                disabled={!message.trim() || sendMessageMutation.isPending}
+                disabled={!message.trim() || sendMessageMutation.isPending || isBlocked}
                 className="w-10 h-10 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] shrink-0"
               >
                 <Send className="w-5 h-5 text-white" />

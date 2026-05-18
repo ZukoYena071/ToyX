@@ -150,7 +150,7 @@ export default function Profile() {
   const userStats = {
     toysShared: Array.isArray(userToys) ? userToys.length : 0,
     toysReceived: completedExchanges.length,
-    rating: (userRating as any)?.rating || 0,
+    rating: (userRating as any)?.averageRating || 0,
     reviewCount: Array.isArray(userReviews) ? userReviews.length : 0,
     joinDate: (user as any)?.createdAt
       ? new Date((user as any).createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
