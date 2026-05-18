@@ -262,7 +262,7 @@ export default function UserProfile() {
                           </div>
                         </div>
                         {review.comment && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{review.comment}</p>}
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{new Date(review.createdAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{new Date(review.createdAt ?? 0).toLocaleDateString()}</p>
                       </div>
                     ))}
                   </div>

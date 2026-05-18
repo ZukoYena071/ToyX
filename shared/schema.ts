@@ -84,10 +84,10 @@ export const exchanges = pgTable("exchanges", {
   requestMessage: text("request_message"),
   requesterConfirmed: boolean("requester_confirmed").default(false),
   ownerConfirmed: boolean("owner_confirmed").default(false),
-  requesterLastReadAt: timestamp("requester_last_read_at"),
-  ownerLastReadAt: timestamp("owner_last_read_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  requesterLastReadAt: timestamp("requester_last_read_at", { withTimezone: true }),
+  ownerLastReadAt: timestamp("owner_last_read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const messages = pgTable("messages", {
@@ -97,7 +97,7 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   messageType: varchar("message_type", { length: 50 }).default("text"),
   reactions: jsonb("reactions").default([]),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const favorites = pgTable("favorites", {
@@ -305,7 +305,7 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertToy = z.infer<typeof insertToySchema>;
 export type Toy = typeof toys.$inferSelect;
-export type ToyWithOwner = Toy & { owner: User; isFavorited?: boolean; ownerRating?: number; distanceKm?: number };
+export type ToyWithOwner = Toy & { owner: User; isFavorited?: boolean; ownerRating?: number; distanceKm?: number; inExchange?: boolean };
 export type InsertExchange = z.infer<typeof insertExchangeSchema>;
 export type Exchange = typeof exchanges.$inferSelect;
 export type ExchangeWithDetails = Exchange & { 

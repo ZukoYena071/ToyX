@@ -89,7 +89,7 @@ export async function setupAuth(app: Express) {
       clientID: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
       callbackURL: `${APP_BASE_URL}/api/auth/google/callback`,
-    }, async (_accessToken, _refreshToken, profile, done) => {
+    }, async (_accessToken: string, _refreshToken: string, profile: any, done: (error: any, user?: any) => void) => {
       try {
         const email = profile.emails?.[0]?.value;
         const name = profile.displayName?.split(" ") || [];
@@ -104,7 +104,7 @@ export async function setupAuth(app: Express) {
             lastName: name.slice(1).join(" ") || "",
             profileImageUrl: profile.photos?.[0]?.value?.replace(/^http:/, "https:") || null,
           });
-          user = await storage.getUser(userId);
+          user = (await storage.getUser(userId))!;
         }
         if (user) {
           done(null, { id: user.id, sub: user.id, claims: { sub: user.id }, expires_at: Math.floor(Date.now() / 1000) + 86400, access_token: _accessToken, refresh_token: _refreshToken });

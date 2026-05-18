@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { db } from "./db";
-import { users, toys, exchanges, messages, favorites, reviews, userRewards, rewardLedger, rewardRedemptions, referrals } from "@shared/schema";
+import { users, toys, exchanges, messages, favorites, reviews, userRewards, rewardLedger, rewardRedemptions, referrals, toyInteractions } from "@shared/schema";
 import { inArray, or, eq } from "drizzle-orm";
 
 async function seedTest() {
@@ -30,6 +30,7 @@ async function seedTest() {
       await db.delete(exchanges).where(inArray(exchanges.id, exchangeIds));
     }
 
+    await db.delete(toyInteractions).where(inArray(toyInteractions.toyId, toyIds));
     await db.delete(favorites).where(inArray(favorites.toyId, toyIds));
     await db.delete(toys).where(inArray(toys.id, toyIds));
   }

@@ -174,8 +174,8 @@ export default function Chat() {
                 const aUnread = (a as any).hasUnread ? 1 : 0;
                 const bUnread = (b as any).hasUnread ? 1 : 0;
                 if (aUnread !== bUnread) return bUnread - aUnread;
-                const aTime = a.messages?.length ? new Date(a.messages[a.messages.length - 1].createdAt).getTime() : new Date(a.createdAt).getTime();
-                const bTime = b.messages?.length ? new Date(b.messages[b.messages.length - 1].createdAt).getTime() : new Date(b.createdAt).getTime();
+                const aTime = a.messages?.length ? new Date(a.messages[a.messages.length - 1].createdAt ?? 0).getTime() : new Date(a.createdAt ?? 0).getTime();
+                const bTime = b.messages?.length ? new Date(b.messages[b.messages.length - 1].createdAt ?? 0).getTime() : new Date(b.createdAt ?? 0).getTime();
                 return bTime - aTime;
               }).map((exchange) => {
                 const otherUser = exchange.requesterId === (user as any)?.id ? exchange.owner : exchange.requester;

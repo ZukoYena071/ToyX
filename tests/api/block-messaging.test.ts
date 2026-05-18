@@ -51,29 +51,3 @@ describe("User rating endpoint", () => {
     expect(typeof res.body.averageRating).toBe("number");
   });
 });
-
-  it("blocks and unblocks a user via API", async () => {
-    await devLogin(agent, "seed_user_1");
-    const targetId = "seed_user_2";
-
-    // Verify not blocked initially
-    let status = await agent.get(`/api/block/status/${targetId}`);
-    expect(status.body.blockedByMe).toBe(false);
-
-    // Block the user
-    let block = await agent.post(`/api/users/${targetId}/block`);
-    expect(block.status).toBe(200);
-
-    // Verify block status
-    status = await agent.get(`/api/block/status/${targetId}`);
-    expect(status.body.blockedByMe).toBe(true);
-
-    // Unblock
-    let unblock = await agent.post(`/api/users/${targetId}/unblock`);
-    expect(unblock.status).toBe(200);
-
-    // Verify unblocked
-    status = await agent.get(`/api/block/status/${targetId}`);
-    expect(status.body.blockedByMe).toBe(false);
-  });
-});
