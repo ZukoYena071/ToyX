@@ -164,7 +164,7 @@ export default function Profile() {
     {
       icon: Package,
       title: 'My Toys',
-      subtitle: `${userStats.toysShared} active listings`,
+      subtitle: `${userStats.toysShared} listings`,
       iconColor: 'text-purple-500',
       iconBg: 'bg-purple-50 dark:bg-purple-900/30',
       section: 'toys'
@@ -519,12 +519,12 @@ export default function Profile() {
                         {/* Toys section */}
                         {item.section === 'toys' && (
                           <>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">My Active Listings</h4>
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">My Listings</h4>
                             {Array.isArray(userToys) && userToys.length > 0 ? (
                               <div className="space-y-2">
                                 {userToys.map((toy: any) => (
-                                  <div key={toy.id} className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl">
-                                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0">
+                                  <div key={toy.id} className={'flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl' + (toy.isAvailable === false ? ' opacity-60' : '')}>
+                                    <div className={'w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0' + (toy.isAvailable === false ? ' grayscale' : '')}>
                                       {toy.imageUrls && toy.imageUrls[0] ? (
                                         <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
                                       ) : (
@@ -904,27 +904,29 @@ export default function Profile() {
       )}
 
       {/* Manage Listing Modal */}
-      {confirmDeleteToyId && (
+      {confirmDeleteToyId && (() => {
+        const toysList: any[] = Array.isArray(userToys) ? userToys : [];
+        const toy = toysList.find((t: any) => t.id === confirmDeleteToyId);
+        if (!toy) return null;
+        return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <SectionCard className="p-6 w-full max-w-sm text-center">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="text-red-500 w-6 h-6" />
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="text-gray-500 w-6 h-6" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Manage Listing</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-1">{toy.name}</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{toy.isAvailable ? 'Available' : 'Unavailable'}</p>
             <div className="space-y-2">
               <button
                 onClick={async () => {
-                  const toysList: any[] = Array.isArray(userToys) ? userToys : [];
-                  const toy = toysList.find((t: any) => t.id === confirmDeleteToyId);
-                  if (toy?.isAvailable) {
-                    await fetch(`/api/toys/${confirmDeleteToyId}/unlist`, { method: "POST", credentials: "include" });
-                    queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
-                    setConfirmDeleteToyId(null);
-                  }
+                  const action = toy.isAvailable ? 'unlist' : 'relist';
+                  await fetch(`/api/toys/${confirmDeleteToyId}/${action}`, { method: "POST", credentials: "include" });
+                  queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                  setConfirmDeleteToyId(null);
                 }}
                 className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]"
               >
-                Unlist (Make Unavailable)
+                {toy.isAvailable ? 'Unlist (Make Unavailable)' : 'Relist (Make Available)'}
               </button>
               <button
                 onClick={async () => {
@@ -934,32 +936,33 @@ export default function Profile() {
                 }}
                 className="w-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors min-h-[44px]"
               >
-                Archive (Soft Delete)
+                Archive (Remove from listings)
               </button>
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch(`/api/toys/${confirmDeleteToyId}`, { method: "DELETE", credentials: "include" });
-                    const data = res.status !== 204 ? await res.json().catch(() => ({})) : {};
-                    if (res.status === 409) {
-                      alert(data.message || "This listing has exchange history and cannot be deleted. Archive it instead.");
-                    } else if (res.ok) {
-                      queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
-                      setConfirmDeleteToyId(null);
-                    } else {
-                      alert(data.message || "Failed to delete");
-                    }
-                  } catch { alert("Failed to delete"); }
-                }}
-                className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]"
-              >
-                Delete Permanently
-              </button>
+              {toy.canDeletePermanently && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/toys/${confirmDeleteToyId}`, { method: "DELETE", credentials: "include" });
+                      if (res.ok || res.status === 204) {
+                        queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                        setConfirmDeleteToyId(null);
+                      } else {
+                        const data = await res.json().catch(() => ({}));
+                        alert(data.message || "Failed to delete");
+                      }
+                    } catch { alert("Failed to delete"); }
+                  }}
+                  className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]"
+                >
+                  Delete Permanently
+                </button>
+              )}
             </div>
             <button onClick={() => setConfirmDeleteToyId(null)} className="mt-3 text-sm text-gray-500 dark:text-gray-400 underline min-h-[44px]">Cancel</button>
           </SectionCard>
         </div>
-      )}
+        );
+      })()}
 
       {/* Cancel Subscription Confirmation Modal */}
       {showCancelModal && !cancelConfirmed && (

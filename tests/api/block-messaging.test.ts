@@ -116,8 +116,38 @@ describe("Archive / unlist / safe delete", () => {
     if (!toyId) return;
     const r = await agent.post(`/api/toys/${toyId}/archive`);
     expect(r.status).toBe(200);
-    // Verify archived toy not in browse
     const browse = await agent.get("/api/toys");
     expect(browse.body.find((t: any) => t.id === toyId)).toBeUndefined();
+  });
+});
+
+describe("Relist / CanDeletePermanently", () => {
+  let agent: request.SuperAgentTest;
+  let toyId: number;
+
+  beforeAll(async () => {
+    agent = request.agent(BASE);
+    await devLogin(agent, "seed_user_1");
+    const r = await agent.post("/api/toys").send({ name: "Relist Test", category: "Blocks", ageGroup: "3-5", condition: "New", imageUrls: ["data:image/svg+xml,<svg></svg>"], description: "test" });
+    if (r.status === 201) toyId = r.body.id;
+  });
+
+  it("relist flips available to true", async () => {
+    if (!toyId) return;
+    await agent.post(`/api/toys/${toyId}/unlist`);
+    let t = await agent.get(`/api/toys/${toyId}`);
+    expect(t.body.isAvailable).toBe(false);
+    const r = await agent.post(`/api/toys/${toyId}/relist`);
+    expect(r.status).toBe(200);
+    t = await agent.get(`/api/toys/${toyId}`);
+    expect(t.body.isAvailable).toBe(true);
+  });
+
+  it("canDeletePermanently is true for toy without exchanges", async () => {
+    if (!toyId) return;
+    const toys = await agent.get("/api/users/seed_user_1/toys");
+    const toy = toys.body.find((t: any) => t.id === toyId);
+    expect(toy).toBeDefined();
+    expect(toy.canDeletePermanently).toBe(true);
   });
 });

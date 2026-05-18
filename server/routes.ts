@@ -187,7 +187,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const userToys = await storage.getToysByUser(userId);
       const now = new Date();
-      res.json(userToys.map(t => ({ ...t, isBoosted: !!(t as any).boostedUntil && new Date((t as any).boostedUntil) > now })));
+      const toysWithMeta = await Promise.all(userToys.map(async (t: any) => {
+        const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+          or(eq(exchanges.toyId, t.id), eq(exchanges.offeredToyId, t.id))
+        ).limit(1);
+        return { ...t, isBoosted: !!(t as any).boostedUntil && new Date((t as any).boostedUntil) > now, hasExchangeHistory: !!exch, canDeletePermanently: !exch };
+      }));
+      res.json(toysWithMeta);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -471,7 +477,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.params.userId;
       const toys = await storage.getToysByUser(userId);
-      res.json(toys);
+      const toysWithMeta = await Promise.all(toys.map(async (t: any) => {
+        const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+          or(eq(exchanges.toyId, t.id), eq(exchanges.offeredToyId, t.id))
+        ).limit(1);
+        return { ...t, hasExchangeHistory: !!exch, canDeletePermanently: !exch };
+      }));
+      res.json(toysWithMeta);
     } catch (error) {
       console.error("Error fetching user toys:", error);
       res.status(500).json({ message: "Failed to fetch user toys" });
@@ -547,6 +559,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ ok: true, message: "Listing archived" });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to archive" });
+    }
+  });
+
+  // Relist (make available)
+  app.post('/api/toys/:toyId/relist', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      await db.update(toys).set({ isAvailable: true, updatedAt: new Date() }).where(eq(toys.id, toyId));
+      res.json({ ok: true, message: "Listing relisted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to relist" });
     }
   });
 

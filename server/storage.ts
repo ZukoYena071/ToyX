@@ -205,7 +205,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(toys)
       .leftJoin(users, eq(toys.ownerId, users.id))
-      .where(eq(toys.ownerId, userId))
+      .where(and(eq(toys.ownerId, userId), isNull(toys.deletedAt)))
       .orderBy(desc(toys.createdAt))
       .then(rows => 
         rows.map(row => ({
