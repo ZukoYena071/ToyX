@@ -30,9 +30,11 @@ async function seedTest() {
       await db.delete(exchanges).where(inArray(exchanges.id, exchangeIds));
     }
 
-    await db.delete(toyInteractions).where(inArray(toyInteractions.toyId, toyIds));
+    await db.delete(toyInteractions).where(or(inArray(toyInteractions.toyId, toyIds), inArray(toyInteractions.userId, ids)));
     await db.delete(favorites).where(inArray(favorites.toyId, toyIds));
     await db.delete(toys).where(inArray(toys.id, toyIds));
+  } else {
+    await db.delete(toyInteractions).where(inArray(toyInteractions.userId, ids));
   }
 
   await db.delete(rewardRedemptions).where(inArray(rewardRedemptions.userId, ids));

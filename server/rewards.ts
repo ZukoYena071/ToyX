@@ -1,10 +1,11 @@
 import { db } from "./db";
 import { userRewards, rewardLedger, rewardRedemptions, referrals, users, toys } from "@shared/schema";
-import { eq, and, sql, gte, inArray, desc } from "drizzle-orm";
+import { eq, and, sql, gte, lte, inArray, desc, gt, count } from "drizzle-orm";
 
 const BASE_FREE_LISTINGS = 5;
 const BASE_FREE_REQUESTS = 3;
 const BASE_FREE_EXCHANGES = 2;
+const MAX_BOOSTED_PER_USER = 2;
 
 export async function ensureUserRewards(userId: string) {
   const existing = await db.select().from(userRewards).where(eq(userRewards.userId, userId)).limit(1);
@@ -94,7 +95,6 @@ export async function computeEntitlements(userId: string) {
   const hasPremiumPass = !!u.premiumPassUntil && u.premiumPassUntil > now;
   const isPremium = isPaystackPremium || hasPremiumPass;
 
-  // Active boosts from redemptions
   const activeBoosts = await db.select().from(rewardRedemptions).where(
     and(eq(rewardRedemptions.userId, userId), gte(rewardRedemptions.expiresAt || now, now))
   );
@@ -120,6 +120,8 @@ export async function getRewardsProfile(userId: string) {
   const ledger = await db.select().from(rewardLedger).where(eq(rewardLedger.userId, userId)).orderBy(desc(rewardLedger.createdAt)).limit(20);
   const entitlements = await computeEntitlements(userId);
   const redemptions = await db.select().from(rewardRedemptions).where(eq(rewardRedemptions.userId, userId)).orderBy(desc(rewardRedemptions.createdAt)).limit(10);
+  const activeBoostedToys = await db.select({ id: toys.id, name: toys.name, boostedUntil: toys.boostedUntil })
+    .from(toys).where(and(eq(toys.ownerId, userId), gt(toys.boostedUntil, new Date())));
   return {
     pointsBalance: reward[0]?.pointsBalance || 0,
     pointsLifetime: reward[0]?.pointsLifetime || 0,
@@ -128,6 +130,8 @@ export async function getRewardsProfile(userId: string) {
     recentLedger: ledger,
     recentRedemptions: redemptions,
     entitlements,
+    activeBoostedToys,
+    isPremium: entitlements.isPremium,
   };
 }
 
@@ -142,6 +146,52 @@ export async function checkDailyCap(userId: string, eventType: string, maxPerDay
   return (result?.count || 0) < maxPerDay;
 }
 
+export async function checkMonthlyReferralCap(userId: string): Promise<boolean> {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const [result] = await db.select({ count: sql<number>`count(*)` }).from(rewardLedger).where(
+    and(eq(rewardLedger.userId, userId), eq(rewardLedger.eventType, "REFERRAL_QUALIFIED"), gte(rewardLedger.createdAt, startOfMonth))
+  );
+  return (result?.count || 0) < 5;
+}
+
+export async function countActiveBoosts(userId: string): Promise<number> {
+  const now = new Date();
+  const [result] = await db.select({ count: sql<number>`count(*)` }).from(toys)
+    .where(and(eq(toys.ownerId, userId), gt(toys.boostedUntil, now)));
+  return Number(result?.count || 0);
+}
+
+export async function redeemPointsBoost(toyId: number, userId: string, hours: number, costPoints: number): Promise<{ ok: boolean; message: string; code?: string }> {
+  const toy = await db.select().from(toys).where(eq(toys.id, toyId)).limit(1);
+  if (!toy.length) return { ok: false, message: "Toy not found" };
+  if (toy[0].ownerId !== userId) return { ok: false, message: "Not your toy" };
+  if (!toy[0].isAvailable) return { ok: false, code: "TOY_UNAVAILABLE", message: "This listing must be available to be boosted." };
+  const activeCount = await countActiveBoosts(userId);
+  if (activeCount >= 2) return { ok: false, message: "Maximum 2 boosted listings allowed" };
+  const reward = await db.select().from(userRewards).where(eq(userRewards.userId, userId)).limit(1);
+  if (!reward.length || reward[0].pointsBalance < costPoints) return { ok: false, message: "Insufficient points" };
+  const now = new Date();
+  const existingEnd = toy[0].boostedUntil && toy[0].boostedUntil > now ? toy[0].boostedUntil : now;
+  const newEnd = new Date(Math.max(existingEnd.getTime(), now.getTime()) + hours * 60 * 60 * 1000);
+  await db.update(toys).set({ boostedUntil: newEnd }).where(eq(toys.id, toyId));
+  await spendPoints({ userId, rewardType: `BOOST_LISTING_LITE_48H`, costPoints, meta: { toyId, hours }, expiresAt: newEnd });
+  return { ok: true, message: "Toy boosted!" };
+}
+
+export async function applyPaidBoost(toyId: number, userId: string, hours: number): Promise<{ ok: boolean; message: string; code?: string }> {
+  const toy = await db.select().from(toys).where(eq(toys.id, toyId)).limit(1);
+  if (!toy.length) return { ok: false, message: "Toy not found" };
+  if (toy[0].ownerId !== userId) return { ok: false, message: "Not your toy" };
+  if (!toy[0].isAvailable) return { ok: false, code: "TOY_UNAVAILABLE", message: "This listing must be available to be boosted." };
+  const now = new Date();
+  const existingEnd = toy[0].boostedUntil && toy[0].boostedUntil > now ? toy[0].boostedUntil : now;
+  const newEnd = new Date(Math.max(existingEnd.getTime(), now.getTime()) + hours * 60 * 60 * 1000);
+  await db.update(toys).set({ boostedUntil: newEnd }).where(eq(toys.id, toyId));
+  return { ok: true, message: "Toy boosted!" };
+}
+
 export async function qualifyReferral(refereeId: string) {
   const refs = await db.select().from(referrals).where(
     and(eq(referrals.refereeId, refereeId), eq(referrals.status, "pending"))
@@ -149,15 +199,15 @@ export async function qualifyReferral(refereeId: string) {
   if (!refs.length) return;
   const ref = refs[0];
   await db.update(referrals).set({ status: "qualified", qualifiedAt: new Date() }).where(eq(referrals.id, ref.id));
-  // Award referrer
-  await awardPoints({ userId: ref.referrerId, eventType: "REFERRAL_QUALIFIED", referenceType: "referral", referenceId: `ref_${ref.id}_referrer`, points: 200, meta: { refereeId } });
+  if (await checkMonthlyReferralCap(ref.referrerId)) {
+    await awardPoints({ userId: ref.referrerId, eventType: "REFERRAL_QUALIFIED", referenceType: "referral", referenceId: `ref_${ref.id}_referrer`, points: 200, meta: { refereeId } });
+  }
   const referrer = await db.select().from(users).where(eq(users.id, ref.referrerId)).limit(1);
   if (referrer.length) {
     const existingPass = referrer[0].premiumPassUntil || new Date();
     const newPass = new Date(Math.max(existingPass.getTime(), Date.now()) + 7 * 24 * 60 * 60 * 1000);
     await db.update(users).set({ premiumPassUntil: newPass }).where(eq(users.id, ref.referrerId));
   }
-  // Award referee
   await awardPoints({ userId: refereeId, eventType: "REFERRAL_QUALIFIED_REFEREE", referenceType: "referral", referenceId: `ref_${ref.id}_referee`, points: 100, meta: { referrerId: ref.referrerId } });
   const referee = await db.select().from(users).where(eq(users.id, refereeId)).limit(1);
   if (referee.length) {

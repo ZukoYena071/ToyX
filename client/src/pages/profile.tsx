@@ -26,7 +26,8 @@ import {
   Navigation,
   Edit3,
   Trash2,
-  Loader2
+  Loader2,
+  MoreHorizontal
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ import ListItemRow from "@/components/ui/ListItemRow";
 import StatCard from "@/components/ui/StatCard";
 import { apiRequest } from "@/lib/queryClient";
 import UploadOverlay from "@/components/upload-overlay";
+import BoostButton from "@/components/toys/BoostButton";
 import { searchLocations } from "@/lib/location";
 
 export default function Profile() {
@@ -55,6 +57,7 @@ export default function Profile() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditToy, setShowEditToy] = useState<any>(null);
   const [confirmDeleteToyId, setConfirmDeleteToyId] = useState<number | null>(null);
+  const [showToyMenu, setShowToyMenu] = useState<number | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingSub, setCancellingSub] = useState(false);
   const [cancelConfirmed, setCancelConfirmed] = useState(false);
@@ -157,14 +160,22 @@ export default function Profile() {
       : 'Unknown'
   };
 
-  const menuItems = [
+  const activityItems = [
     {
       icon: Package,
       title: 'My Toys',
-      subtitle: `${userStats.toysShared} active listings`,
+      subtitle: `${userStats.toysShared} listings`,
       iconColor: 'text-purple-500',
       iconBg: 'bg-purple-50 dark:bg-purple-900/30',
       section: 'toys'
+    },
+    {
+      icon: History,
+      title: 'Exchanges',
+      subtitle: `${userStats.toysReceived} completed exchanges`,
+      iconColor: 'text-blue-500',
+      iconBg: 'bg-blue-50 dark:bg-blue-900/30',
+      section: 'history'
     },
     {
       icon: Heart,
@@ -175,43 +186,12 @@ export default function Profile() {
       href: '/favorites'
     },
     {
-      icon: History,
-      title: 'Exchange History',
-      subtitle: `${userStats.toysReceived} completed exchanges`,
-      iconColor: 'text-blue-500',
-      iconBg: 'bg-blue-50 dark:bg-blue-900/30',
-      section: 'history'
-    },
-    {
       icon: Star,
       title: 'Reviews',
       subtitle: `${userStats.rating.toFixed(1)} ⭐ (${userStats.reviewCount} reviews)`,
       iconColor: 'text-yellow-500',
       iconBg: 'bg-yellow-50 dark:bg-yellow-900/30',
       section: 'reviews'
-    },
-    {
-      icon: Gift,
-      title: 'Rewards',
-      subtitle: 'Earn & spend points',
-      iconColor: 'text-green-500',
-      iconBg: 'bg-green-50 dark:bg-green-900/30',
-      href: '/rewards'
-    },
-    {
-      icon: Gift,
-      title: 'Invite Friends',
-      subtitle: 'Earn 200 pts + Premium Pass',
-      iconColor: 'text-pink-500',
-      iconBg: 'bg-pink-50 dark:bg-pink-900/30',
-      href: '/invite'
-    },
-    {
-      icon: HelpCircle,
-      title: 'Help & Support',
-      subtitle: 'Get help with ToyX',
-      iconColor: 'text-indigo-500',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-900/30'
     }
   ];
 
@@ -401,7 +381,7 @@ export default function Profile() {
     return <PageLoadingSkeleton />;
   }
 
-  const renderIcon = (item: typeof menuItems[0]) => (
+  const renderIcon = (item: any) => (
     <div className={`w-10 h-10 ${item.iconBg} rounded-xl flex items-center justify-center`}>
       <item.icon className={`${item.iconColor} w-5 h-5`} />
     </div>
@@ -476,43 +456,44 @@ export default function Profile() {
         </SectionCard>
       </div>
 
-      {/* Quick Settings */}
+      {/* Subscription Section */}
       <div className="px-4 mt-4">
         <SectionCard>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Quick Settings</h3>
-          <div className="space-y-1">
-            <ListItemRow
-              icon={<div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center"><Bell className="text-blue-500 w-5 h-5" /></div>}
-              title="Notifications"
-              subtitle="Get notified about new matches"
-              right={<ToggleSwitch enabled={notificationsEnabled} onToggle={() => setNotificationsEnabled(!notificationsEnabled)} />}
-            />
-            <ListItemRow
-              icon={<div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center"><MapPin className="text-green-500 w-5 h-5" /></div>}
-              title="Location Services"
-              subtitle="Find toys near you"
-              right={<ToggleSwitch enabled={locationEnabled} onToggle={toggleLocation} />}
-            />
-            <ListItemRow
-              icon={
-                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
-                  {isDarkMode ? <Sun className="text-yellow-500 w-5 h-5" /> : <Moon className="text-gray-500 w-5 h-5" />}
-                </div>
-              }
-              title="Dark Mode"
-              subtitle="Switch to dark theme"
-              right={<ToggleSwitch enabled={isDarkMode} onToggle={toggleDarkMode} />}
-            />
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Subscription</h3>
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-3">
+            <div>
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-50 capitalize">
+                {(user as any)?.plan || "free"}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                {(user as any)?.subscriptionStatus || "inactive"}
+              </div>
+            </div>
+            {(user as any)?.plan === "free" ? (
+              <a
+                href="/pricing"
+                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] inline-flex items-center"
+              >
+                Upgrade
+              </a>
+            ) : (
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </SectionCard>
       </div>
 
-      {/* Account Section */}
+      {/* My Activity */}
       <div className="px-4 mt-4">
         <SectionCard>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Account</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">My Activity</h3>
           <div className="space-y-1">
-            {menuItems.map((item, index) => (
+            {activityItems.map((item, index) => (
               <div key={index}>
                 {item.href ? (
                   <Link href={item.href}>
@@ -538,12 +519,12 @@ export default function Profile() {
                         {/* Toys section */}
                         {item.section === 'toys' && (
                           <>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">My Active Listings</h4>
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">My Listings</h4>
                             {Array.isArray(userToys) && userToys.length > 0 ? (
                               <div className="space-y-2">
                                 {userToys.map((toy: any) => (
-                                  <div key={toy.id} className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl">
-                                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0">
+                                  <div key={toy.id} className={'flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl' + (toy.isAvailable === false ? ' opacity-60' : '')}>
+                                    <div className={'w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0' + (toy.isAvailable === false ? ' grayscale' : '')}>
                                       {toy.imageUrls && toy.imageUrls[0] ? (
                                         <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
                                       ) : (
@@ -555,27 +536,35 @@ export default function Profile() {
                                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
-                                      <button onClick={() => setShowEditToy(toy)} className="min-w-[44px] min-h-[44px] bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
-                                        <Edit3 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                      </button>
-                                      <button onClick={() => setConfirmDeleteToyId(toy.id)} className="min-w-[44px] min-h-[44px] bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
-                                        <Trash2 className="w-4 h-4 text-red-500" />
-                                      </button>
-                                      {(() => {
-                                        const exStatus = getToyExchangeStatus(toy.id);
-                                        if (exStatus) {
-                                          return (
-                                            <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
-                                              In Exchange
-                                            </span>
-                                          );
-                                        }
-                                        return (
-                                          <span className={`px-2 py-0.5 rounded-full text-xs ${toy.isAvailable ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
-                                            {toy.isAvailable ? 'Available' : 'Unavailable'}
-                                          </span>
-                                        );
-                                      })()}
+                                      <BoostButton toyId={toy.id} isBoosted={toy.isBoosted} boostedUntil={toy.boostedUntil} disabled={toy.isAvailable === false} onSuccess={() => { queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); queryClient.invalidateQueries({ queryKey: ["/api/toys"] }); }} />
+                                      <div className="relative">
+                                        <button onClick={() => setShowToyMenu(showToyMenu === toy.id ? null : toy.id)} className="min-w-[44px] min-h-[44px] bg-gray-50 dark:bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                          <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                                        </button>
+                                        {showToyMenu === toy.id && (
+                                          <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowToyMenu(null)} />
+                                            <div className="absolute right-0 top-10 z-50 w-44 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
+                                              <button onClick={() => { setShowToyMenu(null); setShowEditToy(toy); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
+                                                <Edit3 className="w-4 h-4 text-purple-500" />
+                                                Edit
+                                              </button>
+                                              <button onClick={() => { setShowToyMenu(null); setConfirmDeleteToyId(toy.id); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors min-h-[44px]">
+                                                <Trash2 className="w-4 h-4" />
+                                                Manage
+                                              </button>
+                                              <div className="border-t border-gray-100 dark:border-gray-800" />
+                                              <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                                {(() => {
+                                                  const exStatus = getToyExchangeStatus(toy.id);
+                                                  if (exStatus) return 'In Exchange';
+                                                  return toy.isAvailable ? 'Available' : 'Unavailable';
+                                                })()}
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
@@ -660,40 +649,8 @@ export default function Profile() {
         </SectionCard>
       </div>
 
-      {/* Subscription Section */}
+      {/* Privacy & Safety */}
       <div className="px-4 mt-4">
-        <SectionCard>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Subscription</h3>
-          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-3">
-            <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-50 capitalize">
-                {(user as any)?.plan || "free"}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                {(user as any)?.subscriptionStatus || "inactive"}
-              </div>
-            </div>
-            {(user as any)?.plan === "free" ? (
-              <a
-                href="/pricing"
-                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] inline-flex items-center"
-              >
-                Upgrade
-              </a>
-            ) : (
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* Account Actions */}
-      <div className="px-4 mt-4 mb-6">
         <SectionCard>
           <div className="space-y-1">
             <Link href="/privacy-safety">
@@ -703,6 +660,68 @@ export default function Profile() {
                 subtitle="Manage your privacy settings"
               />
             </Link>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Quick Settings */}
+      <div className="px-4 mt-4">
+        <SectionCard>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Quick Settings</h3>
+          <div className="space-y-1">
+            <ListItemRow
+              icon={<div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center"><Bell className="text-blue-500 w-5 h-5" /></div>}
+              title="Notifications"
+              subtitle="Get notified about new matches"
+              right={<ToggleSwitch enabled={notificationsEnabled} onToggle={() => setNotificationsEnabled(!notificationsEnabled)} />}
+            />
+            <ListItemRow
+              icon={<div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center"><MapPin className="text-green-500 w-5 h-5" /></div>}
+              title="Location Services"
+              subtitle="Find toys near you"
+              right={<ToggleSwitch enabled={locationEnabled} onToggle={toggleLocation} />}
+            />
+            <ListItemRow
+              icon={
+                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
+                  {isDarkMode ? <Sun className="text-yellow-500 w-5 h-5" /> : <Moon className="text-gray-500 w-5 h-5" />}
+                </div>
+              }
+              title="Dark Mode"
+              subtitle="Switch to dark theme"
+              right={<ToggleSwitch enabled={isDarkMode} onToggle={toggleDarkMode} />}
+            />
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Rewards & Referrals */}
+      <div className="px-4 mt-4">
+        <SectionCard>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Rewards & Referrals</h3>
+          <div className="space-y-1">
+            <Link href="/rewards">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center"><Gift className="text-green-500 w-5 h-5" /></div>}
+                title="Rewards"
+                subtitle="Earn & spend points"
+              />
+            </Link>
+            <Link href="/invite">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-pink-50 dark:bg-pink-900/30 rounded-xl flex items-center justify-center"><Gift className="text-pink-500 w-5 h-5" /></div>}
+                title="Invite Friends"
+                subtitle="Earn 200 pts + Premium Pass"
+              />
+            </Link>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Support + Legal + Exit */}
+      <div className="px-4 mt-4 mb-6">
+        <SectionCard>
+          <div className="space-y-1">
             <ListItemRow
               icon={<div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center"><FileText className="text-purple-500 w-5 h-5" /></div>}
               title="Terms & Conditions"
@@ -884,24 +903,66 @@ export default function Profile() {
         <UploadOverlay toy={showEditToy} onClose={() => { setShowEditToy(null); queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); }} />
       )}
 
-      {/* Delete Toy Confirmation Modal */}
-      {confirmDeleteToyId && (
+      {/* Manage Listing Modal */}
+      {confirmDeleteToyId && (() => {
+        const toysList: any[] = Array.isArray(userToys) ? userToys : [];
+        const toy = toysList.find((t: any) => t.id === confirmDeleteToyId);
+        if (!toy) return null;
+        return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <SectionCard className="p-6 w-full max-w-sm text-center">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="text-red-500 w-6 h-6" />
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="text-gray-500 w-6 h-6" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Delete Listing</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Are you sure you want to delete this toy listing? This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmDeleteToyId(null)} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">Cancel</button>
-              <button onClick={() => deleteToyMutation.mutate(confirmDeleteToyId)} disabled={deleteToyMutation.isPending} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-medium transition-colors disabled:opacity-50 min-h-[44px]">
-                {deleteToyMutation.isPending ? "Deleting..." : "Delete"}
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-1">{toy.name}</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{toy.isAvailable ? 'Available' : 'Unavailable'}</p>
+            <div className="space-y-2">
+              <button
+                onClick={async () => {
+                  const action = toy.isAvailable ? 'unlist' : 'relist';
+                  await fetch(`/api/toys/${confirmDeleteToyId}/${action}`, { method: "POST", credentials: "include" });
+                  queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                  setConfirmDeleteToyId(null);
+                }}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]"
+              >
+                {toy.isAvailable ? 'Unlist (Make Unavailable)' : 'Relist (Make Available)'}
               </button>
+              <button
+                onClick={async () => {
+                  await fetch(`/api/toys/${confirmDeleteToyId}/archive`, { method: "POST", credentials: "include" });
+                  queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                  setConfirmDeleteToyId(null);
+                }}
+                className="w-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors min-h-[44px]"
+              >
+                Archive (Remove from listings)
+              </button>
+              {toy.canDeletePermanently && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/toys/${confirmDeleteToyId}`, { method: "DELETE", credentials: "include" });
+                      if (res.ok || res.status === 204) {
+                        queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] });
+                        setConfirmDeleteToyId(null);
+                      } else {
+                        const data = await res.json().catch(() => ({}));
+                        alert(data.message || "Failed to delete");
+                      }
+                    } catch { alert("Failed to delete"); }
+                  }}
+                  className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]"
+                >
+                  Delete Permanently
+                </button>
+              )}
             </div>
+            <button onClick={() => setConfirmDeleteToyId(null)} className="mt-3 text-sm text-gray-500 dark:text-gray-400 underline min-h-[44px]">Cancel</button>
           </SectionCard>
         </div>
-      )}
+        );
+      })()}
 
       {/* Cancel Subscription Confirmation Modal */}
       {showCancelModal && !cancelConfirmed && (

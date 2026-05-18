@@ -70,6 +70,7 @@ export const toys = pgTable("toys", {
   latitude: real("latitude"),
   longitude: real("longitude"),
   boostedUntil: timestamp("boosted_until"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

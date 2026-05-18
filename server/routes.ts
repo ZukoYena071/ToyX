@@ -2,13 +2,13 @@ import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq, and, or, gte, inArray } from "drizzle-orm";
+import { eq, and, or, gte, inArray, isNull } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
-import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards } from "./rewards";
+import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
 import { haversineKm } from "./utils/distance";
 
 async function getPremiumStatus(userId: string) {
@@ -63,6 +63,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     console.log("DEV_AUTH_BYPASS endpoints registered");
   }
+
+  // Dev test points award (used by API tests)
+  app.post("/api/rewards/award-test-points", async (req: any, res) => {
+    try {
+      const { userId, points } = req.body;
+      if (!userId || !points) return res.status(400).json({ message: "userId and points required" });
+      const result = await awardPoints({ userId, eventType: "TEST_AWARD", referenceType: "test", referenceId: `test_${Date.now()}`, points });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -169,6 +181,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get logged-in user's toys (for boost selection)
+  app.get('/api/users/me/toys', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userToys = await storage.getToysByUser(userId);
+      const now = new Date();
+      const toysWithMeta = await Promise.all(userToys.map(async (t: any) => {
+        const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+          or(eq(exchanges.toyId, t.id), eq(exchanges.offeredToyId, t.id))
+        ).limit(1);
+        return { ...t, isBoosted: !!(t as any).boostedUntil && new Date((t as any).boostedUntil) > now, hasExchangeHistory: !!exch, canDeletePermanently: !exch };
+      }));
+      res.json(toysWithMeta);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Update user profile
   app.patch('/api/users/profile', isAuthenticated, async (req: any, res) => {
     try {
@@ -252,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const taste = await storage.getUserTasteProfile(userId);
 
       // Recently added — always
-      let recentlyAdded = await storage.getToysWithOwners(eq(toys.isAvailable, true), 10);
+      let recentlyAdded = await storage.getToysWithOwners(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)), 10);
 
       let nearYou: any[] = [];
       let forYou: any[] = [];
@@ -275,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scored.sort((a: any, b: any) => b._score - a._score);
         forYou = scored.slice(0, 10);
       } else {
-        const allToys = await storage.getToysWithOwners(eq(toys.isAvailable, true));
+        const allToys = await storage.getToysWithOwners(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)));
         const scored = allToys.map((t: any) => {
           let score = 0;
           if (taste.topCategories.some((c: string) => t.category?.includes(c))) score += 20;
@@ -290,8 +320,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nearYou = recentlyAdded;
       }
 
-      // Add isFavorited for each toy
-      const addFav = async (toy: any) => { toy.isFavorited = await storage.isFavorite(userId, toy.id); return toy; };
+      // Add isFavorited + isBoosted for each toy
+      const now = new Date();
+      const addFav = async (toy: any) => { 
+        toy.isFavorited = await storage.isFavorite(userId, toy.id); 
+        toy.isBoosted = !!(toy.boostedUntil && new Date(toy.boostedUntil) > now);
+        return toy; 
+      };
       forYou = await Promise.all(forYou.map(addFav));
       nearYou = await Promise.all(nearYou.map(addFav));
       recentlyAdded = await Promise.all(recentlyAdded.map(addFav));
@@ -331,6 +366,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toy.inExchange = activeEx.length > 0;
       }
       
+      // Add isBoosted to each toy
+      const now = new Date();
+      for (const toy of toys) {
+        (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
+      }
+      
       // Compute distance from viewer if location is enabled
       const viewer = uid ? await storage.getUser(uid) : null;
       if (viewer?.locationEnabled && viewer.latitude != null && viewer.longitude != null) {
@@ -340,6 +381,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
+      
+      // Sort: boosted first, then by distance or created date
+      toys.sort((a: any, b: any) => {
+        if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
+        if (a.distanceKm != null && b.distanceKm != null) return a.distanceKm - b.distanceKm;
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
       
       res.json(toys);
     } catch (error) {
@@ -429,7 +477,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.params.userId;
       const toys = await storage.getToysByUser(userId);
-      res.json(toys);
+      const toysWithMeta = await Promise.all(toys.map(async (t: any) => {
+        const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+          or(eq(exchanges.toyId, t.id), eq(exchanges.offeredToyId, t.id))
+        ).limit(1);
+        return { ...t, hasExchangeHistory: !!exch, canDeletePermanently: !exch };
+      }));
+      res.json(toysWithMeta);
     } catch (error) {
       console.error("Error fetching user toys:", error);
       res.status(500).json({ message: "Failed to fetch user toys" });
@@ -464,10 +518,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toy = await storage.getToy(toyId);
       if (!toy) return res.status(404).json({ message: "Toy not found" });
       if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      // Check if toy has any exchanges referencing it
+      const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+        or(eq(exchanges.toyId, toyId), eq(exchanges.offeredToyId, toyId))
+      ).limit(1);
+      if (exch) {
+        return res.status(409).json({ code: "TOY_HAS_EXCHANGES", message: "This listing has exchange history and can't be permanently deleted. Archive it instead." });
+      }
       await storage.deleteToy(toyId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to delete toy" });
+    }
+  });
+
+  // Unlist (set unavailable)
+  app.post('/api/toys/:toyId/unlist', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      await db.update(toys).set({ isAvailable: false, updatedAt: new Date() }).where(eq(toys.id, toyId));
+      res.json({ ok: true, message: "Listing unlisted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to unlist" });
+    }
+  });
+
+  // Archive (soft delete)
+  app.post('/api/toys/:toyId/archive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      await db.update(toys).set({ deletedAt: new Date(), isAvailable: false, updatedAt: new Date() }).where(eq(toys.id, toyId));
+      res.json({ ok: true, message: "Listing archived" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to archive" });
+    }
+  });
+
+  // Relist (make available)
+  app.post('/api/toys/:toyId/relist', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      await db.update(toys).set({ isAvailable: true, updatedAt: new Date() }).where(eq(toys.id, toyId));
+      res.json({ ok: true, message: "Listing relisted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to relist" });
     }
   });
 
@@ -780,8 +886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await awardPoints({ userId: reviewData.reviewerId, eventType: "REVIEW_LEFT", referenceType: "review", referenceId: String(review.id), points: 10 });
       }
       // Award bonus for 5-star review received
-      if (reviewData.rating === 5) {
-        await awardPoints({ userId: reviewData.revieweeId, eventType: "REVIEW_RECEIVED_5STAR", referenceType: "review", referenceId: String(review.id), points: 10 });
+      if (reviewData.rating === 5 && (reviewData.comment?.length || 0) >= 30) {
+        await awardPoints({ userId: reviewData.revieweeId, eventType: "REVIEW_RECEIVED_5STAR", referenceType: "review", referenceId: String(review.id), points: 5 });
       }
       res.json(review);
     } catch (error) {
@@ -940,22 +1046,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { rewardType, toyId } = req.body;
       if (!rewardType) return res.status(400).json({ message: "rewardType required" });
 
-      // Define rewards
-      const rewards: Record<string, { cost: number; expiresDays?: number; cooldownDays?: number }> = {
-        BOOST_LISTING_48H: { cost: 300 },
+      // Free-tier rewards
+      const freeRewards: Record<string, { cost: number; expiresDays?: number; cooldownDays?: number }> = {
+        ADD_REQUESTS_1: { cost: 50 },
         ADD_REQUESTS_5_30D: { cost: 200, expiresDays: 30 },
         ADD_LISTINGS_5_30D: { cost: 250, expiresDays: 30 },
+        BOOST_LISTING_LITE_48H: { cost: 300 },
         PREMIUM_PASS_7D: { cost: 1200, cooldownDays: 30 },
       };
+      // Premium-tier rewards
+      const premiumRewards: Record<string, { cost: number; expiresDays?: number; cooldownDays?: number }> = {
+        BUMP_LISTING_8H: { cost: 80 },
+        BOOST_LISTING_LITE_48H: { cost: 300 },
+        HIGHLIGHT_LISTING_3D: { cost: 450 },
+      };
+
+      const entitlements = await computeEntitlements(userId);
+      const rewards = entitlements.isPremium ? premiumRewards : freeRewards;
       const def = rewards[rewardType];
       if (!def) return res.status(400).json({ message: "Unknown reward type" });
+
+      // Boost limit check
+      if (["BOOST_LISTING_LITE_48H", "BUMP_LISTING_8H", "HIGHLIGHT_LISTING_3D"].includes(rewardType)) {
+        if (!toyId) return res.status(400).json({ message: "toyId required for boost" });
+        const activeBoosts = await countActiveBoosts(userId);
+        if (activeBoosts >= 2) return res.status(400).json({ message: "Maximum 2 boosted listings allowed" });
+      }
 
       let expiresAt: Date | undefined;
       if (def.expiresDays) {
         expiresAt = new Date(Date.now() + def.expiresDays * 24 * 60 * 60 * 1000);
       }
 
-      // Cooldown check for premium pass
       if (def.cooldownDays) {
         const userR = await db.select().from(rewardLedger).where(
           and(eq(rewardLedger.userId, userId), eq(rewardLedger.eventType, "REDEEM_PREMIUM_PASS"), gte(rewardLedger.createdAt, new Date(Date.now() - def.cooldownDays * 24 * 60 * 60 * 1000)))
@@ -963,12 +1085,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (userR.length) return res.status(400).json({ message: "Premium Pass can only be redeemed once every 30 days" });
       }
 
-      const result = await spendPoints({ userId, rewardType: rewardType, costPoints: def.cost, meta: rewardType === "BOOST_LISTING_48H" ? { toyId } : undefined, expiresAt });
+      const result = await spendPoints({ userId, rewardType, costPoints: def.cost, meta: rewardType.includes("BOOST") || rewardType.includes("BUMP") || rewardType.includes("HIGHLIGHT") ? { toyId } : undefined, expiresAt });
       if (!result.ok) return res.status(400).json({ message: "Insufficient points", balance: result.balance });
 
-      // Apply boost listing
-      if (rewardType === "BOOST_LISTING_48H" && toyId) {
-        await db.update(toys).set({ boostedUntil: new Date(Date.now() + 48 * 60 * 60 * 1000) }).where(eq(toys.id, toyId));
+      // Apply boosts
+      if (["BOOST_LISTING_LITE_48H", "BUMP_LISTING_8H", "HIGHLIGHT_LISTING_3D"].includes(rewardType) && toyId) {
+        const durations: Record<string, number> = { BOOST_LISTING_LITE_48H: 48, BUMP_LISTING_8H: 8, HIGHLIGHT_LISTING_3D: 72 };
+        await db.update(toys).set({ boostedUntil: new Date(Date.now() + (durations[rewardType] || 48) * 60 * 60 * 1000) }).where(eq(toys.id, toyId));
       }
       if (rewardType === "PREMIUM_PASS_7D") {
         const existingPass = await db.select({ premiumPassUntil: users.premiumPassUntil }).from(users).where(eq(users.id, userId)).limit(1);
@@ -978,6 +1101,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ ok: true, balance: result.balance });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  // Per-toy points boost redeem
+  app.post('/api/toys/:toyId/boost/redeem', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const { hours = 48, costPoints = 300 } = req.body;
+      const result = await redeemPointsBoost(toyId, userId, hours, costPoints);
+      if (!result.ok) return res.status(400).json(result);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  // Per-toy paid boost init
+  app.post('/api/toys/:toyId/boost/paystack/init', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.email) return res.status(400).json({ message: "User email not found" });
+      const toyId = parseInt(req.params.toyId);
+      const { boostType } = req.body;
+      const plans: Record<string, { amount: number; hours: number; label: string }> = {
+        boost_lite: { amount: 1900, hours: 24, label: "Boost Lite" },
+        boost_plus: { amount: 4900, hours: 72, label: "Boost Plus" },
+        boost_max: { amount: 9900, hours: 168, label: "Boost Max" },
+      };
+      const plan = plans[boostType];
+      if (!plan) return res.status(400).json({ message: "Invalid boost type" });
+      const activeBoosts = await countActiveBoosts(userId);
+      if (activeBoosts >= 2) return res.status(400).json({ message: "Maximum 2 boosted listings allowed" });
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      if (toy.isAvailable === false) return res.status(400).json({ code: "TOY_UNAVAILABLE", message: "This listing must be available to be boosted." });
+      const result = await paystackFetch("/transaction/initialize", {
+        method: "POST",
+        body: JSON.stringify({
+          email: user.email,
+          amount: plan.amount,
+          callback_url: `${APP_BASE_URL}/billing-success`,
+          metadata: { userId, toyId, boostType, hours: plan.hours, purpose: "toy_boost" },
+        }),
+      });
+      if (!result.status) return res.status(400).json({ message: result.message || "Paystack init failed" });
+      res.json({ authorizationUrl: result.data.authorization_url });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
     }
@@ -1120,6 +1294,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Paid boost via Paystack
+  app.post('/api/billing/paystack/boost', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.email) return res.status(400).json({ message: "User email not found" });
+      const { toyId, boostType } = req.body;
+      if (!toyId || !boostType) return res.status(400).json({ message: "toyId and boostType required" });
+      const plans: Record<string, { amount: number; hours: number; label: string }> = {
+        boost_lite: { amount: 1900, hours: 24, label: "Boost Lite" },
+        boost_plus: { amount: 4900, hours: 72, label: "Boost Plus" },
+        boost_max: { amount: 9900, hours: 168, label: "Boost Max" },
+      };
+      const plan = plans[boostType];
+      if (!plan) return res.status(400).json({ message: "Invalid boost type" });
+      const activeBoosts = await countActiveBoosts(userId);
+      if (activeBoosts >= 2) return res.status(400).json({ message: "Maximum 2 boosted listings allowed" });
+      const result = await paystackFetch("/transaction/initialize", {
+        method: "POST",
+        body: JSON.stringify({
+          email: user.email,
+          amount: plan.amount,
+          callback_url: `${APP_BASE_URL}/billing-success`,
+          metadata: { userId, toyId, boostType, purpose: "toy_boost" },
+        }),
+      });
+      if (!result.status) return res.status(400).json({ message: result.message || "Paystack init failed" });
+      res.json({ authorizationUrl: result.data.authorization_url });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to initiate boost payment" });
+    }
+  });
+
+  // Paystack webhook handler
   app.post('/api/billing/paystack/webhook', async (req: any, res) => {
     const signature = req.headers["x-paystack-signature"] as string;
     if (!signature) {
@@ -1174,6 +1382,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (usersBySub[0]) {
               await storage.setUserSubscriptionByUserId(usersBySub[0].id, { subscriptionStatus: "canceled" });
             }
+          }
+          break;
+        }
+        case "charge.success": {
+          if (data.metadata?.purpose === "toy_boost") {
+            const { userId, toyId } = data.metadata;
+            const hours: Record<string, number> = { boost_lite: 24, boost_plus: 72, boost_max: 168 };
+            const boostType = data.metadata.boostType || "boost_lite";
+            const h = hours[boostType] || 24;
+            await applyPaidBoost(toyId, userId, h);
+            await awardPoints({ userId, eventType: "PAID_BOOST", referenceType: "toy", referenceId: String(toyId), points: 0, meta: { boostType, hours: h, amount: data.amount } });
           }
           break;
         }
