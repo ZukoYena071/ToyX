@@ -151,3 +151,33 @@ describe("Relist / CanDeletePermanently", () => {
     expect(toy.canDeletePermanently).toBe(true);
   });
 });
+
+describe("Browse ordering — boosted first", () => {
+  let agent: request.SuperAgentTest;
+  const toyIds: number[] = [];
+
+  beforeAll(async () => {
+    agent = request.agent(BASE);
+    await devLogin(agent, "seed_user_1");
+    await agent.post("/api/rewards/award-test-points").send({ userId: "seed_user_1", points: 600 });
+    for (let i = 0; i < 3; i++) {
+      const r = await agent.post("/api/toys").send({
+        name: `Browse Order ${i}`, category: "Blocks", ageGroup: "3-5", condition: "New",
+        imageUrls: ["data:image/svg+xml,<svg></svg>"], description: "Order test toy.",
+      });
+      if (r.status === 201) toyIds.push(r.body.id);
+    }
+  });
+
+  it("returns boosted toys before non-boosted, boostedUntil DESC within boosted", async () => {
+    if (toyIds.length < 3) return;
+    // Boost toyIds[0] with 48h, toyIds[1] with 24h
+    await agent.post(`/api/toys/${toyIds[0]}/boost/redeem`).send({ hours: 48, costPoints: 300 });
+    await agent.post(`/api/toys/${toyIds[1]}/boost/redeem`).send({ hours: 24, costPoints: 300 });
+    const browse = await agent.get("/api/toys");
+    const order = browse.body.filter((t: any) => toyIds.includes(t.id)).map((t: any) => t.id);
+    // toyIds[0] (boosted 48h) should come before toyIds[1] (boosted 24h), which should come before toyIds[2] (not boosted)
+    expect(order.indexOf(toyIds[0])).toBeLessThan(order.indexOf(toyIds[1]));
+    expect(order.indexOf(toyIds[1])).toBeLessThan(order.indexOf(toyIds[2]));
+  });
+});
