@@ -13,6 +13,7 @@ import { searchLocations } from "@/lib/location";
 import { fileToCompressedDataUrl } from "@/lib/imageCompression";
 import { sha256OfFile } from "@/lib/fileHash";
 import { insertToySchema } from "@shared/schema";
+import type { User } from "@shared/schema";
 
 interface UploadOverlayProps {
   onClose: () => void;
@@ -54,7 +55,8 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
 }
 
 export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
-  const { user } = useAuth();
+  const { user: rawUser } = useAuth();
+  const user = rawUser as User | undefined;
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
@@ -355,7 +357,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               </div>
               {formData.category && (
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {formData.category.split(", ").map(c => (
+                  {formData.category.split(", ").map((c: string) => (
                     <Badge key={c} variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
                       {c}
                       <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600 min-h-[24px] min-w-[24px]">

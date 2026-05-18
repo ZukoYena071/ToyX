@@ -58,7 +58,7 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
             <p className={`text-xs mt-1 ${
               isOwn ? 'text-purple-200' : 'text-gray-400 dark:text-gray-500'
             }`}>
-              {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {new Date(message.createdAt ?? 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
 

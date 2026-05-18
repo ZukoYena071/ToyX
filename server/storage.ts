@@ -636,7 +636,25 @@ export class DatabaseStorage implements IStorage {
       ORDER BY distance_km ASC, t.created_at DESC
       LIMIT 200
     `);
-    return rows.map((r: any) => ({ ...r, owner: r.owner, distanceKm: Number(r.distance_km) }));
+    return (rows as any).rows.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      category: r.category,
+      ageGroup: r.age_group,
+      condition: r.condition,
+      imageUrls: r.image_urls,
+      ownerId: r.owner_id,
+      isAvailable: r.is_available,
+      location: r.location,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      boostedUntil: r.boosted_until,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      owner: r.owner,
+      distanceKm: Number(r.distance_km),
+    }));
   }
 }
 

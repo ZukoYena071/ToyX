@@ -12,7 +12,7 @@ export default function LoadingDemo() {
     { id: "card", name: "Toy Card", component: () => <div className="grid grid-cols-2 gap-4"><ToyCardSkeleton /><ToyCardSkeleton /></div> },
     { id: "profile", name: "Profile", component: () => <ProfileSkeleton /> },
     { id: "exchange", name: "Exchange Form", component: () => <ExchangeFormSkeleton /> },
-    { id: "chat", name: "Chat Messages", component: () => <ChatMessageSkeleton count={4} /> },
+    { id: "chat", name: "Chat Messages", component: () => <ChatMessageSkeleton /> },
     { id: "search", name: "Search", component: () => <ToyGridSkeleton count={4} /> },
   ];
 

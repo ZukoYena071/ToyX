@@ -480,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const withUnread = exchanges.map((ex: any) => {
         const lastRead = ex.requesterId === userId ? ex.requesterLastReadAt : ex.ownerLastReadAt;
         const lastMsg = ex.messages?.[ex.messages.length - 1];
-        const hasUnread = lastMsg && lastMsg.senderId !== userId && (!lastRead || new Date(lastMsg.createdAt) > new Date(lastRead));
+        const hasUnread = lastMsg && lastMsg.senderId !== userId && (!lastRead || new Date(lastMsg.createdAt).getTime() > new Date(lastRead).getTime());
         return { ...ex, hasUnread: !!hasUnread };
       });
       res.json(withUnread);
@@ -580,7 +580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json(exchange);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating exchange:", error);
       res.status(500).json({ message: error.message || "Failed to create exchange" });
     }
@@ -628,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await qualifyReferral(exchange.ownerId);
       }
       res.json(exchange);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error confirming exchange completion:", error);
       res.status(400).json({ message: error.message || "Failed to confirm exchange completion" });
     }

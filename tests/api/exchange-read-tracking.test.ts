@@ -40,7 +40,6 @@ describe("Exchange read tracking", () => {
 
   it("creates an exchange from requester to owner", async () => {
     await agent.get("/api/dev/login/seed_user_2");
-    await clearUserToys(agent);
     const res = await agent.post("/api/exchanges").send({ toyId, requestMessage: "Can we swap?" });
     expect(res.status).toBe(201);
     exchangeId = res.body.id;
@@ -64,7 +63,7 @@ describe("Exchange read tracking", () => {
     const res = await agent.get("/api/exchanges");
     const ex = res.body.find((e: any) => e.id === exchangeId);
     expect(ex).toBeDefined();
-    console.log("DEBUG hasUnread:", ex.hasUnread, "ownerLastReadAt:", ex.ownerLastReadAt, "msgs:", ex.messages?.length);
+    console.log("DEBUG hasUnread:", ex.hasUnread, "ownerLastReadAt:", ex.ownerLastReadAt, "msgs:", ex.messages?.length, "msgCreatedAt:", ex.messages?.[0]?.createdAt);
     expect(ex.hasUnread).toBe(false);
   });
 });
