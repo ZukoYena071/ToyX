@@ -47,6 +47,12 @@ export default function ToyCarouselCard({ toy, onOpen, onToggleFavorite }: ToyCa
             {toy.condition}
           </span>
         )}
+        {(toy as any).isBoosted && (
+          <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/80 text-white backdrop-blur-sm z-10 flex items-center gap-1 ml-[72px]">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Boosted
+          </span>
+        )}
 
         <button
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}

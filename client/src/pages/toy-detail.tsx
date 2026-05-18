@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import BottomNav from "@/components/bottom-nav";
+import BoostButton from "@/components/toys/BoostButton";
 import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import { normalizeList, ChipRow } from "@/components/toys/MetaChip";
@@ -271,6 +272,10 @@ export default function ToyDetail() {
         </div>
 
         {/* Owner card */}
+        {/* Owner card */}
+        <div className="px-4 mt-2">
+          <BoostButton toyId={(toy as any)?.id} isBoosted={(toy as any)?.isBoosted} boostedUntil={(toy as any)?.boostedUntil} />
+        </div>
         <Link href={`/users/${(toy as any)?.ownerId}`}>
           <SectionCard className="p-4 cursor-pointer hover:shadow-sm transition-all">
             <div className="flex items-center gap-3">

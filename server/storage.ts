@@ -628,12 +628,13 @@ export class DatabaseStorage implements IStorage {
   async getCandidateToysNearUser(userId: string, lat: number, lng: number, radiusKm = 20): Promise<(ToyWithOwner & { distanceKm: number })[]> {
     const rows = await db.execute(sql`
       SELECT t.*, row_to_json(u.*) as owner,
-        (6371 * acos(cos(radians(${lat})) * cos(radians(t.latitude)) * cos(radians(t.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(t.latitude)))) AS distance_km
+        (6371 * acos(cos(radians(${lat})) * cos(radians(t.latitude)) * cos(radians(t.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(t.latitude)))) AS distance_km,
+        CASE WHEN t.boosted_until > NOW() THEN 0 ELSE 1 END AS sort_order
       FROM toys t
       LEFT JOIN users u ON u.id = t.owner_id
       WHERE t.is_available = true AND t.latitude IS NOT NULL AND t.longitude IS NOT NULL
         AND (6371 * acos(cos(radians(${lat})) * cos(radians(t.latitude)) * cos(radians(t.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(t.latitude)))) <= ${radiusKm}
-      ORDER BY distance_km ASC, t.created_at DESC
+      ORDER BY sort_order ASC, distance_km ASC, t.created_at DESC
       LIMIT 200
     `);
     return (rows as any).rows.map((r: any) => ({
