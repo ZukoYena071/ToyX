@@ -6,6 +6,8 @@ import {
   favorites,
   reviews,
   toyInteractions,
+  blocks,
+  reports,
   type User,
   type UpsertUser,
   type Toy,
@@ -70,6 +72,12 @@ export interface IStorage {
   getUserAverageRating(userId: string): Promise<number>;
   createReview(review: InsertReview): Promise<Review>;
   canUserReview(exchangeId: number, reviewerId: string): Promise<boolean>;
+  // Block / report operations
+  blockUser(blockerId: string, blockedId: string): Promise<void>;
+  unblockUser(blockerId: string, blockedId: string): Promise<void>;
+  isBlocked(blockerId: string, blockedId: string): Promise<boolean>;
+  getBlockedUserIds(userId: string): Promise<string[]>;
+  reportUser(reporterId: string, reportedId: string, reason?: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -536,6 +544,33 @@ export class DatabaseStorage implements IStorage {
       );
     
     return !existingReview;
+  }
+
+  // ---- Block / Report operations ----
+
+  async blockUser(blockerId: string, blockedId: string): Promise<void> {
+    const existing = await db.select().from(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId))).limit(1);
+    if (!existing.length) {
+      await db.insert(blocks).values({ blockerId, blockedId, createdAt: new Date() });
+    }
+  }
+
+  async unblockUser(blockerId: string, blockedId: string): Promise<void> {
+    await db.delete(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId)));
+  }
+
+  async isBlocked(blockerId: string, blockedId: string): Promise<boolean> {
+    const [row] = await db.select().from(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId))).limit(1);
+    return !!row;
+  }
+
+  async getBlockedUserIds(userId: string): Promise<string[]> {
+    const rows = await db.select({ blockedId: blocks.blockedId }).from(blocks).where(eq(blocks.blockerId, userId));
+    return rows.map(r => r.blockedId);
+  }
+
+  async reportUser(reporterId: string, reportedId: string, reason?: string): Promise<void> {
+    await db.insert(reports).values({ reporterId, reportedId, reason: reason || null, createdAt: new Date() });
   }
 
   // ---- Personalization methods ----

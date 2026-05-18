@@ -14,6 +14,7 @@ import EmptyState from "@/components/ui/EmptyState";
 export default function UserProfile() {
   const { userId } = useParams();
   const [selectedToys, setSelectedToys] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState<"toys" | "reviews">("toys");
 
   const { data: user, isLoading: userLoading } = useQuery<User>({
     queryKey: ["/api/users", userId],
@@ -36,7 +37,7 @@ export default function UserProfile() {
     retry: 1,
   });
 
-  const { data: averageRating } = useQuery<{ rating: number }>({
+  const { data: averageRating } = useQuery<{ averageRating: number }>({
     queryKey: ["/api/users", userId, "rating"],
     enabled: !!userId && !!user,
     staleTime: 5 * 60 * 1000,
@@ -45,7 +46,7 @@ export default function UserProfile() {
 
   const availableToys = userToys?.filter(toy => toy.isAvailable) || [];
   const reviewCount = userReviews?.length || 0;
-  const rating = averageRating?.rating || 0;
+  const rating = averageRating?.averageRating || 0;
 
   const handleToySelection = (toyId: number) => {
     setSelectedToys(prev =>
@@ -166,63 +167,109 @@ export default function UserProfile() {
         {/* Content Tabs */}
         <SectionCard>
           <div className="grid grid-cols-2 bg-gray-50 dark:bg-gray-800 rounded-t-2xl p-1 gap-1">
-            <div className="bg-white dark:bg-gray-900 rounded-xl py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-50 shadow-sm text-center">
+            <button
+              onClick={() => setActiveTab("toys")}
+              className={`rounded-xl py-3 px-4 text-sm font-medium text-center transition-all min-h-[44px] ${
+                activeTab === "toys"
+                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
               Toys ({availableToys.length})
-            </div>
-            <div className="py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400 text-center">
+            </button>
+            <button
+              onClick={() => setActiveTab("reviews")}
+              className={`rounded-xl py-3 px-4 text-sm font-medium text-center transition-all min-h-[44px] ${
+                activeTab === "reviews"
+                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
               Reviews ({reviewCount})
-            </div>
+            </button>
           </div>
 
           <div className="p-4">
-            {toysLoading ? (
-              <div className="grid grid-cols-2 gap-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="bg-gray-100 dark:bg-gray-800 rounded-xl aspect-square animate-pulse" />
-                ))}
-              </div>
-            ) : availableToys.length === 0 ? (
-              <EmptyState icon={<span className="text-4xl">🧸</span>} title="No toys available" />
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {availableToys.map((toy) => (
-                  <div
-                    key={toy.id}
-                    className={`relative cursor-pointer transition-all rounded-xl border ${
-                      selectedToys.includes(toy.id)
-                        ? 'border-purple-300 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                    onClick={() => handleToySelection(toy.id)}
-                  >
-                    {selectedToys.includes(toy.id) && (
-                      <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center z-10">
-                        <Heart className="w-3 h-3 text-white fill-current" />
-                      </div>
-                    )}
-                    <div className="p-3">
-                      <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-xl mb-2 overflow-hidden">
-                        {toy.imageUrls?.[0] ? (
-                          <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-2xl">🧸</div>
-                        )}
-                      </div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-1 line-clamp-2">{toy.name}</h3>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.category}</span>
-                        <span className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.condition}</span>
-                      </div>
-                      {toy.location && (
-                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          <MapPin className="w-3 h-3" />
-                          <span className="truncate">{toy.location}</span>
-                        </div>
-                      )}
-                    </div>
+            {activeTab === "toys" ? (
+              <>
+                {toysLoading ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="bg-gray-100 dark:bg-gray-800 rounded-xl aspect-square animate-pulse" />
+                    ))}
                   </div>
-                ))}
-              </div>
+                ) : availableToys.length === 0 ? (
+                  <EmptyState icon={<span className="text-4xl">🧸</span>} title="No toys available" />
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {availableToys.map((toy) => (
+                      <div
+                        key={toy.id}
+                        className={`relative cursor-pointer transition-all rounded-xl border ${
+                          selectedToys.includes(toy.id)
+                            ? 'border-purple-300 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                        onClick={() => handleToySelection(toy.id)}
+                      >
+                        {selectedToys.includes(toy.id) && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center z-10">
+                            <Heart className="w-3 h-3 text-white fill-current" />
+                          </div>
+                        )}
+                        <div className="p-3">
+                          <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-xl mb-2 overflow-hidden">
+                            {toy.imageUrls?.[0] ? (
+                              <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-2xl">🧸</div>
+                            )}
+                          </div>
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-1 line-clamp-2">{toy.name}</h3>
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.category}</span>
+                            <span className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.condition}</span>
+                          </div>
+                          {toy.location && (
+                            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                              <MapPin className="w-3 h-3" />
+                              <span className="truncate">{toy.location}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {userReviews && userReviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {userReviews.map((review) => (
+                      <div key={review.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shrink-0">
+                            <span className="text-white text-xs font-bold">{review.reviewer.firstName?.[0] || 'U'}</span>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-50">
+                            {review.reviewer.firstName || 'Anonymous'}
+                          </span>
+                          <div className="flex ml-auto">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star key={star} className={`w-3 h-3 ${star <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                            ))}
+                          </div>
+                        </div>
+                        {review.comment && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{review.comment}</p>}
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{new Date(review.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState icon={<span className="text-4xl">⭐</span>} title="No reviews yet" subtitle="This user hasn't received any reviews yet" />
+                )}
+              </>
             )}
           </div>
         </SectionCard>
