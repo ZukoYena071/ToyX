@@ -236,7 +236,12 @@ export default function ToyDetail() {
             {(toy as any)?.condition}
           </span>
         )}
-
+        {isOwner && (toy as any)?.boostedUntil && new Date((toy as any).boostedUntil) > new Date() && (
+          <span className="absolute top-3 left-36 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/80 text-white backdrop-blur-sm z-10 flex items-center gap-1">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Boosted
+          </span>
+        )}
         {(toy as any)?.location && (
           <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 max-w-[55%] truncate whitespace-nowrap">
             <MapPin className="w-3 h-3" />
