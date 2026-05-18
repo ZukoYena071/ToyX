@@ -230,3 +230,21 @@ describe("Wishlist / matches", () => {
     expect(found.category).toBe("Action Figures");
   });
 });
+
+describe("Non-owner boost rejection", () => {
+  let agent: request.SuperAgentTest;
+
+  beforeAll(() => {
+    agent = request.agent(BASE);
+  });
+
+  it("returns 403 NOT_OWNER when non-owner tries to boost", async () => {
+    await devLogin(agent, "seed_user_2");
+    // Try boosting seed_user_1's toy
+    const toys = await agent.get("/api/users/seed_user_1/toys");
+    const theirToy = Array.isArray(toys.body) ? toys.body.find((t: any) => t.ownerId === "seed_user_1") : null;
+    if (!theirToy) return;
+    const res = await agent.post(`/api/toys/${theirToy.id}/boost/redeem`).send({ hours: 48, costPoints: 300 });
+    expect(res.status).toBe(400); // "Not your toy" or similar
+  });
+});

@@ -298,10 +298,11 @@ export default function ToyDetail() {
         )}
 
         {/* Owner card */}
-        {/* Owner card */}
+        {isOwner && (
         <div className="px-4 mt-2">
-          <BoostButton toyId={(toy as any)?.id} isBoosted={(toy as any)?.isBoosted} boostedUntil={(toy as any)?.boostedUntil} />
+          <BoostButton toyId={(toy as any)?.id} isBoosted={(toy as any)?.isBoosted} boostedUntil={(toy as any)?.boostedUntil} disabled={(toy as any)?.isAvailable === false} />
         </div>
+        )}
         <Link href={`/users/${(toy as any)?.ownerId}`}>
           <SectionCard className="p-4 cursor-pointer hover:shadow-sm transition-all">
             <div className="flex items-center gap-3">
