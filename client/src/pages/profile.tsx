@@ -453,41 +453,42 @@ export default function Profile() {
         </SectionCard>
       </div>
 
-      {/* Quick Settings */}
+      {/* Subscription Section */}
       <div className="px-4 mt-4">
         <SectionCard>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Quick Settings</h3>
-          <div className="space-y-1">
-            <ListItemRow
-              icon={<div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center"><Bell className="text-blue-500 w-5 h-5" /></div>}
-              title="Notifications"
-              subtitle="Get notified about new matches"
-              right={<ToggleSwitch enabled={notificationsEnabled} onToggle={() => setNotificationsEnabled(!notificationsEnabled)} />}
-            />
-            <ListItemRow
-              icon={<div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center"><MapPin className="text-green-500 w-5 h-5" /></div>}
-              title="Location Services"
-              subtitle="Find toys near you"
-              right={<ToggleSwitch enabled={locationEnabled} onToggle={toggleLocation} />}
-            />
-            <ListItemRow
-              icon={
-                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
-                  {isDarkMode ? <Sun className="text-yellow-500 w-5 h-5" /> : <Moon className="text-gray-500 w-5 h-5" />}
-                </div>
-              }
-              title="Dark Mode"
-              subtitle="Switch to dark theme"
-              right={<ToggleSwitch enabled={isDarkMode} onToggle={toggleDarkMode} />}
-            />
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Subscription</h3>
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-3">
+            <div>
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-50 capitalize">
+                {(user as any)?.plan || "free"}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                {(user as any)?.subscriptionStatus || "inactive"}
+              </div>
+            </div>
+            {(user as any)?.plan === "free" ? (
+              <a
+                href="/pricing"
+                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] inline-flex items-center"
+              >
+                Upgrade
+              </a>
+            ) : (
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </SectionCard>
       </div>
 
-      {/* Account Section */}
+      {/* My Activity */}
       <div className="px-4 mt-4">
         <SectionCard>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Account</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">My Activity</h3>
           <div className="space-y-1">
             {activityItems.map((item, index) => (
               <div key={index}>
@@ -637,40 +638,8 @@ export default function Profile() {
         </SectionCard>
       </div>
 
-      {/* Subscription Section */}
+      {/* Privacy & Safety */}
       <div className="px-4 mt-4">
-        <SectionCard>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Subscription</h3>
-          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-3">
-            <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-50 capitalize">
-                {(user as any)?.plan || "free"}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                {(user as any)?.subscriptionStatus || "inactive"}
-              </div>
-            </div>
-            {(user as any)?.plan === "free" ? (
-              <a
-                href="/pricing"
-                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] inline-flex items-center"
-              >
-                Upgrade
-              </a>
-            ) : (
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* Account Actions */}
-      <div className="px-4 mt-4 mb-6">
         <SectionCard>
           <div className="space-y-1">
             <Link href="/privacy-safety">
@@ -680,6 +649,68 @@ export default function Profile() {
                 subtitle="Manage your privacy settings"
               />
             </Link>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Quick Settings */}
+      <div className="px-4 mt-4">
+        <SectionCard>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Quick Settings</h3>
+          <div className="space-y-1">
+            <ListItemRow
+              icon={<div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center"><Bell className="text-blue-500 w-5 h-5" /></div>}
+              title="Notifications"
+              subtitle="Get notified about new matches"
+              right={<ToggleSwitch enabled={notificationsEnabled} onToggle={() => setNotificationsEnabled(!notificationsEnabled)} />}
+            />
+            <ListItemRow
+              icon={<div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center"><MapPin className="text-green-500 w-5 h-5" /></div>}
+              title="Location Services"
+              subtitle="Find toys near you"
+              right={<ToggleSwitch enabled={locationEnabled} onToggle={toggleLocation} />}
+            />
+            <ListItemRow
+              icon={
+                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
+                  {isDarkMode ? <Sun className="text-yellow-500 w-5 h-5" /> : <Moon className="text-gray-500 w-5 h-5" />}
+                </div>
+              }
+              title="Dark Mode"
+              subtitle="Switch to dark theme"
+              right={<ToggleSwitch enabled={isDarkMode} onToggle={toggleDarkMode} />}
+            />
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Rewards & Referrals */}
+      <div className="px-4 mt-4">
+        <SectionCard>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Rewards & Referrals</h3>
+          <div className="space-y-1">
+            <Link href="/rewards">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center"><Gift className="text-green-500 w-5 h-5" /></div>}
+                title="Rewards"
+                subtitle="Earn & spend points"
+              />
+            </Link>
+            <Link href="/invite">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-pink-50 dark:bg-pink-900/30 rounded-xl flex items-center justify-center"><Gift className="text-pink-500 w-5 h-5" /></div>}
+                title="Invite Friends"
+                subtitle="Earn 200 pts + Premium Pass"
+              />
+            </Link>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Support + Legal + Exit */}
+      <div className="px-4 mt-4 mb-6">
+        <SectionCard>
+          <div className="space-y-1">
             <ListItemRow
               icon={<div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center"><FileText className="text-purple-500 w-5 h-5" /></div>}
               title="Terms & Conditions"
