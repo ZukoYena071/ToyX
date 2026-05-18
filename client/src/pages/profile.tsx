@@ -42,6 +42,7 @@ import ListItemRow from "@/components/ui/ListItemRow";
 import StatCard from "@/components/ui/StatCard";
 import { apiRequest } from "@/lib/queryClient";
 import UploadOverlay from "@/components/upload-overlay";
+import BoostButton from "@/components/toys/BoostButton";
 import { searchLocations } from "@/lib/location";
 
 export default function Profile() {
@@ -533,6 +534,7 @@ export default function Profile() {
                                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
+                                      <BoostButton toyId={toy.id} isBoosted={toy.isBoosted} boostedUntil={toy.boostedUntil} onSuccess={() => queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] })} />
                                       <button onClick={() => setShowEditToy(toy)} className="min-w-[44px] min-h-[44px] bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
                                         <Edit3 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                       </button>

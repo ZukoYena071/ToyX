@@ -163,6 +163,33 @@ export async function countActiveBoosts(userId: string): Promise<number> {
   return Number(result?.count || 0);
 }
 
+export async function redeemPointsBoost(toyId: number, userId: string, hours: number, costPoints: number): Promise<{ ok: boolean; message: string }> {
+  const toy = await db.select().from(toys).where(eq(toys.id, toyId)).limit(1);
+  if (!toy.length) return { ok: false, message: "Toy not found" };
+  if (toy[0].ownerId !== userId) return { ok: false, message: "Not your toy" };
+  const activeCount = await countActiveBoosts(userId);
+  if (activeCount >= 2) return { ok: false, message: "Maximum 2 boosted listings allowed" };
+  const reward = await db.select().from(userRewards).where(eq(userRewards.userId, userId)).limit(1);
+  if (!reward.length || reward[0].pointsBalance < costPoints) return { ok: false, message: "Insufficient points" };
+  const now = new Date();
+  const existingEnd = toy[0].boostedUntil && toy[0].boostedUntil > now ? toy[0].boostedUntil : now;
+  const newEnd = new Date(Math.max(existingEnd.getTime(), now.getTime()) + hours * 60 * 60 * 1000);
+  await db.update(toys).set({ boostedUntil: newEnd }).where(eq(toys.id, toyId));
+  await spendPoints({ userId, rewardType: `BOOST_LISTING_LITE_48H`, costPoints, meta: { toyId, hours }, expiresAt: newEnd });
+  return { ok: true, message: "Toy boosted!" };
+}
+
+export async function applyPaidBoost(toyId: number, userId: string, hours: number): Promise<{ ok: boolean; message: string }> {
+  const toy = await db.select().from(toys).where(eq(toys.id, toyId)).limit(1);
+  if (!toy.length) return { ok: false, message: "Toy not found" };
+  if (toy[0].ownerId !== userId) return { ok: false, message: "Not your toy" };
+  const now = new Date();
+  const existingEnd = toy[0].boostedUntil && toy[0].boostedUntil > now ? toy[0].boostedUntil : now;
+  const newEnd = new Date(Math.max(existingEnd.getTime(), now.getTime()) + hours * 60 * 60 * 1000);
+  await db.update(toys).set({ boostedUntil: newEnd }).where(eq(toys.id, toyId));
+  return { ok: true, message: "Toy boosted!" };
+}
+
 export async function qualifyReferral(refereeId: string) {
   const refs = await db.select().from(referrals).where(
     and(eq(referrals.refereeId, refereeId), eq(referrals.status, "pending"))

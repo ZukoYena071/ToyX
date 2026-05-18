@@ -8,7 +8,7 @@ import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
-import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap } from "./rewards";
+import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
 import { haversineKm } from "./utils/distance";
 
 async function getPremiumStatus(userId: string) {
@@ -63,6 +63,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     console.log("DEV_AUTH_BYPASS endpoints registered");
   }
+
+  // Dev test points award (used by API tests)
+  app.post("/api/rewards/award-test-points", async (req: any, res) => {
+    try {
+      const { userId, points } = req.body;
+      if (!userId || !points) return res.status(400).json({ message: "userId and points required" });
+      const result = await awardPoints({ userId, eventType: "TEST_AWARD", referenceType: "test", referenceId: `test_${Date.now()}`, points });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -166,6 +178,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating privacy settings:", error);
       res.status(500).json({ message: "Failed to update privacy settings" });
+    }
+  });
+
+  // Get logged-in user's toys (for boost selection)
+  app.get('/api/users/me/toys', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userToys = await storage.getToysByUser(userId);
+      const now = new Date();
+      res.json(userToys.map(t => ({ ...t, isBoosted: !!(t as any).boostedUntil && new Date((t as any).boostedUntil) > now })));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 
@@ -1018,6 +1042,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Per-toy points boost redeem
+  app.post('/api/toys/:toyId/boost/redeem', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const toyId = parseInt(req.params.toyId);
+      const { hours = 48, costPoints = 300 } = req.body;
+      const result = await redeemPointsBoost(toyId, userId, hours, costPoints);
+      if (!result.ok) return res.status(400).json(result);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  // Per-toy paid boost init
+  app.post('/api/toys/:toyId/boost/paystack/init', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.email) return res.status(400).json({ message: "User email not found" });
+      const toyId = parseInt(req.params.toyId);
+      const { boostType } = req.body;
+      const plans: Record<string, { amount: number; hours: number; label: string }> = {
+        boost_lite: { amount: 1900, hours: 24, label: "Boost Lite" },
+        boost_plus: { amount: 4900, hours: 72, label: "Boost Plus" },
+        boost_max: { amount: 9900, hours: 168, label: "Boost Max" },
+      };
+      const plan = plans[boostType];
+      if (!plan) return res.status(400).json({ message: "Invalid boost type" });
+      const activeBoosts = await countActiveBoosts(userId);
+      if (activeBoosts >= 2) return res.status(400).json({ message: "Maximum 2 boosted listings allowed" });
+      const toy = await storage.getToy(toyId);
+      if (!toy) return res.status(404).json({ message: "Toy not found" });
+      if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
+      const result = await paystackFetch("/transaction/initialize", {
+        method: "POST",
+        body: JSON.stringify({
+          email: user.email,
+          amount: plan.amount,
+          callback_url: `${APP_BASE_URL}/billing-success`,
+          metadata: { userId, toyId, boostType, hours: plan.hours, purpose: "toy_boost" },
+        }),
+      });
+      if (!result.status) return res.status(400).json({ message: result.message || "Paystack init failed" });
+      res.json({ authorizationUrl: result.data.authorization_url });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
   // Referral endpoints
   app.get('/api/referrals/me', isAuthenticated, async (req: any, res) => {
     try {
@@ -1248,10 +1322,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         case "charge.success": {
           if (data.metadata?.purpose === "toy_boost") {
-            const { userId, toyId, boostType } = data.metadata;
+            const { userId, toyId } = data.metadata;
             const hours: Record<string, number> = { boost_lite: 24, boost_plus: 72, boost_max: 168 };
+            const boostType = data.metadata.boostType || "boost_lite";
             const h = hours[boostType] || 24;
-            await db.update(toys).set({ boostedUntil: new Date(Date.now() + h * 60 * 60 * 1000) }).where(eq(toys.id, toyId));
+            await applyPaidBoost(toyId, userId, h);
             await awardPoints({ userId, eventType: "PAID_BOOST", referenceType: "toy", referenceId: String(toyId), points: 0, meta: { boostType, hours: h, amount: data.amount } });
           }
           break;

@@ -10,6 +10,7 @@ import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
+import ListingSelectionModal from "@/components/toys/ListingSelectionModal";
 
 const EARNING_RULES = [
   { icon: Camera, label: "List a quality toy", desc: "Include 2+ photos and a description (30+ chars)", points: 5, note: "Once daily, first publish only" },
@@ -47,6 +48,7 @@ export default function Rewards() {
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [storeTab, setStoreTab] = useState<"for-me" | "all">("for-me");
   const [payBoosting, setPayBoosting] = useState<string | null>(null);
+  const [boostFlow, setBoostFlow] = useState<{ mode: "points" | "paid"; rewardKey?: string } | null>(null);
 
   const fetchRewards = async () => {
     try {
@@ -206,7 +208,14 @@ export default function Rewards() {
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => handleRedeem(r.key)}
+                        onClick={() => {
+                          const boostKeys = ["BOOST_LISTING_LITE_48H", "BUMP_LISTING_8H", "HIGHLIGHT_LISTING_3D"];
+                          if (boostKeys.includes(r.key)) {
+                            setBoostFlow({ mode: "points", rewardKey: r.key });
+                          } else {
+                            handleRedeem(r.key);
+                          }
+                        }}
                         disabled={redeeming === r.key || !canAfford}
                       >
                         {redeeming === r.key ? "..." : `${r.cost} pts`}
@@ -247,13 +256,13 @@ export default function Rewards() {
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-50">{b.label}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{b.desc}</div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handlePayBoost(b.key)}
-                      disabled={payBoosting === b.key}
-                      className="bg-amber-500 hover:bg-amber-600 text-white"
-                    >
-                      {payBoosting === b.key ? "..." : b.price}
+                      <Button
+                        size="sm"
+                        onClick={() => setBoostFlow({ mode: "paid", rewardKey: b.key })}
+                        disabled={payBoosting === b.key}
+                        className="bg-amber-500 hover:bg-amber-600 text-white"
+                      >
+                        {payBoosting === b.key ? "..." : b.price}
                     </Button>
                   </div>
                 ))}
@@ -284,6 +293,54 @@ export default function Rewards() {
       </div>
 
       <BottomNav />
+
+      <ListingSelectionModal
+        open={!!boostFlow}
+        onClose={() => setBoostFlow(null)}
+        mode={boostFlow?.mode || "points"}
+        onSelect={async (toyId) => {
+          if (boostFlow?.mode === "points") {
+            setBoostFlow(null);
+            setRedeeming("BOOST_LISTING_LITE_48H");
+            try {
+              const res = await fetch(`/api/toys/${toyId}/boost/redeem`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hours: 48, costPoints: 300 }),
+                credentials: "include",
+              });
+              const data = await res.json();
+              if (data.ok) {
+                toast({ title: "Boosted!", description: "Your toy is boosted for 48 hours." });
+                fetchRewards();
+              } else {
+                toast({ title: "Error", description: data.message || "Failed to boost", variant: "destructive" });
+              }
+            } catch {
+              toast({ title: "Error", description: "Failed to boost", variant: "destructive" });
+            }
+            setRedeeming(null);
+          } else {
+            setBoostFlow(null);
+            setPayBoosting(boostFlow?.rewardKey || "boost_lite");
+            try {
+              const res = await fetch(`/api/toys/${toyId}/boost/paystack/init`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ boostType: boostFlow?.rewardKey || "boost_lite" }),
+                credentials: "include",
+              });
+              const data = await res.json();
+              if (data.authorizationUrl) {
+                window.location.href = data.authorizationUrl;
+              } else {
+                toast({ title: "Error", description: data.message || "Failed to initiate payment", variant: "destructive" });
+              }
+            } catch {
+              toast({ title: "Error", description: "Failed to initiate payment", variant: "destructive" });
+            }
+            setPayBoosting(null);
+          }
+        }}
+      />
     </PageContainer>
   );
 }
