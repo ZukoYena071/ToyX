@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { ArrowLeft, Mail, MessageCircle, CheckCircle, Clock } from "lucide-react";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
@@ -8,6 +8,7 @@ import SectionCard from "@/components/ui/SectionCard";
 
 export default function PrivacyMessages() {
   const { id: msgId } = useParams();
+  const [, setLocation] = useLocation();
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
@@ -39,7 +40,7 @@ export default function PrivacyMessages() {
   if (selected) {
     return (
       <PageContainer className="pb-24">
-        <PageHeader title="Message" rightAction={<Link href="/privacy/messages"><button onClick={() => markRead(selected.id)} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"><ArrowLeft className="w-4 h-4 text-gray-600" /></button></Link>} />
+        <PageHeader title="Message" rightAction={<button onClick={() => { markRead(selected.id); setLocation("/privacy/messages"); }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>} />
         <div className="px-4 py-4">
           <SectionCard className="p-4">
             <div className="flex items-center gap-2 mb-2">
