@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 let sessionToastShown = false;
 
@@ -38,6 +39,7 @@ export default function ModerationMessageNotifier() {
     toast({
       title: "New message from ToyX",
       description: "You have an unread moderation message.",
+      action: <ToastAction altText="View message" onClick={() => setLocation(target)}>View</ToastAction>,
       duration: 10000,
     });
 
