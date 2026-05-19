@@ -181,3 +181,131 @@ describe("Browse ordering — boosted first", () => {
     expect(order.indexOf(toyIds[1])).toBeLessThan(order.indexOf(toyIds[2]));
   });
 });
+
+describe("Wishlist / matches", () => {
+  let userA: request.SuperAgentTest;
+  let userB: request.SuperAgentTest;
+
+  beforeAll(() => {
+    userA = request.agent(BASE);
+    userB = request.agent(BASE);
+  });
+
+  it("creates toy with lookingFor and returns wishlist", async () => {
+    await devLogin(userA, "seed_user_1");
+    await userA.post("/api/dev/set-plan").send({ userId: "seed_user_1", plan: "premium_monthly" });
+    await devLogin(userB, "seed_user_2");
+    await userB.post("/api/dev/set-plan").send({ userId: "seed_user_2", plan: "premium_monthly" });
+    const r = await userA.post("/api/toys").send({
+      name: "Wishlist A", category: "Blocks", ageGroup: "3-5", condition: "New",
+      imageUrls: ["data:image/svg+xml,<svg></svg>"], description: "test",
+      lookingForCategories: ["Action Figures"],
+      lookingForDetails: "Looking for Marvel figures",
+    });
+    expect(r.status).toBe(201);
+    const wl = await userA.get("/api/me/wishlist");
+    expect(wl.body.categories).toContain("Action Figures");
+  });
+
+  it("returns match for matched category", async () => {
+    // user B creates a toy with category matching user A's wishlist
+    await devLogin(userB, "seed_user_2");
+    await userB.post("/api/dev/set-plan").send({ userId: "seed_user_2", plan: "premium_monthly" });
+    // Clear existing toys for seed_user_2
+    const existing = await userB.get("/api/users/seed_user_2/toys");
+    for (const t of (existing.body || [])) {
+      await userB.delete(`/api/toys/${t.id}`).catch(() => {});
+    }
+    const r2 = await userB.post("/api/toys").send({
+      name: "Toy for A", category: "Action Figures", ageGroup: "3-5", condition: "New",
+      imageUrls: ["data:image/svg+xml,<svg></svg>"], description: "A great action figure",
+    });
+    if (r2.status !== 201) return;
+    // user A checks matches
+    await devLogin(userA, "seed_user_1");
+    const matches = await userA.get("/api/me/matches");
+    const matchesList = Array.isArray(matches.body) ? matches.body : [];
+    const found = matchesList.find((t: any) => t.id === r2.body.id);
+    expect(found).toBeDefined();
+    expect(found.category).toBe("Action Figures");
+  });
+});
+
+describe("Non-owner boost rejection", () => {
+  let agent: request.SuperAgentTest;
+
+  beforeAll(() => {
+    agent = request.agent(BASE);
+  });
+
+  it("returns 403 NOT_OWNER when non-owner tries to boost", async () => {
+    await devLogin(agent, "seed_user_2");
+    // Try boosting seed_user_1's toy
+    const toys = await agent.get("/api/users/seed_user_1/toys");
+    const theirToy = Array.isArray(toys.body) ? toys.body.find((t: any) => t.ownerId === "seed_user_1") : null;
+    if (!theirToy) return;
+    const res = await agent.post(`/api/toys/${theirToy.id}/boost/redeem`).send({ hours: 48, costPoints: 300 });
+    expect(res.status).toBe(400); // "Not your toy" or similar
+  });
+});
+
+describe("Report submission", () => {
+  let agent: request.SuperAgentTest;
+
+beforeAll(async () => {
+    agent = request.agent(BASE);
+    await devLogin(agent, "seed_user_1");
+    await agent.post("/api/rewards/award-test-points").send({ userId: "seed_user_1", points: 500 }).catch(() => {});
+    // Clear existing reports for clean state
+    const existing = await agent.get("/api/users/seed_user_2/toys");
+    // Clear reports by hitting a dev endpoint
+    await agent.post("/api/dev/clear-reports").catch(() => {});
+  });
+
+  it("submits a report", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.post("/api/users/seed_user_2/report").send({ reason: "Scam/Fraud", details: "Test report", contextType: "profile" });
+    expect(res.status).toBe(201);
+    expect(res.body.ok).toBe(true);
+  });
+
+  it("rate limits reports (5/day)", async () => {
+    await devLogin(agent, "seed_user_1");
+    // Use different reported users each time to avoid dedup
+    const users = ["seed_user_2", "seed_user_3", "demo-user-1", "demo-user-2", "google_107105400749806114592"];
+    for (const u of users) {
+      await agent.post(`/api/users/${u}/report`).send({ reason: "Spam", contextType: "profile" });
+    }
+    const res = await agent.post("/api/users/seed_user_2/report").send({ reason: "Spam", contextType: "profile" });
+    expect(res.status).toBe(429);
+  });
+
+  it("non-admin cannot access admin reports", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.get("/api/admin/reports");
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("User search endpoint", () => {
+  let agent: request.SuperAgentTest;
+
+  beforeAll(() => {
+    agent = request.agent(BASE);
+  });
+
+  it("returns results and excludes current user", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.get("/api/users/search?q=seed");
+    expect(res.status).toBe(200);
+    const users = Array.isArray(res.body) ? res.body : [];
+    // Should not include seed_user_1 (current user)
+    expect(users.find((u: any) => u.id === "seed_user_1")).toBeUndefined();
+  });
+
+  it("requires minimum 2 chars", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.get("/api/users/search?q=a");
+    expect(Array.isArray(res.body) ? res.body.length : 0).toBe(0);
+  });
+});

@@ -77,7 +77,6 @@ export interface IStorage {
   unblockUser(blockerId: string, blockedId: string): Promise<void>;
   isBlocked(blockerId: string, blockedId: string): Promise<boolean>;
   getBlockedUserIds(userId: string): Promise<string[]>;
-  reportUser(reporterId: string, reportedId: string, reason?: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -571,10 +570,6 @@ export class DatabaseStorage implements IStorage {
     return rows.map(r => r.blockedId);
   }
 
-  async reportUser(reporterId: string, reportedId: string, reason?: string): Promise<void> {
-    await db.insert(reports).values({ reporterId, reportedId, reason: reason || null, createdAt: new Date() });
-  }
-
   // ---- Personalization methods ----
 
   async logToyInteraction(userId: string, toyId: number, eventType: string): Promise<void> {
@@ -654,6 +649,8 @@ export class DatabaseStorage implements IStorage {
       longitude: r.longitude,
       boostedUntil: r.boosted_until,
       deletedAt: r.deleted_at,
+      lookingForCategories: r.looking_for_categories,
+      lookingForDetails: r.looking_for_details,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       owner: r.owner,

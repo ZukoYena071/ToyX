@@ -52,6 +52,10 @@ export const users = pgTable("users", {
   longitude: real("longitude"),
   locationEnabled: boolean("location_enabled").default(false),
   locationUpdatedAt: timestamp("location_updated_at"),
+  isAdmin: boolean("is_admin").default(false),
+  suspendedUntil: timestamp("suspended_until"),
+  suspensionReason: text("suspension_reason"),
+  bannedAt: timestamp("banned_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -71,6 +75,8 @@ export const toys = pgTable("toys", {
   longitude: real("longitude"),
   boostedUntil: timestamp("boosted_until"),
   deletedAt: timestamp("deleted_at"),
+  lookingForCategories: text("looking_for_categories").array(),
+  lookingForDetails: text("looking_for_details"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -224,9 +230,45 @@ export const reports = pgTable("reports", {
   id: serial("id").primaryKey(),
   reporterId: varchar("reporter_id").notNull().references(() => users.id),
   reportedId: varchar("reported_id").notNull().references(() => users.id),
-  reason: text("reason"),
+  reason: varchar("reason", { length: 64 }).notNull(),
+  details: text("details"),
+  contextType: varchar("context_type", { length: 32 }).notNull(),
+  contextId: varchar("context_id", { length: 64 }),
+  messageSnapshot: jsonb("message_snapshot"),
+  status: varchar("status", { length: 32 }).notNull().default("open"),
+  resolutionNote: text("resolution_note"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_reports_status").on(table.status, table.createdAt),
+  index("idx_reports_reporter").on(table.reporterId, table.createdAt),
+  index("idx_reports_reported").on(table.reportedId),
+]);
+
+// Moderation actions (audit log)
+export const moderationActions = pgTable("moderation_actions", {
+  id: serial("id").primaryKey(),
+  adminUserId: varchar("admin_user_id").notNull().references(() => users.id),
+  targetUserId: varchar("target_user_id").notNull().references(() => users.id),
+  reportId: integer("report_id").references(() => reports.id),
+  actionType: varchar("action_type", { length: 32 }).notNull(),
+  message: text("message"),
+  durationDays: integer("duration_days"),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => [index("idx_mod_actions_target").on(table.targetUserId, table.createdAt)]);
+
+// Moderation messages (from admin to user)
+export const moderationMessages = pgTable("moderation_messages", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  adminUserId: varchar("admin_user_id").notNull().references(() => users.id),
+  reportId: integer("report_id").references(() => reports.id),
+  subject: varchar("subject", { length: 255 }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  readAt: timestamp("read_at"),
+}, (table) => [index("idx_mod_msgs_user").on(table.userId, table.readAt, table.createdAt)]);
 
 // Rewards tables
 export const userRewards = pgTable("user_rewards", {

@@ -2,10 +2,10 @@ import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq, and, or, gte, inArray, isNull } from "drizzle-orm";
+import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -199,6 +199,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get my aggregated wishlist categories
+  app.get('/api/me/wishlist', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const myToys = await db.select({ lookingForCategories: toys.lookingForCategories }).from(toys)
+        .where(and(eq(toys.ownerId, userId), eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+      const allCats = new Set<string>();
+      for (const t of myToys) {
+        if (t.lookingForCategories) {
+          for (const c of t.lookingForCategories) allCats.add(c);
+        }
+      }
+      res.json({ categories: Array.from(allCats) });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get matches for my wishlist
+  app.get('/api/me/matches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { limit = 20 } = req.query;
+      // Compute wishlist categories directly (no internal HTTP fetch)
+      const myToys = await db.select({ lookingForCategories: toys.lookingForCategories }).from(toys)
+        .where(and(eq(toys.ownerId, userId), eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+      const allCats = new Set<string>();
+      for (const t of myToys) {
+        if (t.lookingForCategories) {
+          for (const c of t.lookingForCategories) allCats.add(c);
+        }
+      }
+      const cats = Array.from(allCats);
+      if (!cats.length) return res.json([]);
+      const now = new Date();
+      // Build category IN clause safely
+      const catList = cats.map(c => `'${c.replace(/'/g, "''")}'`).join(",");
+      const results = await db.execute(sql`
+        SELECT t.*, row_to_json(u.*) as owner,
+          CASE WHEN t.boosted_until > ${now} THEN 0 ELSE 1 END AS sort_order
+        FROM toys t
+        LEFT JOIN users u ON u.id = t.owner_id
+        WHERE t.is_available = true
+          AND t.deleted_at IS NULL
+          AND t.owner_id != ${userId}
+          AND t.category IN (${sql.raw(catList)})
+        ORDER BY sort_order ASC, t.boosted_until DESC NULLS LAST, t.created_at DESC, t.id DESC
+        LIMIT ${Number(limit)}
+      `);
+      const matched = (results as any).rows.map((r: any) => ({
+        id: r.id, name: r.name, description: r.description, category: r.category,
+        ageGroup: r.age_group, condition: r.condition, imageUrls: r.image_urls,
+        ownerId: r.owner_id, isAvailable: r.is_available, location: r.location,
+        latitude: r.latitude, longitude: r.longitude, boostedUntil: r.boosted_until,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+        owner: r.owner, isBoosted: !!(r.boosted_until && new Date(r.boosted_until) > now),
+      }));
+      res.json(matched);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Moderation messages for the logged-in user
+  app.get('/api/me/moderation-messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msgs = await db.select().from(moderationMessages).where(eq(moderationMessages.userId, userId)).orderBy(desc(moderationMessages.createdAt)).limit(20);
+      const unread = msgs.filter(m => !m.readAt).length;
+      res.json({ messages: msgs, unreadCount: unread });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  app.get('/api/me/moderation-messages/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [result] = await db.select({ count: sql<number>`count(*)` }).from(moderationMessages).where(and(eq(moderationMessages.userId, userId), sql`${moderationMessages.readAt} IS NULL`));
+      const [latest] = await db.select({ id: moderationMessages.id }).from(moderationMessages).where(and(eq(moderationMessages.userId, userId), sql`${moderationMessages.readAt} IS NULL`)).orderBy(desc(moderationMessages.createdAt)).limit(1);
+      res.json({ unreadCount: Number(result?.count || 0), latestUnreadId: latest?.id || null });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  app.patch('/api/me/moderation-messages/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [updated] = await db.update(moderationMessages).set({ readAt: new Date() }).where(and(eq(moderationMessages.id, parseInt(req.params.id)), eq(moderationMessages.userId, userId))).returning();
+      res.json({ ok: true });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
   // Update user profile
   app.patch('/api/users/profile', isAuthenticated, async (req: any, res) => {
     try {
@@ -215,6 +305,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // User search (used by report flow)
+  app.get('/api/users/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const q = (req.query.q as string || "").trim();
+      if (q.length < 2) return res.json([]);
+      const results = await db.select({
+        id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, profileImageUrl: users.profileImageUrl,
+      }).from(users).where(and(sql`LOWER(${users.firstName}) LIKE ${'%' + q.toLowerCase() + '%'}`, sql`${users.id} != ${userId}`)).limit(10);
+      res.json(results.map(u => ({ ...u, profileImageUrl: u.profileImageUrl?.replace(/^http:/, "https:") || null })));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 
@@ -237,7 +342,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/:id/toys', async (req, res) => {
     try {
       const toys = await storage.getToysByUser(req.params.id);
-      res.json(toys);
+      const toysWithMeta = await Promise.all(toys.map(async (t: any) => {
+        const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
+          or(eq(exchanges.toyId, t.id), eq(exchanges.offeredToyId, t.id))
+        ).limit(1);
+        return { ...t, hasExchangeHistory: !!exch, canDeletePermanently: !exch };
+      }));
+      res.json(toysWithMeta);
     } catch (error) {
       console.error("Error fetching toys:", error);
       res.status(500).json({ message: "Failed to fetch toys" });
@@ -423,7 +534,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/toys', isAuthenticated, async (req: any, res) => {
+  // Enforcement: check if user is suspended or banned
+  const checkNotRestricted = async (req: any, res: any, next: any) => {
+    try {
+      const user = await storage.getUser(req.user?.claims?.sub);
+      if (!user) return res.status(401).json({ message: "Unauthorized" });
+      if ((user as any).bannedAt) return res.status(403).json({ code: "BANNED", message: "Your account has been banned" });
+      if ((user as any).suspendedUntil && new Date((user as any).suspendedUntil) > new Date()) {
+        return res.status(403).json({ code: "SUSPENDED", message: `Account suspended until ${new Date((user as any).suspendedUntil).toLocaleDateString()}` });
+      }
+      next();
+    } catch { next(); }
+  };
+
+  app.post('/api/toys', isAuthenticated, checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -454,6 +578,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalChars = imgs.reduce((s: number, u: string) => s + u.length, 0);
       if (totalChars > 8_000_000) {
         return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "Photos are too large. Please upload fewer or smaller photos." });
+      }
+      if (body.lookingForCategories && (!Array.isArray(body.lookingForCategories) || body.lookingForCategories.length > 5)) {
+        return res.status(400).json({ code: "INVALID_LOOKING_FOR", message: "Maximum 5 looking-for categories allowed." });
+      }
+      if (body.lookingForDetails && typeof body.lookingForDetails === "string" && body.lookingForDetails.length > 200) {
+        return res.status(400).json({ code: "LOOKING_FOR_DETAILS_TOO_LONG", message: "Looking for details max 200 characters." });
       }
       const toyData = insertToySchema.parse({ ...req.body, ownerId: userId });
       const toy = await storage.createToy(toyData);
@@ -503,9 +633,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toy = await storage.getToy(toyId);
       if (!toy) return res.status(404).json({ message: "Toy not found" });
       if (toy.ownerId !== userId) return res.status(403).json({ message: "Not your toy" });
-      const updated = await storage.updateToy(toyId, req.body);
-      // Award quality listing points if newly qualifying
       const body = req.body;
+      if (body.lookingForCategories && (!Array.isArray(body.lookingForCategories) || body.lookingForCategories.length > 5)) {
+        return res.status(400).json({ code: "INVALID_LOOKING_FOR", message: "Maximum 5 looking-for categories allowed." });
+      }
+      if (body.lookingForDetails && typeof body.lookingForDetails === "string" && body.lookingForDetails.length > 200) {
+        return res.status(400).json({ code: "LOOKING_FOR_DETAILS_TOO_LONG", message: "Looking for details max 200 characters." });
+      }
+      const updated = await storage.updateToy(toyId, body);
+      // Award quality listing points if newly qualifying
       const imgCount = body.imageUrls?.length || updated.imageUrls?.length || 0;
       const descLen = (body.description || updated.description || "").length;
       if (imgCount >= 2 && descLen >= 30 && await checkDailyCap(userId, "TOY_LISTED", 5)) {
@@ -618,7 +754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/exchanges', isAuthenticated, async (req: any, res) => {
+  app.post('/api/exchanges', isAuthenticated, checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -988,16 +1124,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reporterId = req.user.claims.sub;
       const reportedId = req.params.id;
       if (reporterId === reportedId) return res.status(400).json({ message: "Cannot report yourself" });
-      const { reason } = req.body;
-      await storage.reportUser(reporterId, reportedId, reason);
-      res.json({ ok: true });
+      const { reason, details, contextType, contextId, alsoBlock } = req.body;
+      if (!reason) return res.status(400).json({ code: "REASON_REQUIRED", message: "Reason is required" });
+      const validReasons = ["Scam/Fraud", "Harassment", "Spam", "Inappropriate content", "Safety concern", "Other"];
+      if (!validReasons.includes(reason)) return res.status(400).json({ code: "INVALID_REASON", message: "Invalid reason" });
+      // Rate limit: max 5 reports per day
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const [countRes] = await db.select({ count: sql<number>`count(*)` }).from(reports).where(
+        and(eq(reports.reporterId, reporterId), gte(reports.createdAt, today))
+      );
+      if (Number(countRes?.count || 0) >= 5) return res.status(429).json({ code: "RATE_LIMIT", message: "Maximum 5 reports per day" });
+      // Dedupe: prevent duplicate open reports for same context within 24h
+      if (contextType && contextType !== "profile") {
+        const dayAgo = new Date(Date.now() - 86400000);
+        const dupConditions: any[] = [eq(reports.reporterId, reporterId), eq(reports.reportedId, reportedId), eq(reports.status, "open"), gte(reports.createdAt, dayAgo)];
+        if (contextType) dupConditions.push(eq(reports.contextType, contextType));
+        if (contextId) dupConditions.push(eq(reports.contextId, contextId));
+        const [dup] = await db.select({ id: reports.id }).from(reports).where(and(...dupConditions)).limit(1);
+        if (dup) return res.status(409).json({ code: "DUPLICATE_REPORT", message: "You already have an open report for this user" });
+      }
+      // Capture message snapshot if context is chat/exchange
+      let messageSnapshot = null;
+      if ((contextType === "chat" || contextType === "exchange") && contextId) {
+        const msgs = await db.select({ id: messages.id, senderId: messages.senderId, content: messages.content, createdAt: messages.createdAt })
+          .from(messages).where(eq(messages.exchangeId, parseInt(contextId))).orderBy(desc(messages.createdAt)).limit(20);
+        messageSnapshot = msgs.map(m => ({ ...m, createdAt: m.createdAt?.toISOString() }));
+      }
+      const [report] = await db.insert(reports).values({
+        reporterId, reportedId, reason, details: details || null,
+        contextType: contextType || "profile", contextId: contextId || null,
+        messageSnapshot, status: "open",
+      }).returning();
+      if (alsoBlock) {
+        await storage.blockUser(reporterId, reportedId);
+      }
+      res.status(201).json({ ok: true, id: report.id });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to report user" });
     }
   });
 
+  // Admin middleware
+  const isAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const user = await storage.getUser(req.user?.claims?.sub);
+      if (!user || !(user as any).isAdmin) return res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" });
+      next();
+    } catch { res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" }); }
+  };
+
+  // Admin: list reports
+  app.get('/api/admin/reports', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { status: filterStatus = "open", limit = 20, offset = 0 } = req.query;
+      const whereClause = filterStatus === "all" ? undefined : eq(reports.status, filterStatus as string);
+      const items = await db.select().from(reports).where(whereClause).orderBy(desc(reports.createdAt)).limit(Number(limit)).offset(Number(offset));
+      // Compute counts for each status
+      const allRes = await db.select({ status: reports.status, count: sql<number>`count(*)` }).from(reports).groupBy(reports.status);
+      const counts: Record<string, number> = { all: 0, open: 0, reviewing: 0, resolved: 0, dismissed: 0 };
+      for (const r of allRes) { counts[r.status] = Number(r.count); counts.all += Number(r.count); }
+      const enriched = await Promise.all(items.map(async (r: any) => {
+        const reporter = await storage.getUser(r.reporterId);
+        const reported = await storage.getUser(r.reportedId);
+        return { ...r, reporter: reporter ? { id: reporter.id, firstName: reporter.firstName, email: reporter.email } : null, reported: reported ? { id: reported.id, firstName: reported.firstName, email: reported.email } : null };
+      }));
+      res.json({ reports: enriched, counts, total: counts[filterStatus === "all" ? "all" : filterStatus as string] || 0 });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: get report detail
+  app.get('/api/admin/reports/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const [report] = await db.select().from(reports).where(eq(reports.id, parseInt(req.params.id))).limit(1);
+      if (!report) return res.status(404).json({ message: "Report not found" });
+      const reporter = await storage.getUser(report.reporterId);
+      const reported = await storage.getUser(report.reportedId);
+      res.json({ ...report, reporter, reported });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: update report status
+  app.patch('/api/admin/reports/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { status, resolutionNote } = req.body;
+      const [updated] = await db.update(reports).set({ status: status || undefined, resolutionNote: resolutionNote || undefined, updatedAt: new Date() }).where(eq(reports.id, parseInt(req.params.id))).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: suspend user
+  app.post('/api/admin/users/:userId/suspend', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const targetId = req.params.userId;
+      const { days, reason, messageToUser, reportId } = req.body;
+      if (!days || ![1, 7, 30].includes(days)) return res.status(400).json({ message: "days must be 1, 7, or 30" });
+      const expiresAt = new Date(Date.now() + days * 86400000);
+      await db.update(users).set({ suspendedUntil: expiresAt, suspensionReason: reason || null }).where(eq(users.id, targetId));
+      await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "suspend", message: reason || null, durationDays: days, expiresAt }).returning();
+      if (messageToUser) {
+        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account suspended", body: messageToUser });
+      }
+      res.json({ ok: true, suspendedUntil: expiresAt });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // Admin: ban user
+  app.post('/api/admin/users/:userId/ban', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const targetId = req.params.userId;
+      const { reason, messageToUser, reportId } = req.body;
+      await db.update(users).set({ bannedAt: new Date(), suspensionReason: reason || null }).where(eq(users.id, targetId));
+      await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "ban", message: reason || null }).returning();
+      if (messageToUser) {
+        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account banned", body: messageToUser });
+      }
+      res.json({ ok: true });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // Admin: send message to user
+  app.post('/api/admin/users/:userId/message', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const targetId = req.params.userId;
+      const { subject, body: msgBody, reportId } = req.body;
+      if (!msgBody) return res.status(400).json({ message: "Message body required" });
+      const [msg] = await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: subject || "Message from ToyX", body: msgBody }).returning();
+      await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "message", message: msgBody }).returning();
+      res.json({ ok: true, id: msg.id });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // Admin: get moderation actions for a user
+  app.get('/api/admin/users/:userId/moderation-actions', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const actions = await db.select().from(moderationActions).where(eq(moderationActions.targetUserId, req.params.userId)).orderBy(desc(moderationActions.createdAt)).limit(10);
+      res.json(actions);
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
   // Block enforcement on message sending
-  app.post('/api/exchanges/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/exchanges/:id/messages', isAuthenticated, checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);
@@ -1470,6 +1745,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('close', () => {
       console.log('WebSocket client disconnected');
     });
+  });
+
+  // API 404 fallback — unknown /api/* routes return JSON, never Vite HTML
+  app.use("/api", (req, res) => {
+    res.status(404).json({ code: "NOT_FOUND", message: "API route not found" });
   });
 
   return httpServer;

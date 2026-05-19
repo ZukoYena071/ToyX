@@ -1,4 +1,4 @@
-import { Heart } from "lucide-react";
+import { Heart, Star } from "lucide-react";
 import { normalizeList, ChipRow } from "./MetaChip";
 import { formatDistanceAway } from "@/lib/formatDistance";
 
@@ -13,6 +13,7 @@ interface Toy {
   isFavorited?: boolean;
   inExchange?: boolean;
   distanceKm?: number;
+  ownerRating?: number;
 }
 
 interface ToyCarouselCardProps {
@@ -76,6 +77,12 @@ export default function ToyCarouselCard({ toy, onOpen, onToggleFavorite }: ToyCa
       <div className="p-3 space-y-1.5">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 line-clamp-1">{toy.name}</h3>
         {(ages.length > 0 || categories.length > 0) && <ChipRow ages={ages} categories={categories} />}
+        {toy.ownerRating != null && toy.ownerRating > 0 && (
+          <div className="flex items-center gap-1">
+            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">{toy.ownerRating.toFixed(1)}</span>
+          </div>
+        )}
       </div>
     </div>
   );

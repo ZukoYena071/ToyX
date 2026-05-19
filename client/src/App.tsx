@@ -28,6 +28,9 @@ import Rewards from "@/pages/rewards";
 import Invite from "@/pages/invite";
 import LoadingLogo from "@/components/ui/LoadingLogo";
 import PrivacySafety from "@/pages/privacy-safety";
+import PrivacyMessages from "@/pages/privacy-messages";
+import AdminModeration from "@/pages/admin-moderation";
+import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -78,6 +81,7 @@ function Router() {
   }
 
   return (
+    <>
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/search" component={Search} />
@@ -92,11 +96,16 @@ function Router() {
         <Route path="/rewards" component={Rewards} />
         <Route path="/invite" component={Invite} />
         <Route path="/privacy-safety" component={PrivacySafety} />
+        <Route path="/privacy/messages" component={PrivacyMessages} />
+        <Route path="/privacy/messages/:id" component={PrivacyMessages} />
+        <Route path="/admin/moderation" component={AdminModeration} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />
       <Route path="/loading-demo" component={LoadingDemo} />
       <Route component={NotFound} />
     </Switch>
+    <ModerationMessageNotifier />
+    </>
   );
 }
 
