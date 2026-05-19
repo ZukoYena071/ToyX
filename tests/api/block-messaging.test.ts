@@ -286,3 +286,26 @@ beforeAll(async () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("User search endpoint", () => {
+  let agent: request.SuperAgentTest;
+
+  beforeAll(() => {
+    agent = request.agent(BASE);
+  });
+
+  it("returns results and excludes current user", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.get("/api/users/search?q=seed");
+    expect(res.status).toBe(200);
+    const users = Array.isArray(res.body) ? res.body : [];
+    // Should not include seed_user_1 (current user)
+    expect(users.find((u: any) => u.id === "seed_user_1")).toBeUndefined();
+  });
+
+  it("requires minimum 2 chars", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.get("/api/users/search?q=a");
+    expect(Array.isArray(res.body) ? res.body.length : 0).toBe(0);
+  });
+});

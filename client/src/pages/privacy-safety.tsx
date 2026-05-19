@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Shield, MapPin, Mail, Phone, MessageCircle, AlertTriangle, Trash2, BookOpen, HelpCircle } from "lucide-react";
+import { ArrowLeft, Shield, MapPin, Mail, Phone, MessageCircle, AlertTriangle, Trash2, BookOpen, HelpCircle, Search, X, Flag } from "lucide-react";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import ListItemRow from "@/components/ui/ListItemRow";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import ReportUserModal from "@/components/toys/ReportUserModal";
 
 const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
   <button
@@ -32,6 +33,12 @@ export default function PrivacySafety() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [showReportSearch, setShowReportSearch] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedReportUser, setSelectedReportUser] = useState<{ id: string; name: string } | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     fetch("/api/users/privacy", { credentials: "include" })
@@ -61,6 +68,22 @@ export default function PrivacySafety() {
     }
     setSaving(null);
   };
+
+  // Search debounce
+  useEffect(() => {
+    if (!showReportSearch || searchQ.length < 2) { setSearchResults([]); return; }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQ)}&limit=10`, { credentials: "include" });
+        const data = await res.json();
+        setSearchResults(Array.isArray(data) ? data : []);
+      } catch { setSearchResults([]); }
+      setSearching(false);
+    }, 300);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [showReportSearch, searchQ]);
 
   if (loading) {
     return (
@@ -152,6 +175,7 @@ export default function PrivacySafety() {
               icon={<div className="w-10 h-10 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center"><AlertTriangle className="text-red-500 w-5 h-5" /></div>}
               title="Report a user"
               subtitle="Report inappropriate behavior or safety concerns"
+              onClick={() => setShowReportSearch(true)}
             />
           </div>
         </SectionCard>
@@ -170,6 +194,49 @@ export default function PrivacySafety() {
       </div>
 
       <BottomNav />
+
+      {/* Search user modal */}
+      {showReportSearch && !selectedReportUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-800 shrink-0">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Report a user</h3>
+              <button onClick={() => setShowReportSearch(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center"><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4 pb-[calc(env(safe-area-inset-bottom)+24px)]">
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input type="text" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search by name..." className="w-full bg-gray-100 dark:bg-gray-800 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-900 dark:text-gray-50 placeholder:text-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[44px]" autoFocus />
+              </div>
+              {searching && <p className="text-center text-sm text-gray-400 py-4">Searching...</p>}
+              {!searching && searchQ.length >= 2 && searchResults.length === 0 && <p className="text-center text-sm text-gray-400 py-4">No users found</p>}
+              <div className="space-y-2">
+                {searchResults.map((u: any) => (
+                  <button key={u.id} onClick={() => setSelectedReportUser({ id: u.id, name: u.firstName || u.email?.split('@')[0] || 'User' })}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[48px]"
+                  >
+                    <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-white text-sm font-bold">{u.firstName?.[0] || u.email?.[0] || 'U'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">{u.firstName || u.email}</div>
+                      <div className="text-xs text-gray-500 truncate">{u.email}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ReportUserModal
+        open={!!selectedReportUser}
+        onClose={() => { setSelectedReportUser(null); setShowReportSearch(false); }}
+        reportedId={selectedReportUser?.id || ""}
+        reportedName={selectedReportUser?.name || "User"}
+        contextType="profile"
+      />
     </PageContainer>
   );
 }

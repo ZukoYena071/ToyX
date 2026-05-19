@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Calendar, Star, Heart } from "lucide-react";
+import { MapPin, Calendar, Star, Heart, Flag } from "lucide-react";
 import { ProfileSkeleton } from "@/components/loading-skeletons";
 import type { User, ToyWithOwner, ReviewWithUser } from "@shared/schema";
 import BottomNav from "@/components/bottom-nav";
@@ -10,11 +10,13 @@ import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import EmptyState from "@/components/ui/EmptyState";
+import ReportUserModal from "@/components/toys/ReportUserModal";
 
 export default function UserProfile() {
   const { userId } = useParams();
   const [selectedToys, setSelectedToys] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<"toys" | "reviews">("toys");
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const { data: user, isLoading: userLoading } = useQuery<User>({
     queryKey: ["/api/users", userId],
@@ -84,11 +86,16 @@ export default function UserProfile() {
       <PageHeader
         title="Profile"
         rightAction={
-          <button onClick={() => window.history.back()} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            <svg className="text-gray-600 dark:text-gray-300 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowReportModal(true)} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Report user">
+              <Flag className="text-gray-600 dark:text-gray-300 w-4 h-4" />
+            </button>
+            <button onClick={() => window.history.back()} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <svg className="text-gray-600 dark:text-gray-300 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
         }
       />
 
@@ -276,6 +283,14 @@ export default function UserProfile() {
       </div>
 
       <BottomNav />
+
+      <ReportUserModal
+        open={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        reportedId={user.id}
+        reportedName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split('@')[0] || 'User'}
+        contextType="profile"
+      />
     </PageContainer>
   );
 }

@@ -281,6 +281,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User search (used by report flow)
+  app.get('/api/users/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const q = (req.query.q as string || "").trim();
+      if (q.length < 2) return res.json([]);
+      const results = await db.select({
+        id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, profileImageUrl: users.profileImageUrl,
+      }).from(users).where(and(sql`LOWER(${users.firstName}) LIKE ${'%' + q.toLowerCase() + '%'}`, sql`${users.id} != ${userId}`)).limit(10);
+      res.json(results.map(u => ({ ...u, profileImageUrl: u.profileImageUrl?.replace(/^http:/, "https:") || null })));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get('/api/users/:id', async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
