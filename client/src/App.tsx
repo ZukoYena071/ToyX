@@ -30,6 +30,7 @@ import LoadingLogo from "@/components/ui/LoadingLogo";
 import PrivacySafety from "@/pages/privacy-safety";
 import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
+import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -80,6 +81,7 @@ function Router() {
   }
 
   return (
+    <>
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/search" component={Search} />
@@ -102,6 +104,8 @@ function Router() {
       <Route path="/loading-demo" component={LoadingDemo} />
       <Route component={NotFound} />
     </Switch>
+    <ModerationMessageNotifier />
+    </>
   );
 }
 
