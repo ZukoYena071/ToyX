@@ -90,12 +90,45 @@ export default function AdminModeration() {
               </div>
             </div>
           )}
-          {selected.status !== "resolved" && selected.status !== "dismissed" && (
+          {/* Report status actions */}
+          <div className="space-y-2">
+            <textarea value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} placeholder="Resolution note (optional)" className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 min-h-[44px]" rows={2} />
+            <div className="flex flex-wrap gap-2">
+              {selected.status === "open" && <button onClick={() => handleStatusChange(selected.id, "reviewing")} className="flex-1 min-w-[80px] bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium text-xs min-h-[44px]">Mark Reviewing</button>}
+              {selected.status !== "resolved" && selected.status !== "dismissed" && (
+                <>
+                  <button onClick={() => handleStatusChange(selected.id, "resolved")} className="flex-1 min-w-[80px] bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-medium text-xs min-h-[44px]">Resolve</button>
+                  <button onClick={() => handleStatusChange(selected.id, "dismissed")} className="flex-1 min-w-[80px] bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium text-xs min-h-[44px]">Dismiss</button>
+                </>
+              )}
+            </div>
+          </div>
+          {/* User actions */}
+          {selected.reported?.id && (
             <div className="space-y-2">
-              <textarea value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} placeholder="Resolution note (optional)" className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 min-h-[44px]" rows={2} />
-              <div className="flex gap-2">
-                <button onClick={() => handleStatusChange(selected.id, "resolved")} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-medium text-sm min-h-[44px]">Resolve</button>
-                <button onClick={() => handleStatusChange(selected.id, "dismissed")} className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium text-sm min-h-[44px]">Dismiss</button>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50">User Actions</h4>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={async () => {
+                  const msg = window.prompt("Message to user:");
+                  if (!msg) return;
+                  await fetch(`/api/admin/users/${selected.reported.id}/message`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: msg, reportId: selected.id }), credentials: "include" });
+                  alert("Message sent");
+                }} className="flex-1 min-w-[80px] bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-medium text-xs min-h-[44px]">Send Message</button>
+                <button onClick={async () => {
+                  const days = parseInt(window.prompt("Suspend days (1, 7, or 30):") || "0");
+                  if (![1, 7, 30].includes(days)) return;
+                  const reason = window.prompt("Reason for suspension:");
+                  await fetch(`/api/admin/users/${selected.reported.id}/suspend`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ days, reason, reportId: selected.id }), credentials: "include" });
+                  alert("User suspended");
+                  fetchReports(statusFilter);
+                }} className="flex-1 min-w-[80px] bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-medium text-xs min-h-[44px]">Suspend</button>
+                <button onClick={async () => {
+                  if (!window.confirm("Ban this user permanently?")) return;
+                  const reason = window.prompt("Reason for ban:");
+                  await fetch(`/api/admin/users/${selected.reported.id}/ban`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason, reportId: selected.id }), credentials: "include" });
+                  alert("User banned");
+                  fetchReports(statusFilter);
+                }} className="flex-1 min-w-[80px] bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-medium text-xs min-h-[44px]">Ban</button>
               </div>
             </div>
           )}

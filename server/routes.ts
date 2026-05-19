@@ -5,7 +5,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -507,7 +507,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/toys', isAuthenticated, async (req: any, res) => {
+  // Enforcement: check if user is suspended or banned
+  const checkNotRestricted = async (req: any, res: any, next: any) => {
+    try {
+      const user = await storage.getUser(req.user?.claims?.sub);
+      if (!user) return res.status(401).json({ message: "Unauthorized" });
+      if ((user as any).bannedAt) return res.status(403).json({ code: "BANNED", message: "Your account has been banned" });
+      if ((user as any).suspendedUntil && new Date((user as any).suspendedUntil) > new Date()) {
+        return res.status(403).json({ code: "SUSPENDED", message: `Account suspended until ${new Date((user as any).suspendedUntil).toLocaleDateString()}` });
+      }
+      next();
+    } catch { next(); }
+  };
+
+  app.post('/api/toys', isAuthenticated, checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -714,7 +727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/exchanges', isAuthenticated, async (req: any, res) => {
+  app.post('/api/exchanges', isAuthenticated, checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1178,8 +1191,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: suspend user
+  app.post('/api/admin/users/:userId/suspend', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const targetId = req.params.userId;
+      const { days, reason, messageToUser, reportId } = req.body;
+      if (!days || ![1, 7, 30].includes(days)) return res.status(400).json({ message: "days must be 1, 7, or 30" });
+      const expiresAt = new Date(Date.now() + days * 86400000);
+      await db.update(users).set({ suspendedUntil: expiresAt, suspensionReason: reason || null }).where(eq(users.id, targetId));
+      await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "suspend", message: reason || null, durationDays: days, expiresAt }).returning();
+      if (messageToUser) {
+        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account suspended", body: messageToUser });
+      }
+      res.json({ ok: true, suspendedUntil: expiresAt });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // Admin: ban user
+  app.post('/api/admin/users/:userId/ban', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const targetId = req.params.userId;
+      const { reason, messageToUser, reportId } = req.body;
+      await db.update(users).set({ bannedAt: new Date(), suspensionReason: reason || null }).where(eq(users.id, targetId));
+      await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "ban", message: reason || null }).returning();
+      if (messageToUser) {
+        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account banned", body: messageToUser });
+      }
+      res.json({ ok: true });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // Admin: send message to user
+  app.post('/api/admin/users/:userId/message', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const targetId = req.params.userId;
+      const { subject, body: msgBody, reportId } = req.body;
+      if (!msgBody) return res.status(400).json({ message: "Message body required" });
+      const [msg] = await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: subject || "Message from ToyX", body: msgBody }).returning();
+      await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "message", message: msgBody }).returning();
+      res.json({ ok: true, id: msg.id });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // User: get my moderation messages
+  app.get('/api/me/moderation-messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msgs = await db.select().from(moderationMessages).where(eq(moderationMessages.userId, userId)).orderBy(desc(moderationMessages.createdAt)).limit(20);
+      const unread = msgs.filter(m => !m.readAt).length;
+      res.json({ messages: msgs, unreadCount: unread });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // User: mark message as read
+  app.patch('/api/me/moderation-messages/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await db.update(moderationMessages).set({ readAt: new Date() }).where(and(eq(moderationMessages.id, parseInt(req.params.id)), eq(moderationMessages.userId, userId)));
+      res.json({ ok: true });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  // Admin: get moderation actions for a user
+  app.get('/api/admin/users/:userId/moderation-actions', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const actions = await db.select().from(moderationActions).where(eq(moderationActions.targetUserId, req.params.userId)).orderBy(desc(moderationActions.createdAt)).limit(10);
+      res.json(actions);
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
   // Block enforcement on message sending
-  app.post('/api/exchanges/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/exchanges/:id/messages', isAuthenticated, checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);
