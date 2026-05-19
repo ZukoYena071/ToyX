@@ -472,7 +472,30 @@ export default function ToyDetail() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowMessageModal(false)} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">Cancel</button>
-              <button onClick={() => { setShowMessageModal(false); setMessage(''); }} className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]">Send Message</button>
+              <button onClick={async () => {
+                setShowMessageModal(false);
+                if (!message.trim()) { toast({ title: "Error", description: "Please enter a message.", variant: "destructive" }); return; }
+                try {
+                  const res = await fetch("/api/exchanges", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ toyId: parseInt(id!), requestMessage: message.trim() }),
+                    credentials: "include",
+                  });
+                  if (res.ok) {
+                    toast({ title: "Message sent!", description: "Your message has been sent to the toy owner." });
+                    queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
+                    setMessage('');
+                  } else {
+                    const data = await res.json().catch(() => ({}));
+                    if (data?.upgradeUrl && (data?.code === "LIMIT_ACTIVE_EXCHANGES" || data?.code === "LIMIT_MONTHLY_REQUESTS")) {
+                      setLimitModal({ message: data.message, upgradeUrl: data.upgradeUrl });
+                      setTimeout(() => window.location.href = data.upgradeUrl, 4000);
+                    } else {
+                      toast({ title: "Error", description: data?.message || "Failed to send message.", variant: "destructive" });
+                    }
+                  }
+                } catch { toast({ title: "Error", description: "Failed to send message.", variant: "destructive" }); }
+              }} className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-medium transition-colors min-h-[44px]">Send Message</button>
             </div>
           </SectionCard>
         </div>
