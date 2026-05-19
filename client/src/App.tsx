@@ -30,6 +30,8 @@ import LoadingLogo from "@/components/ui/LoadingLogo";
 import PrivacySafety from "@/pages/privacy-safety";
 import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
+import TermsPage from "@/pages/terms";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
 
 function Router() {
@@ -60,6 +62,8 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/pricing" component={Pricing} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/billing-success" component={BillingSuccess} />
         <Route path="/billing-cancel" component={BillingCancel} />
         <Route path="/rewards" component={Rewards} />
@@ -99,6 +103,8 @@ function Router() {
         <Route path="/privacy/messages" component={PrivacyMessages} />
         <Route path="/privacy/messages/:id" component={PrivacyMessages} />
         <Route path="/admin/moderation" component={AdminModeration} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />
       <Route path="/loading-demo" component={LoadingDemo} />

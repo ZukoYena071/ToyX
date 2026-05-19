@@ -2,7 +2,6 @@ import { useLocation } from "wouter";
 import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { getUnreadExchanges } from "@/lib/chat-utils";
 import UploadOverlay from "./upload-overlay";
 
 const navItems = [
@@ -24,7 +23,10 @@ export default function BottomNav() {
     const fetchCount = () => {
       fetch("/api/exchanges", { credentials: "include" })
         .then(r => r.json())
-        .then(data => setUnreadCount(getUnreadExchanges(data, (user as any).id)))
+        .then(data => {
+          const count = (Array.isArray(data) ? data : []).filter((ex: any) => ex.hasUnread).length;
+          setUnreadCount(count);
+        })
         .catch(() => {});
     };
     fetchCount();
