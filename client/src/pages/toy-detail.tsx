@@ -483,6 +483,14 @@ export default function ToyDetail() {
                     (ex: any) => ex.toyId === parseInt(id!) && ex.requesterId === (user as any)?.id
                   );
                   if (existing) {
+                    // Send message to existing exchange
+                    await fetch(`/api/exchanges/${existing.id}/messages`, {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ content: message.trim(), messageType: "text" }),
+                      credentials: "include",
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
+                    setMessage('');
                     window.location.href = `/chat/${existing.id}`;
                     return;
                   }
