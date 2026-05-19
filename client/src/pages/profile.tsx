@@ -738,6 +738,13 @@ export default function Profile() {
                 subtitle="Read our terms of service"
               />
             </Link>
+            <Link href="/privacy-policy">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center"><FileText className="text-blue-500 w-5 h-5" /></div>}
+                title="Privacy Policy"
+                subtitle="How we handle your data"
+              />
+            </Link>
             <ListItemRow
               icon={<div className="w-10 h-10 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center"><LogOut className="text-red-500 w-5 h-5" /></div>}
               title="Sign Out"
