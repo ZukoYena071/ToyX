@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
+let sessionToastShown = false;
+
 export default function ModerationMessageNotifier() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -15,31 +17,33 @@ export default function ModerationMessageNotifier() {
   });
 
   useEffect(() => {
+    const count = data?.unreadCount ?? 0;
+    if (count <= 0) return;
+
     const latestId = data?.latestUnreadId;
-    if (!latestId) return;
-    const idStr = String(latestId);
-    // Check localStorage to avoid spam
-    const lastNotified = localStorage.getItem("toyx:lastNotifiedModerationMessageId");
-    if (lastNotified === idStr) return;
-    // Also check in-memory ref to avoid double-show in same render
-    if (notifiedIdRef.current === idStr) return;
+    const idStr = latestId ? String(latestId) : null;
 
-    notifiedIdRef.current = idStr;
-    localStorage.setItem("toyx:lastNotifiedModerationMessageId", idStr);
+    // Suppression: prefer latestUnreadId, fallback to once-per-session
+    if (idStr) {
+      if (localStorage.getItem("toyx:lastNotifiedModerationMessageId") === idStr) return;
+      if (notifiedIdRef.current === idStr) return;
+      notifiedIdRef.current = idStr;
+    } else {
+      if (sessionToastShown) return;
+      sessionToastShown = true;
+    }
 
-    const target = `/privacy/messages/${latestId}`;
-    // Small delay to let the page render first
-    const timer = setTimeout(() => {
-      toast({
-        title: "New message from ToyX",
-        description: "You have a new moderation message.",
-        duration: 10000,
-      });
-      // Use a brief confirm-style banner approach - tap the toast area
-      // The user can also navigate via Privacy & Safety
-    }, 1500);
+    const target = idStr ? `/privacy/messages/${latestId}` : "/privacy/messages";
 
-    return () => clearTimeout(timer);
+    toast({
+      title: "New message from ToyX",
+      description: "You have an unread moderation message.",
+      duration: 10000,
+    });
+
+    if (idStr) {
+      localStorage.setItem("toyx:lastNotifiedModerationMessageId", idStr);
+    }
   }, [data, toast, setLocation]);
 
   return null;
