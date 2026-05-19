@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Heart } from "lucide-react";
+import { Heart, Star } from "lucide-react";
 import { normalizeList, ChipRow } from "./MetaChip";
 import { formatDistanceAway } from "@/lib/formatDistance";
 
@@ -129,6 +129,12 @@ export default function ToyFeedCard({ toy, onOpen, onToggleFavorite }: ToyFeedCa
         <div data-testid="toy-meta-chips" className="mt-2 flex flex-wrap gap-1.5">
           <ChipRow ages={ages} categories={categories} />
         </div>
+        {toy.ownerRating != null && toy.ownerRating > 0 && (
+          <div className="flex items-center gap-1 mt-1.5">
+            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">{toy.ownerRating.toFixed(1)}</span>
+          </div>
+        )}
       </div>
     </div>
   );
