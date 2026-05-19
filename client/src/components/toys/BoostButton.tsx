@@ -120,14 +120,14 @@ export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, 
       {showMenu && (
         <>
           <div className="fixed inset-0 z-[90] bg-black/50" onClick={() => setShowMenu(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-[100] rounded-t-2xl bg-white dark:bg-gray-900 shadow-xl flex flex-col max-h-[85vh]">
+          <div className="fixed inset-x-0 bottom-0 z-[100] rounded-t-2xl bg-white dark:bg-gray-900 shadow-xl flex flex-col overflow-hidden h-[85dvh]">
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50">{active ? "Extend Boost" : "Boost"}</h3>
               <button onClick={() => setShowMenu(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="overflow-y-auto overscroll-contain px-5 py-3 pb-[calc(12px+env(safe-area-inset-bottom))]" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-3 pb-[calc(env(safe-area-inset-bottom)+100px)]" style={{ WebkitOverflowScrolling: "touch" }}>
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Boost with Points</p>
               <button
                 onClick={handlePointsBoost}
