@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { ArrowLeft, Mail, MessageCircle, CheckCircle, Clock } from "lucide-react";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 
 export default function PrivacyMessages() {
+  const { id: msgId } = useParams();
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
@@ -22,6 +23,14 @@ export default function PrivacyMessages() {
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
+  // Auto-select message if routed via deep link
+  useEffect(() => {
+    if (!loading && messages.length > 0 && msgId) {
+      const found = messages.find((m: any) => String(m.id) === msgId);
+      if (found) setSelected(found);
+    }
+  }, [loading, messages, msgId]);
+
   const markRead = async (id: number) => {
     await fetch(`/api/me/moderation-messages/${id}/read`, { method: "PATCH", credentials: "include" });
     setMessages(prev => prev.map(m => m.id === id ? { ...m, readAt: new Date().toISOString() } : m));
@@ -30,7 +39,7 @@ export default function PrivacyMessages() {
   if (selected) {
     return (
       <PageContainer className="pb-24">
-        <PageHeader title="Message" rightAction={<button onClick={() => { markRead(selected.id); setSelected(null); }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>} />
+        <PageHeader title="Message" rightAction={<Link href="/privacy/messages"><button onClick={() => markRead(selected.id)} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"><ArrowLeft className="w-4 h-4 text-gray-600" /></button></Link>} />
         <div className="px-4 py-4">
           <SectionCard className="p-4">
             <div className="flex items-center gap-2 mb-2">

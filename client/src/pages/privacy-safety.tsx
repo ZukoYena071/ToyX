@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Shield, MapPin, Mail, Phone, MessageCircle, AlertTriangle, Trash2, BookOpen, HelpCircle, Search, X, Flag } from "lucide-react";
 import BottomNav from "@/components/bottom-nav";
@@ -25,6 +25,7 @@ const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () =>
 
 export default function PrivacySafety() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [settings, setSettings] = useState({
     showLocation: true,
     showEmail: true,
@@ -70,9 +71,23 @@ export default function PrivacySafety() {
   };
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [latestUnreadId, setLatestUnreadId] = useState<number | null>(null);
+  const [showUnreadBanner, setShowUnreadBanner] = useState(false);
   useEffect(() => {
-    fetch("/api/me/moderation-messages", { credentials: "include" })
-      .then(r => r.json()).then(d => setUnreadCount(d.unreadCount || 0)).catch(() => {});
+    fetch("/api/me/moderation-messages/unread-count", { credentials: "include" })
+      .then(r => r.json()).then(d => {
+        const count = d.unreadCount || 0;
+        setUnreadCount(count);
+        setLatestUnreadId(d.latestUnreadId || null);
+        if (count > 0) {
+          const lastNotified = parseInt(localStorage.getItem("lastNotifiedUnreadCount") || "0");
+          if (count > lastNotified) {
+            localStorage.setItem("lastNotifiedUnreadCount", String(count));
+            setShowUnreadBanner(true);
+            setTimeout(() => setShowUnreadBanner(false), 10000);
+          }
+        }
+      }).catch(() => {});
   }, []);
 
   // Search debounce
@@ -112,6 +127,17 @@ export default function PrivacySafety() {
           </Link>
         }
       />
+
+      {showUnreadBanner && (
+        <div className="mx-4 mt-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">New message from ToyX</p>
+            <p className="text-xs text-blue-600 dark:text-blue-300">You have an unread moderation message.</p>
+          </div>
+          <button onClick={() => setLocation(latestUnreadId ? `/privacy/messages/${latestUnreadId}` : "/privacy/messages")} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-medium transition-colors min-h-[44px] shrink-0">View</button>
+          <button onClick={() => setShowUnreadBanner(false)} className="min-w-[36px] min-h-[36px] flex items-center justify-center text-blue-400 hover:text-blue-600 shrink-0"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       <div className="px-4 pt-4 space-y-4">
         <SectionCard>

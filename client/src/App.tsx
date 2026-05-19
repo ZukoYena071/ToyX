@@ -95,6 +95,7 @@ function Router() {
         <Route path="/invite" component={Invite} />
         <Route path="/privacy-safety" component={PrivacySafety} />
         <Route path="/privacy/messages" component={PrivacyMessages} />
+        <Route path="/privacy/messages/:id" component={PrivacyMessages} />
         <Route path="/admin/moderation" component={AdminModeration} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />

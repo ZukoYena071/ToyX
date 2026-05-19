@@ -276,7 +276,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const [result] = await db.select({ count: sql<number>`count(*)` }).from(moderationMessages).where(and(eq(moderationMessages.userId, userId), sql`${moderationMessages.readAt} IS NULL`));
-      res.json({ unreadCount: Number(result?.count || 0) });
+      const [latest] = await db.select({ id: moderationMessages.id }).from(moderationMessages).where(and(eq(moderationMessages.userId, userId), sql`${moderationMessages.readAt} IS NULL`)).orderBy(desc(moderationMessages.createdAt)).limit(1);
+      res.json({ unreadCount: Number(result?.count || 0), latestUnreadId: latest?.id || null });
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
 
