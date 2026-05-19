@@ -731,11 +731,13 @@ export default function Profile() {
       <div className="px-4 mt-4 mb-6">
         <SectionCard>
           <div className="space-y-1">
-            <ListItemRow
-              icon={<div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center"><FileText className="text-purple-500 w-5 h-5" /></div>}
-              title="Terms & Conditions"
-              subtitle="Read our terms of service"
-            />
+            <Link href="/terms">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center"><FileText className="text-purple-500 w-5 h-5" /></div>}
+                title="Terms & Conditions"
+                subtitle="Read our terms of service"
+              />
+            </Link>
             <ListItemRow
               icon={<div className="w-10 h-10 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center"><LogOut className="text-red-500 w-5 h-5" /></div>}
               title="Sign Out"
