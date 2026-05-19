@@ -1094,12 +1094,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         and(eq(reports.reporterId, reporterId), gte(reports.createdAt, today))
       );
       if (Number(countRes?.count || 0) >= 5) return res.status(429).json({ code: "RATE_LIMIT", message: "Maximum 5 reports per day" });
-      // Dedupe: prevent duplicate open reports within 24h
-      const dayAgo = new Date(Date.now() - 86400000);
-      const [dup] = await db.select({ id: reports.id }).from(reports).where(
-        and(eq(reports.reporterId, reporterId), eq(reports.reportedId, reportedId), eq(reports.status, "open"), gte(reports.createdAt, dayAgo))
-      ).limit(1);
-      if (dup) return res.status(409).json({ code: "DUPLICATE_REPORT", message: "You already have an open report for this user" });
+      // Dedupe: prevent duplicate open reports for same context within 24h
+      if (contextType && contextType !== "profile") {
+        const dayAgo = new Date(Date.now() - 86400000);
+        const dupConditions: any[] = [eq(reports.reporterId, reporterId), eq(reports.reportedId, reportedId), eq(reports.status, "open"), gte(reports.createdAt, dayAgo)];
+        if (contextType) dupConditions.push(eq(reports.contextType, contextType));
+        if (contextId) dupConditions.push(eq(reports.contextId, contextId));
+        const [dup] = await db.select({ id: reports.id }).from(reports).where(and(...dupConditions)).limit(1);
+        if (dup) return res.status(409).json({ code: "DUPLICATE_REPORT", message: "You already have an open report for this user" });
+      }
       // Capture message snapshot if context is chat/exchange
       let messageSnapshot = null;
       if ((contextType === "chat" || contextType === "exchange") && contextId) {
@@ -1136,14 +1139,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status: filterStatus = "open", limit = 20, offset = 0 } = req.query;
       const whereClause = filterStatus === "all" ? undefined : eq(reports.status, filterStatus as string);
       const items = await db.select().from(reports).where(whereClause).orderBy(desc(reports.createdAt)).limit(Number(limit)).offset(Number(offset));
-      const [totalRes] = await db.select({ count: sql<number>`count(*)` }).from(reports).where(whereClause);
-      // Enrich with user names
+      // Compute counts for each status
+      const allRes = await db.select({ status: reports.status, count: sql<number>`count(*)` }).from(reports).groupBy(reports.status);
+      const counts: Record<string, number> = { all: 0, open: 0, reviewing: 0, resolved: 0, dismissed: 0 };
+      for (const r of allRes) { counts[r.status] = Number(r.count); counts.all += Number(r.count); }
       const enriched = await Promise.all(items.map(async (r: any) => {
         const reporter = await storage.getUser(r.reporterId);
         const reported = await storage.getUser(r.reportedId);
         return { ...r, reporter: reporter ? { id: reporter.id, firstName: reporter.firstName, email: reporter.email } : null, reported: reported ? { id: reported.id, firstName: reported.firstName, email: reported.email } : null };
       }));
-      res.json({ reports: enriched, total: Number(totalRes?.count || 0) });
+      res.json({ reports: enriched, counts, total: counts[filterStatus === "all" ? "all" : filterStatus as string] || 0 });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
