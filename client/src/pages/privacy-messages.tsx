@@ -11,7 +11,8 @@ export default function PrivacyMessages() {
   const [, setLocation] = useLocation();
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<any>(null);
+
+  const selected = msgId ? messages.find((m: any) => String(m.id) === String(msgId)) || null : null;
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -24,23 +25,49 @@ export default function PrivacyMessages() {
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
-  // Auto-select message if routed via deep link
-  useEffect(() => {
-    if (!loading && messages.length > 0 && msgId) {
-      const found = messages.find((m: any) => String(m.id) === msgId);
-      if (found) setSelected(found);
-    }
-  }, [loading, messages, msgId]);
-
   const markRead = async (id: number) => {
     try { await fetch(`/api/me/moderation-messages/${id}/read`, { method: "PATCH", credentials: "include" }); } catch {}
     setMessages(prev => prev.map(m => m.id === id ? { ...m, readAt: new Date().toISOString() } : m));
   };
 
-  if (selected) {
+  // Auto-mark read when opening detail
+  useEffect(() => {
+    if (selected && !selected.readAt) {
+      markRead(selected.id);
+    }
+  }, [selected?.id]);
+
+  const goBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setLocation("/privacy/messages");
+    }
+  };
+
+  // Detail view
+  if (msgId) {
+    if (loading && !selected) {
+      return (
+        <PageContainer className="pb-24">
+          <PageHeader title="Message" rightAction={<button onClick={goBack} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>} />
+          <div className="px-4 py-4 text-center text-sm text-gray-500">Loading...</div>
+          <BottomNav />
+        </PageContainer>
+      );
+    }
+    if (!selected) {
+      return (
+        <PageContainer className="pb-24">
+          <PageHeader title="Message" rightAction={<button onClick={goBack} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>} />
+          <div className="px-4 py-4 text-center text-sm text-gray-500">Message not found.</div>
+          <BottomNav />
+        </PageContainer>
+      );
+    }
     return (
       <PageContainer className="pb-24">
-        <PageHeader title="Message" rightAction={<button onClick={() => { markRead(selected.id); setLocation("/privacy/messages"); }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer z-50"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>} />
+        <PageHeader title="Message" rightAction={<button onClick={goBack} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>} />
         <div className="px-4 py-4">
           <SectionCard className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -56,9 +83,10 @@ export default function PrivacyMessages() {
     );
   }
 
+  // List view
   return (
     <PageContainer className="pb-24">
-      <PageHeader title="Messages from ToyX" rightAction={<Link href="/privacy-safety"><button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"><ArrowLeft className="w-4 h-4 text-gray-600" /></button></Link>} />
+      <PageHeader title="Messages from ToyX" rightAction={<Link href="/privacy-safety"><button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ArrowLeft className="w-4 h-4 text-gray-600" /></button></Link>} />
       <div className="px-4 py-4">
         {loading ? (
           <div className="text-center py-12 text-sm text-gray-500">Loading...</div>
@@ -70,7 +98,7 @@ export default function PrivacyMessages() {
         ) : (
           <div className="space-y-2">
             {messages.map((m) => (
-              <button key={m.id} onClick={() => { if (!m.readAt) markRead(m.id); setSelected(m); }}
+              <button key={m.id} onClick={() => setLocation(`/privacy/messages/${m.id}`)}
                 className="w-full text-left bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-800 hover:shadow-sm transition-shadow"
               >
                 <div className="flex items-center gap-2 mb-1">
