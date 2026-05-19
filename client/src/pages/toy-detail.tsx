@@ -476,15 +476,28 @@ export default function ToyDetail() {
                 setShowMessageModal(false);
                 if (!message.trim()) { toast({ title: "Error", description: "Please enter a message.", variant: "destructive" }); return; }
                 try {
+                  // Check for existing exchange with this toy owner
+                  const exchRes = await fetch("/api/exchanges", { credentials: "include" });
+                  const exchanges = await exchRes.json().catch(() => []);
+                  const existing = (Array.isArray(exchanges) ? exchanges : []).find(
+                    (ex: any) => ex.toyId === parseInt(id!) && ex.requesterId === (user as any)?.id
+                  );
+                  if (existing) {
+                    window.location.href = `/chat/${existing.id}`;
+                    return;
+                  }
+                  // No existing exchange — create one
                   const res = await fetch("/api/exchanges", {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ toyId: parseInt(id!), requestMessage: message.trim() }),
                     credentials: "include",
                   });
                   if (res.ok) {
+                    const data = await res.json();
                     toast({ title: "Message sent!", description: "Your message has been sent to the toy owner." });
                     queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
                     setMessage('');
+                    window.location.href = `/chat/${data.id}`;
                   } else {
                     const data = await res.json().catch(() => ({}));
                     if (data?.upgradeUrl && (data?.code === "LIMIT_ACTIVE_EXCHANGES" || data?.code === "LIMIT_MONTHLY_REQUESTS")) {
