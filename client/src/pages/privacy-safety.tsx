@@ -69,6 +69,12 @@ export default function PrivacySafety() {
     setSaving(null);
   };
 
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    fetch("/api/me/moderation-messages", { credentials: "include" })
+      .then(r => r.json()).then(d => setUnreadCount(d.unreadCount || 0)).catch(() => {});
+  }, []);
+
   // Search debounce
   useEffect(() => {
     if (!showReportSearch || searchQ.length < 2) { setSearchResults([]); return; }
@@ -177,6 +183,19 @@ export default function PrivacySafety() {
               subtitle="Report inappropriate behavior or safety concerns"
               onClick={() => setShowReportSearch(true)}
             />
+          </div>
+        </SectionCard>
+
+        <SectionCard>
+          <div className="space-y-1">
+            <Link href="/privacy/messages">
+              <ListItemRow
+                icon={<div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center"><MessageCircle className="text-blue-500 w-5 h-5" /></div>}
+                title="Messages from ToyX"
+                subtitle="Official notices and safety updates"
+                right={unreadCount > 0 ? <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{unreadCount}</span> : undefined}
+              />
+            </Link>
           </div>
         </SectionCard>
 
