@@ -262,6 +262,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Moderation messages for the logged-in user
+  app.get('/api/me/moderation-messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msgs = await db.select().from(moderationMessages).where(eq(moderationMessages.userId, userId)).orderBy(desc(moderationMessages.createdAt)).limit(20);
+      const unread = msgs.filter(m => !m.readAt).length;
+      res.json({ messages: msgs, unreadCount: unread });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  app.get('/api/me/moderation-messages/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [result] = await db.select({ count: sql<number>`count(*)` }).from(moderationMessages).where(and(eq(moderationMessages.userId, userId), sql`${moderationMessages.readAt} IS NULL`));
+      res.json({ unreadCount: Number(result?.count || 0) });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
+  app.patch('/api/me/moderation-messages/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [updated] = await db.update(moderationMessages).set({ readAt: new Date() }).where(and(eq(moderationMessages.id, parseInt(req.params.id)), eq(moderationMessages.userId, userId))).returning();
+      res.json({ ok: true });
+    } catch (error: any) { res.status(500).json({ message: error.message }); }
+  });
+
   // Update user profile
   app.patch('/api/users/profile', isAuthenticated, async (req: any, res) => {
     try {
@@ -1233,25 +1259,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [msg] = await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: subject || "Message from ToyX", body: msgBody }).returning();
       await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "message", message: msgBody }).returning();
       res.json({ ok: true, id: msg.id });
-    } catch (error: any) { res.status(500).json({ message: error.message }); }
-  });
-
-  // User: get my moderation messages
-  app.get('/api/me/moderation-messages', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const msgs = await db.select().from(moderationMessages).where(eq(moderationMessages.userId, userId)).orderBy(desc(moderationMessages.createdAt)).limit(20);
-      const unread = msgs.filter(m => !m.readAt).length;
-      res.json({ messages: msgs, unreadCount: unread });
-    } catch (error: any) { res.status(500).json({ message: error.message }); }
-  });
-
-  // User: mark message as read
-  app.patch('/api/me/moderation-messages/:id/read', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      await db.update(moderationMessages).set({ readAt: new Date() }).where(and(eq(moderationMessages.id, parseInt(req.params.id)), eq(moderationMessages.userId, userId)));
-      res.json({ ok: true });
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
 
