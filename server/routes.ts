@@ -2,10 +2,10 @@ import crypto from "crypto";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { eq, and, or, gte, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -1069,11 +1069,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reporterId = req.user.claims.sub;
       const reportedId = req.params.id;
       if (reporterId === reportedId) return res.status(400).json({ message: "Cannot report yourself" });
-      const { reason } = req.body;
-      await storage.reportUser(reporterId, reportedId, reason);
-      res.json({ ok: true });
+      const { reason, details, contextType, contextId, alsoBlock } = req.body;
+      if (!reason) return res.status(400).json({ code: "REASON_REQUIRED", message: "Reason is required" });
+      const validReasons = ["Scam/Fraud", "Harassment", "Spam", "Inappropriate content", "Safety concern", "Other"];
+      if (!validReasons.includes(reason)) return res.status(400).json({ code: "INVALID_REASON", message: "Invalid reason" });
+      // Rate limit: max 5 reports per day
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const [countRes] = await db.select({ count: sql<number>`count(*)` }).from(reports).where(
+        and(eq(reports.reporterId, reporterId), gte(reports.createdAt, today))
+      );
+      if (Number(countRes?.count || 0) >= 5) return res.status(429).json({ code: "RATE_LIMIT", message: "Maximum 5 reports per day" });
+      // Dedupe: prevent duplicate open reports within 24h
+      const dayAgo = new Date(Date.now() - 86400000);
+      const [dup] = await db.select({ id: reports.id }).from(reports).where(
+        and(eq(reports.reporterId, reporterId), eq(reports.reportedId, reportedId), eq(reports.status, "open"), gte(reports.createdAt, dayAgo))
+      ).limit(1);
+      if (dup) return res.status(409).json({ code: "DUPLICATE_REPORT", message: "You already have an open report for this user" });
+      // Capture message snapshot if context is chat/exchange
+      let messageSnapshot = null;
+      if ((contextType === "chat" || contextType === "exchange") && contextId) {
+        const msgs = await db.select({ id: messages.id, senderId: messages.senderId, content: messages.content, createdAt: messages.createdAt })
+          .from(messages).where(eq(messages.exchangeId, parseInt(contextId))).orderBy(desc(messages.createdAt)).limit(20);
+        messageSnapshot = msgs.map(m => ({ ...m, createdAt: m.createdAt?.toISOString() }));
+      }
+      const [report] = await db.insert(reports).values({
+        reporterId, reportedId, reason, details: details || null,
+        contextType: contextType || "profile", contextId: contextId || null,
+        messageSnapshot, status: "open",
+      }).returning();
+      if (alsoBlock) {
+        await storage.blockUser(reporterId, reportedId);
+      }
+      res.status(201).json({ ok: true, id: report.id });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to report user" });
+    }
+  });
+
+  // Admin middleware
+  const isAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const user = await storage.getUser(req.user?.claims?.sub);
+      if (!user || !(user as any).isAdmin) return res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" });
+      next();
+    } catch { res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" }); }
+  };
+
+  // Admin: list reports
+  app.get('/api/admin/reports', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { status: filterStatus = "open", limit = 20, offset = 0 } = req.query;
+      const whereClause = filterStatus === "all" ? undefined : eq(reports.status, filterStatus as string);
+      const items = await db.select().from(reports).where(whereClause).orderBy(desc(reports.createdAt)).limit(Number(limit)).offset(Number(offset));
+      const [totalRes] = await db.select({ count: sql<number>`count(*)` }).from(reports).where(whereClause);
+      // Enrich with user names
+      const enriched = await Promise.all(items.map(async (r: any) => {
+        const reporter = await storage.getUser(r.reporterId);
+        const reported = await storage.getUser(r.reportedId);
+        return { ...r, reporter: reporter ? { id: reporter.id, firstName: reporter.firstName, email: reporter.email } : null, reported: reported ? { id: reported.id, firstName: reported.firstName, email: reported.email } : null };
+      }));
+      res.json({ reports: enriched, total: Number(totalRes?.count || 0) });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: get report detail
+  app.get('/api/admin/reports/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const [report] = await db.select().from(reports).where(eq(reports.id, parseInt(req.params.id))).limit(1);
+      if (!report) return res.status(404).json({ message: "Report not found" });
+      const reporter = await storage.getUser(report.reporterId);
+      const reported = await storage.getUser(report.reportedId);
+      res.json({ ...report, reporter, reported });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: update report status
+  app.patch('/api/admin/reports/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { status, resolutionNote } = req.body;
+      const [updated] = await db.update(reports).set({ status: status || undefined, resolutionNote: resolutionNote || undefined, updatedAt: new Date() }).where(eq(reports.id, parseInt(req.params.id))).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

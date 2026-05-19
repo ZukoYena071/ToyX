@@ -52,6 +52,7 @@ export const users = pgTable("users", {
   longitude: real("longitude"),
   locationEnabled: boolean("location_enabled").default(false),
   locationUpdatedAt: timestamp("location_updated_at"),
+  isAdmin: boolean("is_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -226,9 +227,20 @@ export const reports = pgTable("reports", {
   id: serial("id").primaryKey(),
   reporterId: varchar("reporter_id").notNull().references(() => users.id),
   reportedId: varchar("reported_id").notNull().references(() => users.id),
-  reason: text("reason"),
+  reason: varchar("reason", { length: 64 }).notNull(),
+  details: text("details"),
+  contextType: varchar("context_type", { length: 32 }).notNull(),
+  contextId: varchar("context_id", { length: 64 }),
+  messageSnapshot: jsonb("message_snapshot"),
+  status: varchar("status", { length: 32 }).notNull().default("open"),
+  resolutionNote: text("resolution_note"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_reports_status").on(table.status, table.createdAt),
+  index("idx_reports_reporter").on(table.reporterId, table.createdAt),
+  index("idx_reports_reported").on(table.reportedId),
+]);
 
 // Rewards tables
 export const userRewards = pgTable("user_rewards", {

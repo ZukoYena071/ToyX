@@ -28,6 +28,7 @@ import Rewards from "@/pages/rewards";
 import Invite from "@/pages/invite";
 import LoadingLogo from "@/components/ui/LoadingLogo";
 import PrivacySafety from "@/pages/privacy-safety";
+import AdminModeration from "@/pages/admin-moderation";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -92,6 +93,7 @@ function Router() {
         <Route path="/rewards" component={Rewards} />
         <Route path="/invite" component={Invite} />
         <Route path="/privacy-safety" component={PrivacySafety} />
+        <Route path="/admin/moderation" component={AdminModeration} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />
       <Route path="/loading-demo" component={LoadingDemo} />

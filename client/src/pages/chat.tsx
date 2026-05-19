@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import ChatMessage from "@/components/chat-message";
 import ReviewForm from "@/components/review-form";
+import ReportUserModal from "@/components/toys/ReportUserModal";
 import EmojiPicker from "@/components/emoji-picker";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
@@ -28,6 +29,7 @@ export default function Chat() {
   const [message, setMessage] = useState("");
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: exchanges } = useQuery<ExchangeWithDetails[]>({
@@ -319,27 +321,7 @@ export default function Chat() {
                     {blockStatus?.blockedByMe ? "Unblock User" : "Block User"}
                   </button>
                   <button
-                    onClick={async () => {
-                      setShowMenu(false);
-                      const reason = window.prompt("Describe why you are reporting this user (optional):");
-                      if (reason === null) return;
-                      try {
-                        const res = await fetch(`/api/users/${otherUser.id}/report`, {
-                          method: "POST",
-                          credentials: "include",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ reason: reason || undefined }),
-                        });
-                        if (res.ok) {
-                          toast({ title: "Report Submitted", description: "Thank you. Our team will review this report." });
-                        } else {
-                          const err = await res.json();
-                          toast({ title: "Error", description: err.message || "Failed to report user", variant: "destructive" });
-                        }
-                      } catch {
-                        toast({ title: "Error", description: "Failed to report user", variant: "destructive" });
-                      }
-                    }}
+                    onClick={() => { setShowMenu(false); setShowReportModal(true); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors min-h-[44px]"
                   >
                     <Flag className="w-4 h-4" />
@@ -505,6 +487,15 @@ export default function Chat() {
           }}
         />
       )}
+
+      <ReportUserModal
+        open={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        reportedId={otherUser.id}
+        reportedName={otherUser.firstName && otherUser.lastName ? `${otherUser.firstName} ${otherUser.lastName}` : otherUser.email || 'User'}
+        contextType="chat"
+        contextId={exchangeId}
+      />
     </div>
   );
 }

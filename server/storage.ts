@@ -77,7 +77,6 @@ export interface IStorage {
   unblockUser(blockerId: string, blockedId: string): Promise<void>;
   isBlocked(blockerId: string, blockedId: string): Promise<boolean>;
   getBlockedUserIds(userId: string): Promise<string[]>;
-  reportUser(reporterId: string, reportedId: string, reason?: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -569,10 +568,6 @@ export class DatabaseStorage implements IStorage {
   async getBlockedUserIds(userId: string): Promise<string[]> {
     const rows = await db.select({ blockedId: blocks.blockedId }).from(blocks).where(eq(blocks.blockerId, userId));
     return rows.map(r => r.blockedId);
-  }
-
-  async reportUser(reporterId: string, reportedId: string, reason?: string): Promise<void> {
-    await db.insert(reports).values({ reporterId, reportedId, reason: reason || null, createdAt: new Date() });
   }
 
   // ---- Personalization methods ----

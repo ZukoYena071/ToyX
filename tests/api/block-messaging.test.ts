@@ -248,3 +248,41 @@ describe("Non-owner boost rejection", () => {
     expect(res.status).toBe(400); // "Not your toy" or similar
   });
 });
+
+describe("Report submission", () => {
+  let agent: request.SuperAgentTest;
+
+beforeAll(async () => {
+    agent = request.agent(BASE);
+    await devLogin(agent, "seed_user_1");
+    await agent.post("/api/rewards/award-test-points").send({ userId: "seed_user_1", points: 500 }).catch(() => {});
+    // Clear existing reports for clean state
+    const existing = await agent.get("/api/users/seed_user_2/toys");
+    // Clear reports by hitting a dev endpoint
+    await agent.post("/api/dev/clear-reports").catch(() => {});
+  });
+
+  it("submits a report", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.post("/api/users/seed_user_2/report").send({ reason: "Scam/Fraud", details: "Test report", contextType: "profile" });
+    expect(res.status).toBe(201);
+    expect(res.body.ok).toBe(true);
+  });
+
+  it("rate limits reports (5/day)", async () => {
+    await devLogin(agent, "seed_user_1");
+    // Use different reported users each time to avoid dedup
+    const users = ["seed_user_2", "seed_user_3", "demo-user-1", "demo-user-2", "google_107105400749806114592"];
+    for (const u of users) {
+      await agent.post(`/api/users/${u}/report`).send({ reason: "Spam", contextType: "profile" });
+    }
+    const res = await agent.post("/api/users/seed_user_2/report").send({ reason: "Spam", contextType: "profile" });
+    expect(res.status).toBe(429);
+  });
+
+  it("non-admin cannot access admin reports", async () => {
+    await devLogin(agent, "seed_user_1");
+    const res = await agent.get("/api/admin/reports");
+    expect(res.status).toBe(403);
+  });
+});
