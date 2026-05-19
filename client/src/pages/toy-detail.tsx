@@ -168,7 +168,7 @@ export default function ToyDetail() {
   const categories = normalizeList((toy as any)?.category);
   const desc = (toy as any)?.description || "";
   const descLong = desc.length > 140;
-  const rating = (ownerRating as any)?.rating || 0;
+  const rating = (ownerRating as any)?.averageRating || 0;
   const reviewCount = (ownerReviews as any)?.length || 0;
 
   const OverlayBtn = ({ onClick, children, className }: any) => (
