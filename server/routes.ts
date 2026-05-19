@@ -1746,5 +1746,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // API 404 fallback — unknown /api/* routes return JSON, never Vite HTML
+  app.use("/api", (req, res) => {
+    res.status(404).json({ code: "NOT_FOUND", message: "API route not found" });
+  });
+
   return httpServer;
 }
