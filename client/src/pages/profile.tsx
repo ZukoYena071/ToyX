@@ -41,7 +41,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import ListItemRow from "@/components/ui/ListItemRow";
 import StatCard from "@/components/ui/StatCard";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, clearWasAuthenticated } from "@/lib/queryClient";
 import UploadOverlay from "@/components/upload-overlay";
 import BoostButton from "@/components/toys/BoostButton";
 import { searchLocations } from "@/lib/location";
@@ -219,6 +219,7 @@ export default function Profile() {
   );
 
   const handleLogout = () => {
+    clearWasAuthenticated();
     window.location.href = "/api/logout";
   };
 
