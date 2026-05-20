@@ -1,7 +1,20 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+let wasAuthenticated = !!sessionStorage.getItem("toyx_was_authenticated");
+
+export function markAuthenticated() {
+  wasAuthenticated = true;
+  sessionStorage.setItem("toyx_was_authenticated", "1");
+}
+
+export function clearWasAuthenticated() {
+  wasAuthenticated = false;
+  sessionStorage.removeItem("toyx_was_authenticated");
+}
+
 function handle401() {
-  if (window.location.pathname === "/login" || window.location.pathname === "/welcome") return;
+  if (!wasAuthenticated) return;
+  if (window.location.pathname === "/login") return;
   const currentPath = window.location.pathname + window.location.search;
   sessionStorage.setItem("toyx_session_expired", "1");
   window.location.href = `/login?next=${encodeURIComponent(currentPath)}`;
