@@ -1,18 +1,39 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import PageContainer from "@/components/ui/PageContainer";
 
+function getSafeRedirect(fallback = "/"): string {
+  const params = new URLSearchParams(window.location.search);
+  const next = params.get("next");
+  if (!next) return fallback;
+  if (!next.startsWith("/")) return fallback;
+  if (next.startsWith("//")) return fallback;
+  if (/https?:\/\//i.test(next)) return fallback;
+  if (next === "/login" || next.startsWith("/login")) return fallback;
+  return next;
+}
+
 export default function Login() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     loginEmail: '',
     loginPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("toyx_session_expired")) {
+      sessionStorage.removeItem("toyx_session_expired");
+      toast({ title: "Session expired", description: "Please sign in again.", variant: "destructive" });
+    }
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -28,7 +49,7 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        window.location.href = "/";
+        setLocation(getSafeRedirect());
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
@@ -50,7 +71,7 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        window.location.href = "/";
+        setLocation(getSafeRedirect());
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");

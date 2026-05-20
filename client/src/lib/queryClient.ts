@@ -1,6 +1,18 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+function handle401() {
+  if (window.location.pathname === "/login" || window.location.pathname === "/welcome") return;
+  const currentPath = window.location.pathname + window.location.search;
+  sessionStorage.setItem("toyx_session_expired", "1");
+  window.location.href = `/login?next=${encodeURIComponent(currentPath)}`;
+}
+
 async function throwIfResNotOk(res: Response) {
+  if (res.status === 401) {
+    handle401();
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
@@ -13,14 +25,12 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<any> {
   const isGetOrHead = method.toUpperCase() === 'GET' || method.toUpperCase() === 'HEAD';
-  
   const res = await fetch(url, {
     method,
     headers: (!isGetOrHead && data) ? { "Content-Type": "application/json" } : {},
     body: (!isGetOrHead && data) ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
-
   await throwIfResNotOk(res);
   return await res.json();
 }
@@ -34,11 +44,14 @@ export const getQueryFn: <T>(options: {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
     });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      handle401();
+      const text = (await res.text()) || res.statusText;
+      throw new Error(`${res.status}: ${text}`);
     }
-
     await throwIfResNotOk(res);
     return await res.json();
   };
@@ -49,7 +62,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 30 * 1000, // 30 seconds to reduce loading delays
+      staleTime: 30 * 1000,
       retry: 1,
     },
     mutations: {
