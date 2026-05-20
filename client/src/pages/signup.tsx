@@ -103,7 +103,7 @@ export default function Signup() {
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Continue with Google</span>
           </button>
 
-          <button
+          <button hidden
             onClick={() => loginRedirect("parent@gmail.com")}
             className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
           >
@@ -113,7 +113,7 @@ export default function Signup() {
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Continue with Facebook</span>
           </button>
 
-          <button
+          <button hidden
             onClick={() => loginRedirect("demo@gmail.com")}
             className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
           >
