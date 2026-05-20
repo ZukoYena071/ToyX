@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
@@ -7,8 +7,20 @@ import { useToast } from "@/hooks/use-toast";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import PageContainer from "@/components/ui/PageContainer";
 
+function getSafeRedirect(fallback = "/"): string {
+  const params = new URLSearchParams(window.location.search);
+  const next = params.get("next");
+  if (!next) return fallback;
+  if (!next.startsWith("/")) return fallback;
+  if (next.startsWith("//")) return fallback;
+  if (/https?:\/\//i.test(next)) return fallback;
+  if (next === "/login" || next.startsWith("/login")) return fallback;
+  return next;
+}
+
 export default function Login() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     loginEmail: '',
     loginPassword: '',
@@ -37,7 +49,7 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        window.location.href = "/";
+        setLocation(getSafeRedirect());
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
@@ -59,7 +71,7 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        window.location.href = "/";
+        setLocation(getSafeRedirect());
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
