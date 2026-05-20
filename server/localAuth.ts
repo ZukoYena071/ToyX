@@ -115,11 +115,22 @@ export async function setupAuth(app: Express) {
         done(err as Error);
       }
     }));
-
-    app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"], session: true }));
-    app.get("/api/auth/google/callback", passport.authenticate("google", { successReturnToOrRedirect: "/", failureRedirect: "/login" }));
     console.log("Google OAuth configured");
   }
+
+  // Always register routes so they don't 404 in production — handler checks config at runtime
+  app.get("/api/auth/google", (req, res, next) => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_BASE_URL) {
+      return res.status(503).json({ code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google OAuth is not configured on this server." });
+    }
+    passport.authenticate("google", { scope: ["profile", "email"], session: true })(req, res, next);
+  });
+  app.get("/api/auth/google/callback", (req, res, next) => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_BASE_URL) {
+      return res.status(503).json({ code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google OAuth is not configured on this server." });
+    }
+    passport.authenticate("google", { successReturnToOrRedirect: "/", failureRedirect: "/login" })(req, res, next);
+  });
 
   // Auto-create a demo user on startup
   try {
