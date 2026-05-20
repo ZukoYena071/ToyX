@@ -68,7 +68,12 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // In the bundled dist/index.js, import.meta.dirname = dist/
+  // In source (tsx), import.meta.dirname = server/
+  // Try dist/public first (production bundle), fall back to ../dist/public (source)
+  const distPath = fs.existsSync(path.resolve(import.meta.dirname, "public"))
+    ? path.resolve(import.meta.dirname, "public")
+    : path.resolve(import.meta.dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -78,8 +83,12 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  // SPA fallback — serve index.html for non-API routes only
+  app.get("*", (req, res) => {
+    if (req.path.startsWith("/api")) {
+      res.status(404).json({ code: "NOT_FOUND", message: "API route not found" });
+      return;
+    }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
