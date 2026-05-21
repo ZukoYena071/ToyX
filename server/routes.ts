@@ -3,9 +3,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
+import cors from "cors";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -19,6 +20,28 @@ async function getPremiumStatus(userId: string) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // CORS for the marketing landing page
+  app.use("/api/marketing", cors({
+    origin: ["https://toyxchange.online", "http://localhost:3001", "http://127.0.0.1:3001"],
+    credentials: true,
+  }));
+
+  // Newsletter / marketing subscribe
+  app.post("/api/marketing/subscribe", async (req, res) => {
+    try {
+      const parsed = insertMarketingSubscriberSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
+      const { email } = parsed.data;
+      await db.insert(marketingSubscribers).values({ email }).onConflictDoNothing();
+      res.json({ message: "Subscribed successfully" });
+    } catch (error) {
+      console.error("Subscribe error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
 
   // Dev/test auth bypass (only when DEV_AUTH_BYPASS=true and not production)
   if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {

@@ -132,29 +132,7 @@ export async function setupAuth(app: Express) {
     passport.authenticate("google", { successReturnToOrRedirect: "/", failureRedirect: "/login" })(req, res, next);
   });
 
-  // Auto-create a demo user on startup
-  try {
-    const demoUser = await storage.getUser("demo-user-1");
-    if (!demoUser) {
-      await storage.upsertUser({
-        id: "demo-user-1",
-        email: "demo@gmail.com",
-        firstName: "Demo",
-        lastName: "User",
-        profileImageUrl: null,
-      });
-      await storage.upsertUser({
-        id: "demo-user-2",
-        email: "parent@gmail.com",
-        firstName: "Parent",
-        lastName: "Test",
-        profileImageUrl: null,
-      });
-      console.log("Demo users created");
-    }
-  } catch (e) {
-    console.log("Note: demo users not yet created (tables may not exist yet)");
-  }
+  // Demo users no longer auto-created per cleanup policy
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
