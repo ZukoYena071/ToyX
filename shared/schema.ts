@@ -313,6 +313,17 @@ export const referrals = pgTable("referrals", {
   qualifiedAt: timestamp("qualified_at"),
 });
 
+// Marketing subscribers
+export const marketingSubscribers = pgTable("marketing_subscribers", {
+  id: serial("id").primaryKey(),
+  email: varchar("email").unique().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMarketingSubscriberSchema = createInsertSchema(marketingSubscribers).pick({ email: true }).extend({
+  email: z.string().email("Invalid email address"),
+});
+
 // Insert schemas
 export const insertToySchema = createInsertSchema(toys, {
   imageUrls: z.array(z.string().min(1)).min(1, "At least 1 image is required"),
