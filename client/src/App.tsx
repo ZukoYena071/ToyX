@@ -1,4 +1,5 @@
-import { Switch, Route, useLocation, Redirect } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -33,6 +34,15 @@ import AdminModeration from "@/pages/admin-moderation";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
+
+function ListToyRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    sessionStorage.setItem("toyx_pending_action", "list");
+    setLocation("/", { replace: true });
+  }, [setLocation]);
+  return null;
+}
 
 const PUBLIC_ROUTES = new Set([
   "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
@@ -103,9 +113,7 @@ function Router() {
     <>
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/list-toy">
-        <Redirect to="/?action=list" />
-      </Route>
+      <Route path="/list-toy" component={ListToyRedirect} />
       <Route path="/search" component={Search} />
       <Route path="/toy/:id" component={ToyDetail} />
       <Route path="/toys/:id" component={ToyDetail} />
