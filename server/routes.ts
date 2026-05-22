@@ -35,10 +35,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid email address" });
       }
       const { email } = parsed.data;
+
+      if (!process.env.RESEND_API_KEY) {
+        console.warn("Missing RESEND_API_KEY");
+      }
+
       await db.insert(marketingSubscribers).values({ email }).onConflictDoNothing();
       res.json({ message: "Subscribed successfully" });
     } catch (error) {
-      console.error("Subscribe error:", error);
+      console.error("MARKETING_SUBSCRIPTION_ERROR:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
