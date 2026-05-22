@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db } from "./db";
 
 declare global {
   namespace Express {
@@ -66,6 +67,14 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+
+  // Verify marketing_subscribers table exists
+  try {
+    await db.execute("SELECT COUNT(*) FROM marketing_subscribers");
+    log("Marketing table verified");
+  } catch (e: any) {
+    log(`Marketing table error: ${e.message}`);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
