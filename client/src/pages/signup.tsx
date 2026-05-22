@@ -35,11 +35,12 @@ export default function Signup() {
       if (res.ok) {
         const saved = sessionStorage.getItem("toyx_redirect_after_login");
         sessionStorage.removeItem("toyx_redirect_after_login");
-        if (saved === "/list-toy") {
-          console.log("DEBUG: Auth success, writing 'list' action to storage");
+        const target = saved && saved.includes("list-toy") ? "/" : saved || "/";
+        if (target === "/" && saved && saved.includes("list-toy")) {
+          console.log("DEBUG: Auth success. Redirect path:", saved, "Action written: list");
           sessionStorage.setItem("toyx_pending_action", "list");
         }
-        window.location.href = saved || "/";
+        window.location.href = target;
       } else {
         const err = await res.json();
         alert(err.message || "Signup failed");
@@ -63,11 +64,12 @@ export default function Signup() {
       if (res.ok) {
         const saved = sessionStorage.getItem("toyx_redirect_after_login");
         sessionStorage.removeItem("toyx_redirect_after_login");
-        if (saved === "/list-toy") {
-          console.log("DEBUG: Auth success, writing 'list' action to storage");
+        const target = saved && saved.includes("list-toy") ? "/" : saved || "/";
+        if (target === "/" && saved && saved.includes("list-toy")) {
+          console.log("DEBUG: Auth success. Redirect path:", saved, "Action written: list");
           sessionStorage.setItem("toyx_pending_action", "list");
         }
-        window.location.href = saved || "/";
+        window.location.href = target;
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");

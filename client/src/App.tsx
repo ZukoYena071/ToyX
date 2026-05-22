@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -34,18 +33,6 @@ import AdminModeration from "@/pages/admin-moderation";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
-
-function ListToyRedirect() {
-  const [, setLocation] = useLocation();
-  useEffect(() => {
-    console.log("DEBUG: Hit /list-toy route");
-    console.log("DEBUG: Setting pending action inside /list-toy route component");
-    sessionStorage.setItem("toyx_pending_action", "list");
-    setLocation("/", { replace: true });
-  }, [setLocation]);
-  return null;
-}
-
 const PUBLIC_ROUTES = new Set([
   "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
   "/pricing", "/terms", "/privacy-policy", "/billing-success", "/billing-cancel",
@@ -115,7 +102,6 @@ function Router() {
     <>
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/list-toy" component={ListToyRedirect} />
       <Route path="/search" component={Search} />
       <Route path="/toy/:id" component={ToyDetail} />
       <Route path="/toys/:id" component={ToyDetail} />

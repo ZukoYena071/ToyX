@@ -55,11 +55,12 @@ export default function Login() {
       });
       if (res.ok) {
         const redirect = getSafeRedirect();
-        if (redirect === "/list-toy") {
-          console.log("DEBUG: Auth success, writing 'list' action to storage");
+        const target = redirect.includes("list-toy") ? "/" : redirect;
+        if (target === "/" && redirect.includes("list-toy")) {
+          console.log("DEBUG: Auth success. Redirect path:", redirect, "Action written: list");
           sessionStorage.setItem("toyx_pending_action", "list");
         }
-        setLocation(redirect);
+        setLocation(target);
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
@@ -82,11 +83,12 @@ export default function Login() {
       });
       if (res.ok) {
         const redirect = getSafeRedirect();
-        if (redirect === "/list-toy") {
-          console.log("DEBUG: Auth success, writing 'list' action to storage");
+        const target = redirect.includes("list-toy") ? "/" : redirect;
+        if (target === "/" && redirect.includes("list-toy")) {
+          console.log("DEBUG: Auth success. Redirect path:", redirect, "Action written: list");
           sessionStorage.setItem("toyx_pending_action", "list");
         }
-        setLocation(redirect);
+        setLocation(target);
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
