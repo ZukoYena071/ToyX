@@ -34,6 +34,14 @@ import AdminModeration from "@/pages/admin-moderation";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
+function ListToyRoute() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation("/", { replace: true });
+  }, [setLocation]);
+  return <LoadingLogo label="" />;
+}
+
 const PUBLIC_ROUTES = new Set([
   "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
   "/pricing", "/terms", "/privacy-policy", "/billing-success", "/billing-cancel",
@@ -103,6 +111,7 @@ function Router() {
     <>
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/list-toy" component={ListToyRoute} />
       <Route path="/search" component={Search} />
       <Route path="/toy/:id" component={ToyDetail} />
       <Route path="/toys/:id" component={ToyDetail} />
