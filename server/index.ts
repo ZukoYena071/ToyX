@@ -3,8 +3,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
-import { toys } from "@shared/schema";
-import { eq } from "drizzle-orm";
 
 declare global {
   namespace Express {
@@ -89,47 +87,6 @@ app.use((req, res, next) => {
 
     res.status(status).json({ message });
     throw err;
-  });
-
-  // Social media bot detection — serve Open Graph HTML for toy pages
-  const BOT_UA = /facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|Slack|Discord|Telegram|Pinterest/i;
-  app.use(async (req, res, next) => {
-    const ua = req.headers["user-agent"] || "";
-    if (BOT_UA.test(ua)) {
-      const match = req.path.match(/^\/toy\/(\d+)$/);
-      if (match) {
-        try {
-          const [toy] = await db.select().from(toys).where(eq(toys.id, parseInt(match[1]))).limit(1);
-          if (toy) {
-            const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
-            const imageUrl = toy.imageUrls?.[0] || "";
-            const desc = (toy.description || "").slice(0, 200);
-            const location = toy.location ? ` in ${toy.location}` : "";
-            return res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${toy.name}${location} | ToyX</title>
-  <meta property="og:title" content="${toy.name}${location} | ToyX" />
-  <meta property="og:description" content="${desc}" />
-  <meta property="og:image" content="${imageUrl}" />
-  <meta property="og:url" content="${baseUrl}/toy/${toy.id}" />
-  <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary_large_image" />
-</head>
-<body>
-  <h1>${toy.name}</h1>
-  <p>${desc}</p>
-</body>
-</html>`);
-          }
-        } catch (e) {
-          log(`OG error: ${e}`);
-        }
-      }
-    }
-    next();
   });
 
   // importantly only setup vite in development and after
