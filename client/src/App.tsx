@@ -38,6 +38,8 @@ import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
 function ListToyRedirect() {
   const [, setLocation] = useLocation();
   useEffect(() => {
+    console.log("DEBUG: Hit /list-toy route");
+    console.log("DEBUG: Setting pending action in storage");
     sessionStorage.setItem("toyx_pending_action", "list");
     setLocation("/", { replace: true });
   }, [setLocation]);
