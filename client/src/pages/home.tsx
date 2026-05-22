@@ -22,12 +22,9 @@ export default function HomePage() {
   const [dismissedCta, setDismissedCta] = useState(false);
   // Open upload modal when redirected from /list-toy
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("action") === "list") {
-      params.delete("action");
-      const newSearch = params.toString();
-      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
-      window.history.replaceState(null, "", newUrl);
+    const action = sessionStorage.getItem("toyx_pending_action");
+    if (action === "list") {
+      sessionStorage.removeItem("toyx_pending_action");
       setShowUpload(true);
     }
   }, []);
