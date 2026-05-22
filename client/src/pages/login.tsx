@@ -8,6 +8,11 @@ import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import PageContainer from "@/components/ui/PageContainer";
 
 function getSafeRedirect(fallback = "/"): string {
+  const saved = sessionStorage.getItem("toyx_redirect_after_login");
+  if (saved) {
+    sessionStorage.removeItem("toyx_redirect_after_login");
+    return saved;
+  }
   const params = new URLSearchParams(window.location.search);
   const next = params.get("next");
   if (!next) return fallback;

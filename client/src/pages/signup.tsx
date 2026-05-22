@@ -33,7 +33,9 @@ export default function Signup() {
         credentials: "include",
       });
       if (res.ok) {
-        window.location.href = "/";
+        const saved = sessionStorage.getItem("toyx_redirect_after_login");
+        sessionStorage.removeItem("toyx_redirect_after_login");
+        window.location.href = saved || "/";
       } else {
         const err = await res.json();
         alert(err.message || "Signup failed");
@@ -55,7 +57,9 @@ export default function Signup() {
         credentials: "include",
       });
       if (res.ok) {
-        window.location.href = "/";
+        const saved = sessionStorage.getItem("toyx_redirect_after_login");
+        sessionStorage.removeItem("toyx_redirect_after_login");
+        window.location.href = saved || "/";
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
