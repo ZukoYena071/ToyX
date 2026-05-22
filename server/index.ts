@@ -33,6 +33,7 @@ app.use(async (req, res, next) => {
         const [toy] = await db.select().from(toys).where(eq(toys.id, parseInt(match[1]))).limit(1);
         if (toy) {
           const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+          const fbAppId = process.env.FACEBOOK_APP_ID || "";
           const imageUrl = `${baseUrl}/api/listings/${toy.id}/image?f=.jpg`;
           const desc = (toy.description || "").slice(0, 200);
           const location = toy.location ? ` in ${toy.location}` : "";
@@ -52,6 +53,7 @@ app.use(async (req, res, next) => {
   <meta property="og:image:alt" content="Photo of ${toy.name} on ToyX" />
   <meta property="og:url" content="${baseUrl}/toy/${toy.id}" />
   <meta property="og:type" content="article" />
+  ${fbAppId ? `<meta property="fb:app_id" content="${fbAppId}" />` : ""}
   <meta name="twitter:card" content="summary_large_image" />
 </head>
 <body>
