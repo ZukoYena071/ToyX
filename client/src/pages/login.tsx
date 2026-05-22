@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import PageContainer from "@/components/ui/PageContainer";
 
@@ -54,6 +55,7 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         const redirect = getSafeRedirect();
         const target = redirect.includes("list-toy") ? "/" : redirect;
         if (target === "/" && redirect.includes("list-toy")) {
@@ -82,6 +84,7 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         const redirect = getSafeRedirect();
         const target = redirect.includes("list-toy") ? "/" : redirect;
         if (target === "/" && redirect.includes("list-toy")) {
