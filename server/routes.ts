@@ -36,11 +36,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { email } = parsed.data;
 
-      if (!process.env.RESEND_API_KEY) {
+      // Always save to DB
+      await db.insert(marketingSubscribers).values({ email }).onConflictDoNothing();
+
+      // Send branded welcome email via Resend if key is configured
+      if (process.env.RESEND_API_KEY) {
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "ToyX <updates@toyxchange.online>",
+              to: email,
+              subject: "Welcome to ToyX!",
+              html: `<div style="font-family:'Inter',sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+                <h1 style="color:#7c3aed;font-size:24px;margin-bottom:8px;">Welcome to ToyX 🎉</h1>
+                <p style="color:#374151;font-size:16px;line-height:1.6;">Thanks for subscribing! You'll be the first to know about new toys, tips, and community updates.</p>
+                <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
+                <p style="color:#6b7280;font-size:12px;">ToyX — swap toys, not money.</p>
+              </div>`,
+            }),
+          });
+        } catch (emailErr) {
+          console.error("MARKETING_SUBSCRIPTION_EMAIL_ERROR:", emailErr);
+        }
+      } else {
         console.warn("Missing RESEND_API_KEY");
       }
 
-      await db.insert(marketingSubscribers).values({ email }).onConflictDoNothing();
       res.json({ message: "Subscribed successfully" });
     } catch (error) {
       console.error("MARKETING_SUBSCRIPTION_ERROR:", error);

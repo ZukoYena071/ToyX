@@ -68,8 +68,13 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // Verify marketing_subscribers table exists
+  // Ensure marketing_subscribers table exists
   try {
+    await db.execute(`CREATE TABLE IF NOT EXISTS marketing_subscribers (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
     await db.execute("SELECT COUNT(*) FROM marketing_subscribers");
     log("Marketing table verified");
   } catch (e: any) {
