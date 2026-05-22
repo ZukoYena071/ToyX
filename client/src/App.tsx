@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -34,10 +34,25 @@ import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
 
+const PUBLIC_ROUTES = new Set([
+  "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
+  "/pricing", "/terms", "/privacy-policy", "/billing-success", "/billing-cancel",
+  "/rewards", "/invite", "/exchange-request",
+]);
+
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
 
   console.log("Router render:", { isAuthenticated, isLoading });
+
+  // Save protected route path for redirect after login
+  if (!isLoading && !isAuthenticated) {
+    const path = location.split("?")[0];
+    if (!PUBLIC_ROUTES.has(path) && path !== "/login" && !path.startsWith("/login")) {
+      sessionStorage.setItem("toyx_redirect_after_login", location);
+    }
+  }
 
   // Check if user has completed onboarding from their profile (with localStorage fallback for migration)
   const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2 || localStorage.getItem('toyxOnboardingVersion') === '2';
