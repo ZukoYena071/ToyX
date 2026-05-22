@@ -11,7 +11,7 @@ import PageContainer from "@/components/ui/PageContainer";
 import ToyCarouselCard from "@/components/toys/ToyCarouselCard";
 import { apiRequest } from "@/lib/queryClient";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -20,6 +20,17 @@ export default function HomePage() {
   const [showUpload, setShowUpload] = useState(false);
   const [enablingLoc, setEnablingLoc] = useState(false);
   const [dismissedCta, setDismissedCta] = useState(false);
+  // Open upload modal when redirected from /list-toy
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("action") === "list") {
+      params.delete("action");
+      const newSearch = params.toString();
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
+      window.history.replaceState(null, "", newUrl);
+      setShowUpload(true);
+    }
+  }, []);
 
   const u = user as any;
   const hasLocation = !!(u?.locationEnabled && u?.latitude != null && u?.longitude != null);
