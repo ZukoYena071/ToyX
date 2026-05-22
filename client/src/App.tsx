@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -33,6 +34,14 @@ import AdminModeration from "@/pages/admin-moderation";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
+function ListToyRoute() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation("/", { replace: true });
+  }, [setLocation]);
+  return <LoadingLogo label="" />;
+}
+
 const PUBLIC_ROUTES = new Set([
   "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
   "/pricing", "/terms", "/privacy-policy", "/billing-success", "/billing-cancel",
@@ -102,6 +111,7 @@ function Router() {
     <>
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/list-toy" component={ListToyRoute} />
       <Route path="/search" component={Search} />
       <Route path="/toy/:id" component={ToyDetail} />
       <Route path="/toys/:id" component={ToyDetail} />
@@ -130,6 +140,16 @@ function Router() {
 }
 
 function App() {
+  // Capture intent from URL on every page load, before any routing checks
+  useEffect(() => {
+    const path = window.location.pathname;
+    console.log("DEBUG: App Root checking path:", path);
+    if (path.includes("list-toy")) {
+      console.log("DEBUG: Captured /list-toy intent. Writing storage flag.");
+      sessionStorage.setItem("toyx_pending_action", "list");
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="toyx-ui-theme">

@@ -22,15 +22,15 @@ export default function HomePage() {
   const [dismissedCta, setDismissedCta] = useState(false);
   // Open upload modal when redirected from /list-toy
   useEffect(() => {
-    console.log("DEBUG: Home mounted. Found action in storage:", sessionStorage.getItem("toyx_pending_action"));
+    console.log("DEBUG: Home check - Pending action is:", sessionStorage.getItem("toyx_pending_action"));
     const action = sessionStorage.getItem("toyx_pending_action");
     if (action === "list") {
-      console.log("DEBUG: Action 'list' found, triggering modal in 500ms...");
+      console.log("DEBUG: Action 'list' found, triggering modal in 1000ms...");
       setTimeout(() => {
         sessionStorage.removeItem("toyx_pending_action");
         setShowUpload(true);
         console.log("DEBUG: Modal trigger executed");
-      }, 500);
+      }, 1000);
     }
   }, []);
 
