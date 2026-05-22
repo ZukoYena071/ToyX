@@ -54,7 +54,12 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        setLocation(getSafeRedirect());
+        const redirect = getSafeRedirect();
+        if (redirect === "/list-toy") {
+          console.log("DEBUG: Auth success, writing 'list' action to storage");
+          sessionStorage.setItem("toyx_pending_action", "list");
+        }
+        setLocation(redirect);
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
@@ -76,7 +81,12 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        setLocation(getSafeRedirect());
+        const redirect = getSafeRedirect();
+        if (redirect === "/list-toy") {
+          console.log("DEBUG: Auth success, writing 'list' action to storage");
+          sessionStorage.setItem("toyx_pending_action", "list");
+        }
+        setLocation(redirect);
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");

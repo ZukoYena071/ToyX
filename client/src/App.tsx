@@ -39,7 +39,7 @@ function ListToyRedirect() {
   const [, setLocation] = useLocation();
   useEffect(() => {
     console.log("DEBUG: Hit /list-toy route");
-    console.log("DEBUG: Setting pending action in storage");
+    console.log("DEBUG: Setting pending action inside /list-toy route component");
     sessionStorage.setItem("toyx_pending_action", "list");
     setLocation("/", { replace: true });
   }, [setLocation]);
