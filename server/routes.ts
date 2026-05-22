@@ -139,6 +139,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Places API proxy (no auth required — used for location autocomplete)
+  app.get("/api/location/autocomplete", async (req, res) => {
+    try {
+      const input = req.query.input as string;
+      if (!input || input.length < 2) {
+        return res.json({ predictions: [] });
+      }
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        return res.json({ predictions: [] });
+      }
+      const googleRes = await fetch(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey}`
+      );
+      const data = await googleRes.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Location autocomplete error:", error);
+      res.json({ predictions: [] });
+    }
+  });
+
+  // Place details proxy (used by frontend to get lat/lng from place_id)
+  app.get("/api/location/place-details", async (req, res) => {
+    try {
+      const placeId = req.query.place_id as string;
+      if (!placeId) {
+        return res.status(400).json({ error: "place_id required" });
+      }
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        return res.json({ error: "API key not configured" });
+      }
+      const googleRes = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address&key=${apiKey}`
+      );
+      const data = await googleRes.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Place details error:", error);
+      res.json({ error: "Failed to fetch place details" });
+    }
+  });
+
   // Dev/test auth bypass (only when DEV_AUTH_BYPASS=true and not production)
   if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
     app.get("/api/dev/login/:userId", async (req: any, res, next) => {

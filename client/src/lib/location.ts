@@ -1,5 +1,3 @@
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-
 export interface LocationResult {
   displayName: string;
   lat: number;
@@ -9,32 +7,25 @@ export interface LocationResult {
 export async function searchLocations(query: string): Promise<LocationResult[]> {
   if (query.length < 2) return [];
 
-  // Try Google Places API first if key is configured
-  if (GOOGLE_API_KEY) {
-    try {
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}`
+  try {
+    const autoRes = await fetch(`/api/location/autocomplete?input=${encodeURIComponent(query)}`);
+    const autoData = await autoRes.json();
+    if (autoData.predictions && autoData.predictions.length > 0) {
+      const results = await Promise.all(
+        autoData.predictions.slice(0, 5).map(async (p: any) => {
+          const detailRes = await fetch(`/api/location/place-details?place_id=${p.place_id}`);
+          const detail = await detailRes.json();
+          return {
+            displayName: detail.result?.formatted_address || p.description,
+            lat: detail.result?.geometry?.location?.lat || 0,
+            lng: detail.result?.geometry?.location?.lng || 0,
+          };
+        })
       );
-      const data = await res.json();
-      if (data.predictions) {
-        const results = await Promise.all(
-          data.predictions.slice(0, 5).map(async (p: any) => {
-            const detailRes = await fetch(
-              `https://maps.googleapis.com/maps/api/place/details/json?place_id=${p.place_id}&fields=geometry,formatted_address&key=${GOOGLE_API_KEY}`
-            );
-            const detail = await detailRes.json();
-            return {
-              displayName: detail.result?.formatted_address || p.description,
-              lat: detail.result?.geometry?.location?.lat || 0,
-              lng: detail.result?.geometry?.location?.lng || 0,
-            };
-          })
-        );
-        return results;
-      }
-    } catch (e) {
-      console.warn("Google Places API failed, falling back to Nominatim", e);
+      return results;
     }
+  } catch (e) {
+    console.warn("Google Places proxy failed, falling back to Nominatim", e);
   }
 
   // Fallback: Nominatim (OpenStreetMap) - free, no key required
