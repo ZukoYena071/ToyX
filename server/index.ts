@@ -102,7 +102,10 @@ app.use((req, res, next) => {
           const [toy] = await db.select().from(toys).where(eq(toys.id, parseInt(match[1]))).limit(1);
           if (toy) {
             const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
-            const imageUrl = toy.imageUrls?.[0] || "";
+            let imageUrl = toy.imageUrls?.[0] || "";
+            if (imageUrl && !imageUrl.startsWith("http")) {
+              imageUrl = `${baseUrl}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+            }
             const desc = (toy.description || "").slice(0, 200);
             const location = toy.location ? ` in ${toy.location}` : "";
             return res.send(`<!DOCTYPE html>
@@ -114,6 +117,9 @@ app.use((req, res, next) => {
   <meta property="og:title" content="${toy.name}${location} | ToyX" />
   <meta property="og:description" content="${desc}" />
   <meta property="og:image" content="${imageUrl}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Photo of ${toy.name} on ToyX" />
   <meta property="og:url" content="${baseUrl}/toy/${toy.id}" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
