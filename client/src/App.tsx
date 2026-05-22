@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -130,6 +131,16 @@ function Router() {
 }
 
 function App() {
+  // Capture intent from URL on every page load, before any routing checks
+  useEffect(() => {
+    const path = window.location.pathname;
+    console.log("DEBUG: App Root checking path:", path);
+    if (path.includes("list-toy")) {
+      console.log("DEBUG: Captured /list-toy intent. Writing storage flag.");
+      sessionStorage.setItem("toyx_pending_action", "list");
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="toyx-ui-theme">
