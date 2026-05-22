@@ -344,6 +344,11 @@ export default function ToyDetail() {
       {!isOwner && (
         <div className="fixed bottom-16 left-0 right-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-3 z-40 rounded-t-2xl">
           <div className="max-w-lg mx-auto flex gap-3">
+            <button onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent("https://app.toyxchange.online/toy/" + id)}`, "_blank", "width=600,height=400")}
+              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">
+              <Share2 className="w-4 h-4" />
+              <span>Share</span>
+            </button>
             <button onClick={() => setShowMessageModal(true)}
               className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">
               <MessageCircle className="w-4 h-4" />
