@@ -70,32 +70,13 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // Ensure marketing_subscribers table exists
-  try {
-    await db.execute(`CREATE TABLE IF NOT EXISTS marketing_subscribers (
-      id SERIAL PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-    await db.execute("SELECT COUNT(*) FROM marketing_subscribers");
-    log("Marketing table verified");
-  } catch (e: any) {
-    log(`Marketing table error: ${e.message}`);
-  }
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // Social media bot detection — serve Open Graph HTML for toy pages
+  // Social media bot detection — serve Open Graph HTML for toy pages.
+  // Must be registered BEFORE any Vite/static catch-all to intercept crawlers.
   const BOT_UA = /facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|Slack|Discord|Telegram|Pinterest/i;
   app.use(async (req, res, next) => {
     const ua = req.headers["user-agent"] || "";
     if (BOT_UA.test(ua)) {
+      console.log("SOCIAL_CRAWLER_DETECTED: Path", req.path);
       const match = req.path.match(/^\/toy\/(\d+)$/);
       if (match) {
         try {
@@ -136,6 +117,27 @@ app.use((req, res, next) => {
       }
     }
     next();
+  });
+
+  // Ensure marketing_subscribers table exists
+  try {
+    await db.execute(`CREATE TABLE IF NOT EXISTS marketing_subscribers (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await db.execute("SELECT COUNT(*) FROM marketing_subscribers");
+    log("Marketing table verified");
+  } catch (e: any) {
+    log(`Marketing table error: ${e.message}`);
+  }
+
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
   });
 
   // importantly only setup vite in development and after
