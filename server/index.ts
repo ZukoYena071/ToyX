@@ -24,6 +24,8 @@ const BOT_UA = /facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|Slack|Discor
 app.use(async (req, res, next) => {
   const ua = req.headers["user-agent"] || "";
   if (BOT_UA.test(ua)) {
+    // Never intercept API routes — let them serve normally
+    if (req.path.startsWith("/api")) return next();
     console.log("SOCIAL_BOT_PATH:", req.path);
     const match = req.path.match(/^\/toy\/(\d+)$/);
     if (match) {

@@ -697,6 +697,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Toy image proxy — serves the first toy image with proper Content-Type for social crawlers
+  app.get('/api/listings/:id/image', async (req, res) => {
+    try {
+      const toyId = parseInt(req.params.id);
+      if (isNaN(toyId)) {
+        return res.status(400).json({ message: "Invalid toy ID" });
+      }
+      const toy = await storage.getToy(toyId);
+      if (!toy) {
+        return res.status(404).json({ message: "Toy not found" });
+      }
+      const imageUrl = Array.isArray(toy.imageUrls) ? toy.imageUrls.find(Boolean) : null;
+      if (!imageUrl) {
+        return res.status(404).json({ message: "No image available" });
+      }
+      const imageRes = await fetch(imageUrl);
+      if (!imageRes.ok) {
+        return res.status(502).json({ message: "Failed to fetch image" });
+      }
+      const contentType = imageRes.headers.get("content-type") || "image/jpeg";
+      const buffer = Buffer.from(await imageRes.arrayBuffer());
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(buffer);
+    } catch (error) {
+      console.error("Image proxy error:", error);
+      res.status(500).json({ message: "Failed to serve image" });
+    }
+  });
+
   // Enforcement: check if user is suspended or banned
   const checkNotRestricted = async (req: any, res: any, next: any) => {
     try {
