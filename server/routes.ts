@@ -4,6 +4,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import cors from "cors";
+import multer from "multer";
+import { uploadImage, validateImage, isR2Configured } from "./r2";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
@@ -724,6 +726,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Image proxy error:", error);
       res.status(500).json({ message: "Failed to serve image" });
+    }
+  });
+
+  // ── R2 upload test endpoint ──────────────────────────────────────────
+
+  const r2Upload = multer({
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req: any, file: any, cb: any) => {
+      const error = validateImage(file.mimetype, 0);
+      cb(error ? new Error(error) : null, !error);
+    },
+  });
+
+  app.post("/api/r2-upload-test", r2Upload.single("image"), async (req: any, res) => {
+    try {
+      if (!isR2Configured()) {
+        return res.status(503).json({ success: false, error: "R2 not configured" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: "No image file provided" });
+      }
+      const sizeError = validateImage(req.file.mimetype, req.file.size);
+      if (sizeError) {
+        return res.status(400).json({ success: false, error: sizeError });
+      }
+      const result = await uploadImage(req.file.buffer, req.file.mimetype);
+      res.json(result);
+    } catch (error: any) {
+      console.error("R2 test upload error:", error);
+      if (error.message?.includes("Unsupported file type")) {
+        return res.status(400).json({ success: false, error: error.message });
+      }
+      res.status(500).json({ success: false, error: error.message || "Upload failed" });
     }
   });
 
