@@ -157,20 +157,23 @@ export async function setupAuth(app: Express) {
             email: email || `facebook_${profile.id}@placeholder.com`,
             firstName: name[0] || profile.displayName || "Facebook",
             lastName: name.slice(1).join(" ") || "",
-            profileImageUrl: profile.photos?.[0]?.value || null,
+            profileImageUrl: profile.photos?.[0]?.value?.replace(/^http:/, "https:") || null,
           });
           user = (await storage.getUser(userId))!;
         }
         if (user) {
-          done(null, { id: user.id, sub: user.id, claims: { sub: user.id } });
+          done(null, { id: user.id, sub: user.id, claims: { sub: user.id }, expires_at: Math.floor(Date.now() / 1000) + 86400, access_token: _accessToken, refresh_token: _refreshToken });
         } else {
           done(null, false);
         }
       } catch (err) {
+        console.error("Facebook OAuth verify error:", err);
         done(err as Error);
       }
     }));
     console.log("Facebook OAuth configured");
+  } else if (ENABLE_FACEBOOK_AUTH) {
+    console.warn("FACEBOOK_AUTH_MISCONFIGURED: ENABLE_FACEBOOK_AUTH=true but FACEBOOK_APP_ID or FACEBOOK_APP_SECRET missing");
   }
 
   // Always register routes so they don't 404 in production — handler checks config at runtime
