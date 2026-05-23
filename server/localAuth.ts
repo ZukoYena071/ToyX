@@ -104,8 +104,11 @@ export async function setupAuth(app: Express) {
             firstName: name[0] || profile.displayName || "Google",
             lastName: name.slice(1).join(" ") || "",
             profileImageUrl: profile.photos?.[0]?.value?.replace(/^http:/, "https:") || null,
+            googleConnected: true,
           });
           user = (await storage.getUser(userId))!;
+        } else {
+          await storage.updateUser(user.id, { googleConnected: true });
         }
         if (user) {
           done(null, { id: user.id, sub: user.id, claims: { sub: user.id }, expires_at: Math.floor(Date.now() / 1000) + 86400, access_token: _accessToken, refresh_token: _refreshToken });
@@ -158,8 +161,11 @@ export async function setupAuth(app: Express) {
             firstName: name[0] || profile.displayName || "Facebook",
             lastName: name.slice(1).join(" ") || "",
             profileImageUrl: profile.photos?.[0]?.value?.replace(/^http:/, "https:") || null,
+            facebookConnected: true,
           });
           user = (await storage.getUser(userId))!;
+        } else {
+          await storage.updateUser(user.id, { facebookConnected: true });
         }
         if (user) {
           done(null, { id: user.id, sub: user.id, claims: { sub: user.id }, expires_at: Math.floor(Date.now() / 1000) + 86400, access_token: _accessToken, refresh_token: _refreshToken });

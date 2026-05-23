@@ -274,6 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: firstName || email.split('@')[0],
         lastName: "",
         profileImageUrl: null,
+        hasPassword: true,
       });
       req.logIn({ id: userId, sub: userId, claims: { sub: userId } }, (err: any) => {
         if (err) return next(err);
