@@ -31,14 +31,17 @@ app.use(async (req, res, next) => {
     if (match) {
       try {
         const [toy] = await db.select().from(toys).where(eq(toys.id, parseInt(match[1]))).limit(1);
-        if (toy) {
-          const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
-          const fbAppId = process.env.FACEBOOK_APP_ID || "";
-          const imageUrl = `${baseUrl}/api/listings/${toy.id}/image?f=.jpg`;
-          const desc = (toy.description || "").slice(0, 200);
-          const location = toy.location ? ` in ${toy.location}` : "";
-          res.setHeader("X-ToyX-Bot-Detected", "true");
-          return res.send(`<!DOCTYPE html>
+          if (toy) {
+            const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+            const fbAppId = process.env.FACEBOOK_APP_ID || "";
+            // Diagnostic: use a static file for toy 1 to test if Facebook rejects the proxy
+            const imageUrl = toy.id === 1
+              ? `${baseUrl}/test-share.jpg`
+              : `${baseUrl}/api/listings/${toy.id}/image?f=.jpg`;
+            const desc = (toy.description || "").slice(0, 200);
+            const location = toy.location ? ` in ${toy.location}` : "";
+            res.setHeader("X-ToyX-Bot-Detected", "true");
+            return res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
