@@ -221,14 +221,11 @@ export default function ToyDetail() {
 
         <div className="absolute top-3 right-3 flex gap-2 z-10">
           <OverlayBtn onClick={() => {
-            console.log("ToyX share clicked");
             const shareUrl = `https://app.toyxchange.online/toy/${id}`;
             if (typeof navigator !== "undefined" && navigator.share) {
-              console.log("Using navigator.share");
               navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
             } else {
-              console.log("Opening desktop share modal");
-              setShowShareModal(true);
+              navigator.clipboard.writeText(shareUrl).catch(() => {});
             }
           }} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
             <Share2 className="w-5 h-5 text-gray-900 dark:text-white" />
@@ -353,21 +350,25 @@ export default function ToyDetail() {
       {!isOwner && (
         <div className="fixed bottom-16 left-0 right-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-3 z-40 rounded-t-2xl">
           <div className="max-w-lg mx-auto flex gap-3">
-            <button onClick={() => {
-              console.log("ToyX share clicked");
-              const shareUrl = `https://app.toyxchange.online/toy/${id}`;
-              if (typeof navigator !== "undefined" && navigator.share) {
-                console.log("Using navigator.share");
-                navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
-              } else {
-                console.log("Opening desktop share modal");
-                setShowShareModal(true);
-              }
-            }}
-              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">
-              <Share2 className="w-4 h-4" />
-              <span>Share</span>
-            </button>
+            <div className="flex gap-1.5 flex-1">
+              <button onClick={() => {
+                const shareUrl = `https://app.toyxchange.online/toy/${id}`;
+                if (typeof navigator !== "undefined" && navigator.share) {
+                  navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
+                } else {
+                  navigator.clipboard.writeText(shareUrl).catch(() => {});
+                }
+              }}
+                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-1 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px] text-xs">
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Share</span>
+              </button>
+              <button onClick={() => setShowShareModal(true)}
+                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-1 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px] text-xs">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Social</span>
+              </button>
+            </div>
             <button onClick={() => setShowMessageModal(true)}
               className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">
               <MessageCircle className="w-4 h-4" />
