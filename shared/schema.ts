@@ -48,6 +48,9 @@ export const users = pgTable("users", {
   showPhone: boolean("show_phone").default(false),
   messagePrivacy: varchar("message_privacy", { length: 20 }).default("everyone"),
   onboardingVersion: integer("onboarding_version").default(0),
+  hasPassword: boolean("has_password").default(false),
+  googleConnected: boolean("google_connected").default(false),
+  facebookConnected: boolean("facebook_connected").default(false),
   latitude: real("latitude"),
   longitude: real("longitude"),
   locationEnabled: boolean("location_enabled").default(false),
@@ -381,3 +384,13 @@ export type ReviewWithUser = Review & {
 };
 export type Interaction = typeof toyInteractions.$inferSelect;
 export type InsertInteraction = typeof toyInteractions.$inferInsert;
+
+export type ConnectedProvider = "password" | "google" | "facebook";
+
+export function getConnectedProviders(user: Pick<User, "hasPassword" | "googleConnected" | "facebookConnected">): ConnectedProvider[] {
+  const providers: ConnectedProvider[] = [];
+  if (user.hasPassword) providers.push("password");
+  if (user.googleConnected) providers.push("google");
+  if (user.facebookConnected) providers.push("facebook");
+  return providers;
+}
