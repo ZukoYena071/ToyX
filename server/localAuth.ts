@@ -178,7 +178,7 @@ export async function setupAuth(app: Express) {
     if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET || !APP_BASE_URL || !ENABLE_FACEBOOK_AUTH) {
       return res.status(503).json({ code: "FACEBOOK_AUTH_NOT_CONFIGURED", message: "Facebook OAuth is not configured on this server." });
     }
-    passport.authenticate("facebook", { scope: ["email"], session: true })(req, res, next);
+    passport.authenticate("facebook", { scope: ["public_profile", "email"], session: true })(req, res, next);
   });
   app.get("/api/auth/facebook/callback", (req, res, next) => {
     if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET || !APP_BASE_URL || !ENABLE_FACEBOOK_AUTH) {
