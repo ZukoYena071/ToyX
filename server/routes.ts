@@ -4,6 +4,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import cors from "cors";
+import multer from "multer";
+import { uploadImage, validateImage, isR2Configured, processImages } from "./r2";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
@@ -727,6 +729,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── R2 upload test endpoint ──────────────────────────────────────────
+
+  const r2Upload = multer({
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req: any, file: any, cb: any) => {
+      const error = validateImage(file.mimetype, 0);
+      cb(error ? new Error(error) : null, !error);
+    },
+  });
+
+  app.post("/api/r2-upload-test", r2Upload.single("image"), async (req: any, res) => {
+    try {
+      if (!isR2Configured()) {
+        return res.status(503).json({ success: false, error: "R2 not configured" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: "No image file provided" });
+      }
+      const sizeError = validateImage(req.file.mimetype, req.file.size);
+      if (sizeError) {
+        return res.status(400).json({ success: false, error: sizeError });
+      }
+      const result = await uploadImage(req.file.buffer, req.file.mimetype);
+      res.json(result);
+    } catch (error: any) {
+      console.error("R2 test upload error:", error);
+      if (error.message?.includes("Unsupported file type")) {
+        return res.status(400).json({ success: false, error: error.message });
+      }
+      res.status(500).json({ success: false, error: error.message || "Upload failed" });
+    }
+  });
+
   // Enforcement: check if user is suspended or banned
   const checkNotRestricted = async (req: any, res: any, next: any) => {
     try {
@@ -756,22 +791,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const body = req.body;
-      const imgs = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+      let imgs = Array.isArray(body.imageUrls) ? body.imageUrls : [];
       if (imgs.length > 6) {
         return res.status(400).json({ code: "TOO_MANY_IMAGES", message: "Maximum 6 photos allowed." });
       }
-      for (const url of imgs) {
-        if (typeof url !== "string" || !url.startsWith("data:image/")) {
-          return res.status(400).json({ code: "INVALID_IMAGE", message: "Invalid image format." });
-        }
-        if (url.length > 1_200_000) {
-          return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "One or more photos exceed the size limit." });
-        }
-      }
-      const totalChars = imgs.reduce((s: number, u: string) => s + u.length, 0);
-      if (totalChars > 8_000_000) {
-        return res.status(400).json({ code: "IMAGE_TOO_LARGE", message: "Photos are too large. Please upload fewer or smaller photos." });
-      }
+      // Upload base64 images to R2, keep existing HTTP URLs as-is
+      imgs = await processImages(imgs);
+      body.imageUrls = imgs;
       if (body.lookingForCategories && (!Array.isArray(body.lookingForCategories) || body.lookingForCategories.length > 5)) {
         return res.status(400).json({ code: "INVALID_LOOKING_FOR", message: "Maximum 5 looking-for categories allowed." });
       }
