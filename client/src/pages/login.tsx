@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import PageContainer from "@/components/ui/PageContainer";
 
@@ -26,7 +25,6 @@ function getSafeRedirect(fallback = "/"): string {
 
 export default function Login() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     loginEmail: '',
     loginPassword: '',
@@ -55,14 +53,14 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         const redirect = getSafeRedirect();
         const target = redirect.includes("list-toy") ? "/" : redirect;
         if (target === "/" && redirect.includes("list-toy")) {
           console.log("DEBUG: Auth success. Redirect path:", redirect, "Action written: list");
           sessionStorage.setItem("toyx_pending_action", "list");
         }
-        setLocation(target);
+        // Full page reload ensures fresh auth state — avoids stale cache / Welcome flash
+        window.location.href = target;
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
@@ -84,14 +82,13 @@ export default function Login() {
         credentials: "include",
       });
       if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         const redirect = getSafeRedirect();
         const target = redirect.includes("list-toy") ? "/" : redirect;
         if (target === "/" && redirect.includes("list-toy")) {
           console.log("DEBUG: Auth success. Redirect path:", redirect, "Action written: list");
           sessionStorage.setItem("toyx_pending_action", "list");
         }
-        setLocation(target);
+        window.location.href = target;
       } else {
         const err = await res.json();
         alert(err.message || "Login failed");
