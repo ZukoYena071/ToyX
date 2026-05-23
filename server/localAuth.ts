@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as FacebookStrategy } from "passport-facebook";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memorystore from "memorystore";
@@ -130,6 +131,60 @@ export async function setupAuth(app: Express) {
       return res.status(503).json({ code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google OAuth is not configured on this server." });
     }
     passport.authenticate("google", { successReturnToOrRedirect: "/", failureRedirect: "/login" })(req, res, next);
+  });
+
+  // Facebook OAuth — only if credentials are configured AND feature flag is enabled
+  const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || "";
+  const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || "";
+  const ENABLE_FACEBOOK_AUTH = process.env.ENABLE_FACEBOOK_AUTH === "true";
+
+  if (FACEBOOK_APP_ID && FACEBOOK_APP_SECRET && APP_BASE_URL && ENABLE_FACEBOOK_AUTH) {
+    passport.use(new FacebookStrategy({
+      clientID: FACEBOOK_APP_ID,
+      clientSecret: FACEBOOK_APP_SECRET,
+      callbackURL: `${APP_BASE_URL}/api/auth/facebook/callback`,
+      profileFields: ["id", "displayName", "email", "photos"],
+    }, async (_accessToken: string, _refreshToken: string, profile: any, done: (error: any, user?: any) => void) => {
+      try {
+        const email = profile.emails?.[0]?.value;
+        const name = profile.displayName?.split(" ") || [];
+        const existing = email ? await storage.searchUsersByEmail(email) : [];
+        let user = existing[0];
+        if (!user) {
+          const userId = `facebook_${profile.id}`;
+          await storage.upsertUser({
+            id: userId,
+            email: email || `facebook_${profile.id}@placeholder.com`,
+            firstName: name[0] || profile.displayName || "Facebook",
+            lastName: name.slice(1).join(" ") || "",
+            profileImageUrl: profile.photos?.[0]?.value || null,
+          });
+          user = (await storage.getUser(userId))!;
+        }
+        if (user) {
+          done(null, { id: user.id, sub: user.id, claims: { sub: user.id } });
+        } else {
+          done(null, false);
+        }
+      } catch (err) {
+        done(err as Error);
+      }
+    }));
+    console.log("Facebook OAuth configured");
+  }
+
+  // Always register routes so they don't 404 in production — handler checks config at runtime
+  app.get("/api/auth/facebook", (req, res, next) => {
+    if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET || !APP_BASE_URL || !ENABLE_FACEBOOK_AUTH) {
+      return res.status(503).json({ code: "FACEBOOK_AUTH_NOT_CONFIGURED", message: "Facebook OAuth is not configured on this server." });
+    }
+    passport.authenticate("facebook", { scope: ["email"], session: true })(req, res, next);
+  });
+  app.get("/api/auth/facebook/callback", (req, res, next) => {
+    if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET || !APP_BASE_URL || !ENABLE_FACEBOOK_AUTH) {
+      return res.status(503).json({ code: "FACEBOOK_AUTH_NOT_CONFIGURED", message: "Facebook OAuth is not configured on this server." });
+    }
+    passport.authenticate("facebook", { successReturnToOrRedirect: "/", failureRedirect: "/login" })(req, res, next);
   });
 
   // Demo users no longer auto-created per cleanup policy
