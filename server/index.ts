@@ -34,9 +34,10 @@ app.use(async (req, res, next) => {
           if (toy) {
             const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
             const fbAppId = process.env.FACEBOOK_APP_ID || "";
-            // Diagnostic: use a static file for toy 1 to test if Facebook rejects the proxy
-            const imageUrl = toy.id === 1
-              ? `${baseUrl}/test-share.jpg`
+            // Use R2 URL directly if available, otherwise fall back to proxy for legacy base64 images
+            const toyImage = Array.isArray(toy.imageUrls) ? toy.imageUrls.find(Boolean) : null;
+            const imageUrl = toyImage && !toyImage.startsWith("data:")
+              ? toyImage
               : `${baseUrl}/api/listings/${toy.id}/image?f=.jpg`;
             const desc = (toy.description || "").slice(0, 200);
             const location = toy.location ? ` in ${toy.location}` : "";

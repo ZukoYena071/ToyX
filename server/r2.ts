@@ -107,3 +107,53 @@ export function isR2Configured(): boolean {
     return false;
   }
 }
+
+const DATA_URI_PREFIX = "data:image/";
+
+export function isBase64Image(url: string): boolean {
+  return url.startsWith(DATA_URI_PREFIX);
+}
+
+export function isLegacyImage(url: string): boolean {
+  return url.startsWith(DATA_URI_PREFIX);
+}
+
+export function isR2Image(url: string): boolean {
+  return url.startsWith("http") && !url.startsWith(DATA_URI_PREFIX);
+}
+
+/**
+ * Takes image URLs from the request body and uploads any base64 data URIs to R2.
+ * HTTP URLs (existing R2 or external images) are returned unchanged.
+ * Falls back gracefully if R2 isn't configured.
+ */
+export async function processImages(urls: string[]): Promise<string[]> {
+  const results: string[] = [];
+  for (const url of urls) {
+    if (url.startsWith("http") && !url.startsWith(DATA_URI_PREFIX)) {
+      results.push(url);
+    } else if (url.startsWith(DATA_URI_PREFIX)) {
+      if (!isR2Configured()) {
+        results.push(url);
+        continue;
+      }
+      const match = url.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) {
+        results.push(url);
+        continue;
+      }
+      const mimetype = match[1];
+      const base64Data = match[2];
+      const buffer = Buffer.from(base64Data, "base64");
+      const uploadResult = await uploadImage(buffer, mimetype);
+      if (uploadResult.success && uploadResult.url) {
+        results.push(uploadResult.url);
+      } else {
+        results.push(url);
+      }
+    } else {
+      results.push(url);
+    }
+  }
+  return results;
+}
