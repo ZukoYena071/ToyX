@@ -221,7 +221,15 @@ export default function ToyDetail() {
 
         <div className="absolute top-3 right-3 flex gap-2 z-10">
           <OverlayBtn onClick={() => {
-            navigator.clipboard.writeText(`${window.location.origin}/toy/${id}`).then(() => toast({ title: "Link copied!" }));
+            console.log("ToyX share clicked");
+            const shareUrl = `https://app.toyxchange.online/toy/${id}`;
+            if (typeof navigator !== "undefined" && navigator.share) {
+              console.log("Using navigator.share");
+              navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
+            } else {
+              console.log("Opening desktop share modal");
+              setShowShareModal(true);
+            }
           }} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
             <Share2 className="w-5 h-5 text-gray-900 dark:text-white" />
           </OverlayBtn>
@@ -346,10 +354,13 @@ export default function ToyDetail() {
         <div className="fixed bottom-16 left-0 right-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-3 z-40 rounded-t-2xl">
           <div className="max-w-lg mx-auto flex gap-3">
             <button onClick={() => {
+              console.log("ToyX share clicked");
               const shareUrl = `https://app.toyxchange.online/toy/${id}`;
               if (typeof navigator !== "undefined" && navigator.share) {
+                console.log("Using navigator.share");
                 navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
               } else {
+                console.log("Opening desktop share modal");
                 setShowShareModal(true);
               }
             }}
@@ -570,9 +581,11 @@ export default function ToyDetail() {
                 {/* Copy Link */}
                 <button onClick={() => {
                   navigator.clipboard.writeText(`https://app.toyxchange.online/toy/${id}`).then(() => {
+                    console.log("Copy link fallback");
                     toast({ title: "Link copied", description: "Toy listing URL copied to clipboard." });
                     setShowShareModal(false);
                   }).catch(() => {
+                    console.log("Copy link fallback");
                     const ta = document.createElement("textarea");
                     ta.value = `https://app.toyxchange.online/toy/${id}`;
                     document.body.appendChild(ta);
