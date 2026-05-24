@@ -27,17 +27,23 @@ export default function HomePage() {
       try {
         const ctx = JSON.parse(upgradeCtx);
         if (ctx.action === "open-upload-modal") {
-          sessionStorage.removeItem("toyx_upgrade_context");
+          console.log("RESTORE: upgrade context found, opening upload modal");
           setTimeout(() => {
+            console.log("RESTORE: modal trigger executed");
             setShowUpload(true);
           }, 1000);
+          return;
         }
-      } catch {}
+      } catch (e) {
+        console.log("RESTORE: failed to parse context", e);
+      }
     }
     const action = sessionStorage.getItem("toyx_pending_action");
     if (action === "list") {
+      console.log("RESTORE: pending action found:", action);
       setTimeout(() => {
         sessionStorage.removeItem("toyx_pending_action");
+        console.log("RESTORE: pending action triggered");
         setShowUpload(true);
       }, 1000);
     }

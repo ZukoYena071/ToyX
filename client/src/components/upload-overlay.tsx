@@ -68,7 +68,11 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     if (ctx) {
       try {
         const parsed = JSON.parse(ctx);
-        if (parsed.formDraft) return parsed.formDraft;
+        if (parsed.formDraft) {
+          console.log("RESTORE: draft restored from upgrade context");
+          sessionStorage.removeItem("toyx_upgrade_context");
+          return parsed.formDraft;
+        }
       } catch {}
     }
     return null;

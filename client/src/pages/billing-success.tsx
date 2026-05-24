@@ -28,7 +28,6 @@ export default function BillingSuccess() {
               const parsed = JSON.parse(ctx);
               if (parsed.returnTo) returnTo = parsed.returnTo;
             } catch {}
-            sessionStorage.removeItem("toyx_upgrade_context");
           }
           setTimeout(() => {
             window.location.href = returnTo;
