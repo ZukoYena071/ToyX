@@ -9,6 +9,8 @@ export default function BillingSuccess() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    console.log("BILLING_SUCCESS: raw URL search:", window.location.search);
+    console.log("BILLING_SUCCESS: all params:", Object.fromEntries(params.entries()));
     const reference = params.get("reference");
     if (!reference) {
       setStatus("error");

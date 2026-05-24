@@ -1727,6 +1727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User email not found" });
       }
       const { planType, returnTo } = req.body;
+      console.log("PAYSTACK_INIT: returnTo from client:", returnTo);
       if (planType !== "monthly" && planType !== "yearly") {
         return res.status(400).json({ message: "planType must be 'monthly' or 'yearly'" });
       }
@@ -1736,6 +1737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (returnTo) {
         callbackUrl += `?returnTo=${encodeURIComponent(returnTo)}`;
       }
+      console.log("PAYSTACK_INIT: final callback_url:", callbackUrl);
       const result = await paystackFetch("/transaction/initialize", {
         method: "POST",
         body: JSON.stringify({

@@ -60,11 +60,15 @@ export default function Pricing() {
       // Check for upgrade context from interrupted flow (e.g. listing limit)
       let returnTo: string | undefined;
       const ctx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
+      console.log("PRICING: context check:", ctx ? "found" : "not found");
       if (ctx) {
         try {
           const parsed = JSON.parse(ctx);
           if (parsed.returnTo) returnTo = parsed.returnTo;
-        } catch {}
+          console.log("PRICING: returnTo from context:", returnTo);
+        } catch (e) {
+          console.log("PRICING: failed to parse context", e);
+        }
       }
       const res = await fetch("/api/billing/paystack/initialize", {
         method: "POST",
