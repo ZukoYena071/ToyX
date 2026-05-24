@@ -23,10 +23,9 @@ export default function BillingSuccess() {
       .then((data) => {
         if (data.ok) {
           setStatus("success");
-          // Use returnTo from URL (passed through Paystack callback_url) — survives external redirect
-          const returnFromUrl = params.get("returnTo");
-          let returnTo = returnFromUrl || "/profile";
-          console.log("BILLING_SUCCESS: returnTo from URL:", returnFromUrl, "→ using:", returnTo);
+          // Use returnTo from Paystack metadata (survives external redirect via server-side storage)
+          const returnTo = data.returnTo || "/profile";
+          console.log("BILLING_SUCCESS: returnTo from Paystack metadata:", data.returnTo, "→ using:", returnTo);
           setTimeout(() => {
             console.log("BILLING_SUCCESS: redirecting to", returnTo);
             window.location.href = returnTo;

@@ -1733,19 +1733,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const planCode = planType === "monthly" ? PAYSTACK_MONTHLY_PLAN_CODE : PAYSTACK_YEARLY_PLAN_CODE;
       const amount = planType === "monthly" ? PAYSTACK_MONTHLY_AMOUNT : PAYSTACK_YEARLY_AMOUNT;
-      let callbackUrl = `${APP_BASE_URL}/billing-success`;
-      if (returnTo) {
-        callbackUrl += `?returnTo=${encodeURIComponent(returnTo)}`;
-      }
-      console.log("PAYSTACK_INIT: final callback_url:", callbackUrl);
       const result = await paystackFetch("/transaction/initialize", {
         method: "POST",
         body: JSON.stringify({
           email: user.email,
           amount,
           plan: planCode,
-          callback_url: callbackUrl,
-          metadata: { userId },
+          callback_url: `${APP_BASE_URL}/billing-success`,
+          metadata: { userId, ...(returnTo ? { returnTo } : {}) },
         }),
       });
       if (!result.status) {
@@ -1794,7 +1789,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.paystackEmailToken = data.subscription.email_token;
       }
       const updatedUser = await storage.setUserSubscriptionByUserId(userId, updateData);
-      res.json({ ok: true, user: updatedUser });
+      const returnTo = data.metadata?.returnTo || null;
+      res.json({ ok: true, user: updatedUser, returnTo });
     } catch (error: any) {
       console.error("Error verifying Paystack transaction:", error);
       res.status(500).json({ message: error.message || "Verification failed" });
