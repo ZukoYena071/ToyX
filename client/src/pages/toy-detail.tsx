@@ -112,6 +112,7 @@ export default function ToyDetail() {
       const msg = error?.message || "";
       const body = msg.includes("{") ? JSON.parse(msg.substring(msg.indexOf("{"))) : null;
       if (body?.upgradeUrl && (body?.code === "LIMIT_ACTIVE_EXCHANGES" || body?.code === "LIMIT_MONTHLY_REQUESTS")) {
+        sessionStorage.setItem("toyx_upgrade_context", JSON.stringify({ returnTo: `/toy/${id}` }));
         setLimitModal({ message: body.message, upgradeUrl: body.upgradeUrl });
         setTimeout(() => window.location.href = body.upgradeUrl, 4000);
       } else toast({ title: "Error", description: body?.message || "Failed to send exchange request.", variant: "destructive" });
@@ -539,6 +540,7 @@ export default function ToyDetail() {
                   } else {
                     const data = await res.json().catch(() => ({}));
                     if (data?.upgradeUrl && (data?.code === "LIMIT_ACTIVE_EXCHANGES" || data?.code === "LIMIT_MONTHLY_REQUESTS")) {
+                      sessionStorage.setItem("toyx_upgrade_context", JSON.stringify({ returnTo: `/toy/${id}` }));
                       setLimitModal({ message: data.message, upgradeUrl: data.upgradeUrl });
                       setTimeout(() => window.location.href = data.upgradeUrl, 4000);
                     } else {

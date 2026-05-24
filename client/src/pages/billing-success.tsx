@@ -21,8 +21,17 @@ export default function BillingSuccess() {
       .then((data) => {
         if (data.ok) {
           setStatus("success");
+          const ctx = sessionStorage.getItem("toyx_upgrade_context");
+          let returnTo = "/profile";
+          if (ctx) {
+            try {
+              const parsed = JSON.parse(ctx);
+              if (parsed.returnTo) returnTo = parsed.returnTo;
+            } catch {}
+            sessionStorage.removeItem("toyx_upgrade_context");
+          }
           setTimeout(() => {
-            window.location.href = "/profile";
+            window.location.href = returnTo;
           }, 2000);
         } else {
           setStatus("error");

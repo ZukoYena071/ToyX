@@ -60,9 +60,24 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
-  const [images, setImages] = useState<string[]>(toy?.imageUrls || []);
-  const [imageHashes, setImageHashes] = useState<string[]>([]);
-  const [formData, setFormData] = useState({
+
+  // Restore draft from upgrade context if available
+  const getInitialDraft = () => {
+    if (toy) return null;
+    const ctx = sessionStorage.getItem("toyx_upgrade_context");
+    if (ctx) {
+      try {
+        const parsed = JSON.parse(ctx);
+        if (parsed.formDraft) return parsed.formDraft;
+      } catch {}
+    }
+    return null;
+  };
+  const draft = getInitialDraft();
+
+  const [images, setImages] = useState<string[]>(draft?.images || toy?.imageUrls || []);
+  const [imageHashes, setImageHashes] = useState<string[]>(draft?.imageHashes || []);
+  const [formData, setFormData] = useState(draft?.formData || {
     name: toy?.name || "",
     description: toy?.description || "",
     category: toy?.category || "",
@@ -75,7 +90,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationResults, setLocationResults] = useState<{ displayName: string; lat: number; lng: number }[]>([]);
   const [searchingLocation, setSearchingLocation] = useState(false);
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(draft?.selectedCoords || null);
   const locationDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const { latitude, longitude, error: locationError, loading: locationLoading, requestLocation } = useGeolocation();
@@ -96,7 +111,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       setSelectedCoords({ lat: latitude, lng: longitude });
       reverseGeocode(latitude, longitude).then(location => {
         setDetectedLocation(location);
-        setFormData(prev => {
+        setFormData((prev: any) => {
           if (!prev.location) return { ...prev, location };
           return prev;
         });
@@ -125,6 +140,13 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     onError: (error: any) => {
       const msg = error?.message || "";
       const body = msg.includes("{") ? JSON.parse(msg.substring(msg.indexOf("{"))) : null;
+      if (body?.code === "LIMIT_ACTIVE_LISTINGS") {
+        sessionStorage.setItem("toyx_upgrade_context", JSON.stringify({
+          returnTo: "/",
+          action: "open-upload-modal",
+          formDraft: { images, imageHashes, formData, selectedCoords },
+        }));
+      }
       toast({ title: body?.code === "LIMIT_ACTIVE_LISTINGS" ? "Upgrade Required" : "Error", description: body?.message || (toy ? "Failed to update toy." : "Failed to list toy."), variant: "destructive" });
       if (body?.upgradeUrl) setTimeout(() => window.location.href = body.upgradeUrl, 2000);
     },
@@ -175,7 +197,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     const idx = current.indexOf(cat);
     if (idx >= 0) current.splice(idx, 1);
     else current.push(cat);
-    setFormData(prev => ({ ...prev, category: current.join(", ") }));
+    setFormData((prev: any) => ({ ...prev, category: current.join(", ") }));
   };
 
   const toggleAgeGroup = (age: string) => {
@@ -183,7 +205,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     const idx = current.indexOf(age);
     if (idx >= 0) current.splice(idx, 1);
     else current.push(age);
-    setFormData(prev => ({ ...prev, ageGroup: current.join(", ") }));
+    setFormData((prev: any) => ({ ...prev, ageGroup: current.join(", ") }));
   };
 
   useEffect(() => {
@@ -228,7 +250,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
 
   const handleUseDetectedLocation = () => {
     if (detectedLocation) {
-      setFormData(prev => ({ ...prev, location: detectedLocation }));
+      setFormData((prev: any) => ({ ...prev, location: detectedLocation }));
       if (latitude && longitude) setSelectedCoords({ lat: latitude, lng: longitude });
     }
   };

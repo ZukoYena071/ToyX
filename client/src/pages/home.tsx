@@ -20,16 +20,25 @@ export default function HomePage() {
   const [showUpload, setShowUpload] = useState(false);
   const [enablingLoc, setEnablingLoc] = useState(false);
   const [dismissedCta, setDismissedCta] = useState(false);
-  // Open upload modal when redirected from /list-toy
+  // Open upload modal when redirected from /list-toy or after subscription upgrade
   useEffect(() => {
-    console.log("DEBUG: Home check - Pending action is:", sessionStorage.getItem("toyx_pending_action"));
+    const upgradeCtx = sessionStorage.getItem("toyx_upgrade_context");
+    if (upgradeCtx) {
+      try {
+        const ctx = JSON.parse(upgradeCtx);
+        if (ctx.action === "open-upload-modal") {
+          sessionStorage.removeItem("toyx_upgrade_context");
+          setTimeout(() => {
+            setShowUpload(true);
+          }, 1000);
+        }
+      } catch {}
+    }
     const action = sessionStorage.getItem("toyx_pending_action");
     if (action === "list") {
-      console.log("DEBUG: Action 'list' found, triggering modal in 1000ms...");
       setTimeout(() => {
         sessionStorage.removeItem("toyx_pending_action");
         setShowUpload(true);
-        console.log("DEBUG: Modal trigger executed");
       }, 1000);
     }
   }, []);
