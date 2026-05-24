@@ -328,16 +328,99 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe your toy's condition, what's included, and why kids would love it..."
+                placeholder="Include condition, missing parts, accessories, and anything parents &amp; kids should know."
                 rows={4}
               />
               <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">{formData.description.length}/500</div>
             </div>
 
+            {/* Categories */}
+            <div>
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
+                Categories <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Select one or more categories</p>
+              <div className="grid grid-cols-2 gap-3">
+                {categories.map((category) => {
+                  const selected = formData.category.split(", ").includes(category);
+                  return (
+                    <button key={category} onClick={() => toggleCategory(category)}
+                      className={`p-4 rounded-xl border-2 transition-all text-left relative min-h-[44px] ${
+                        selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {category}
+                      </div>
+                      {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {formData.category && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {formData.category.split(", ").map((c: string) => (
+                    <Badge key={c} variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                      {c}
+                      <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600 min-h-[24px] min-w-[24px]">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Age Range + Condition — grouped side-by-side */}
+            <div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Age Range</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select one or more</p>
+                  <div className="space-y-2">
+                    {ageGroups.map((age) => {
+                      const selected = formData.ageGroup.split(", ").includes(age);
+                      return (
+                        <button key={age} onClick={() => toggleAgeGroup(age)}
+                          className={`w-full p-3 rounded-xl border-2 text-left transition-all relative min-h-[44px] ${
+                            selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                          }`}
+                        >
+                          <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                            Ages {age}
+                          </div>
+                          {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
+                    Condition <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-2">
+                    {conditions.map((condition) => (
+                      <button key={condition} onClick={() => setFormData({ ...formData, condition })}
+                        className={`w-full p-3 rounded-xl border-2 text-left transition-all min-h-[44px] ${
+                          formData.condition === condition ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <div className={`text-sm font-medium ${formData.condition === condition ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          {condition}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Looking For */}
             <div>
               <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-1">
-                What are you hoping to get in exchange? <span className="text-xs text-gray-400 font-normal">(optional)</span>
+                What would you like in exchange? <span className="text-xs text-gray-400 font-normal">(optional)</span>
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Pick up to 5 categories</p>
               <div className="grid grid-cols-2 gap-3">
@@ -386,90 +469,9 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">{(formData.lookingForDetails || "").length}/200</div>
             </div>
 
-            {/* Category */}
-            <div>
-              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
-                Categories <span className="text-red-500">*</span>
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Select one or more categories</p>
-              <div className="grid grid-cols-2 gap-3">
-                {categories.map((category) => {
-                  const selected = formData.category.split(", ").includes(category);
-                  return (
-                    <button key={category} onClick={() => toggleCategory(category)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left relative min-h-[44px] ${
-                        selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                    >
-                      <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {category}
-                      </div>
-                      {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
-                    </button>
-                  );
-                })}
-              </div>
-              {formData.category && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {formData.category.split(", ").map((c: string) => (
-                    <Badge key={c} variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
-                      {c}
-                      <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600 min-h-[24px] min-w-[24px]">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Age Group and Condition */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Age Range</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select one or more</p>
-                <div className="space-y-2">
-                  {ageGroups.map((age) => {
-                    const selected = formData.ageGroup.split(", ").includes(age);
-                    return (
-                      <button key={age} onClick={() => toggleAgeGroup(age)}
-                        className={`w-full p-3 rounded-xl border-2 text-left transition-all relative min-h-[44px] ${
-                          selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                          Ages {age}
-                        </div>
-                        {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
-                  Condition <span className="text-red-500">*</span>
-                </label>
-                <div className="space-y-2">
-                  {conditions.map((condition) => (
-                    <button key={condition} onClick={() => setFormData({ ...formData, condition })}
-                      className={`w-full p-3 rounded-xl border-2 text-left transition-all min-h-[44px] ${
-                        formData.condition === condition ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                    >
-                      <div className={`text-sm font-medium ${formData.condition === condition ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {condition}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             {/* Location */}
             <div>
-              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Location</label>
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Location <span className="text-xs text-gray-400 font-normal">(Where your toy will be for exchange)</span></label>
               <div className="space-y-3">
                 <div className="relative">
                   <input
