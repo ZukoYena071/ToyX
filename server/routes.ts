@@ -1072,24 +1072,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exchangeId = parseInt(req.params.id);
       const { status } = req.body;
       const exchange = await storage.updateExchangeStatus(exchangeId, status);
-      // If accepted, insert a system safety reminder message
-      if (status === "accepted") {
-        const exch = await db.select({
-          requesterId: exchanges.requesterId,
-          ownerId: exchanges.ownerId,
-          toyId: exchanges.toyId,
-        }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
-        if (exch.length) {
-          const content = "For safer swaps, always meet in a public, well-lit location such as a shopping mall, coffee shop, or community centre. Avoid sharing unnecessary personal information and inspect toys before completing the exchange.";
-          await db.insert(messages).values({
-            exchangeId,
-            senderId: exch[0].ownerId,
-            content,
-            messageType: "system",
-            createdAt: new Date(),
-          });
-        }
-      }
       // If completed, mark both toys as unavailable
       if (status === "completed") {
         const exch = await db.select({ toyId: exchanges.toyId, offeredToyId: exchanges.offeredToyId }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
