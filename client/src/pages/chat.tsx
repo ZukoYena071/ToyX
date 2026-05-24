@@ -143,6 +143,27 @@ export default function Chat() {
     },
   });
 
+  const acceptExchangeMutation = useMutation({
+    mutationFn: async (exchangeId: number) => {
+      return await apiRequest("PATCH", `/api/exchanges/${exchangeId}/status`, { status: "accepted" });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Exchange Accepted",
+        description: "You've accepted the exchange request. The conversation now includes a safety reminder.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to accept exchange",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendMessage = () => {
     if (isBlocked) {
       toast({ title: "Messaging disabled", description: "Messaging is disabled because this user is blocked.", variant: "destructive" });
@@ -413,6 +434,13 @@ export default function Chat() {
                 }
                 return (
                   <div className="flex gap-2">
+                    {/* Owner can accept the exchange request */}
+                    {userIsOwner && exchange?.status === "pending" && (
+                      <Button size="sm" onClick={() => acceptExchangeMutation.mutate(exchange.id)} disabled={acceptExchangeMutation.isPending}
+                        className="!bg-green-500 hover:!bg-green-600 !text-white">
+                        {acceptExchangeMutation.isPending ? "Accepting..." : "Accept"}
+                      </Button>
+                    )}
                     <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending}>
                       {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Complete"}
                     </Button>
@@ -434,9 +462,17 @@ export default function Chat() {
               })()
             )}
 
+            {exchange?.status === "accepted" && (
+              <div className="flex justify-center">
+                <div className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-2xl border border-green-200 dark:border-green-700">
+                  ✅ Exchange accepted — arrange a meetup with the other parent
+                </div>
+              </div>
+            )}
+
             {exchange?.status === "canceled" && (
               <div className="flex justify-center">
-                <div className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-2xl border border-red-200 dark:border-red-700">
+                <div className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:dark:bg-red-900/20 px-3 py-1.5 rounded-2xl border border-red-200 dark:border-red-700">
                   ✕ This exchange has been canceled
                 </div>
               </div>
