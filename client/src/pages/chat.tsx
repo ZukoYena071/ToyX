@@ -13,6 +13,7 @@ import ReviewForm from "@/components/review-form";
 import ReportUserModal from "@/components/toys/ReportUserModal";
 import EmojiPicker from "@/components/emoji-picker";
 import BottomNav from "@/components/bottom-nav";
+import SafetyChecklist from "@/components/SafetyChecklist";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
@@ -386,6 +387,11 @@ export default function Chat() {
           </div>
         </div>
       )}
+
+      {/* Safety checklist */}
+      <div className="max-w-lg mx-auto px-4 pt-3 pb-1">
+        <SafetyChecklist compact />
+      </div>
 
       {/* Message Input */}
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">

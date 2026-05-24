@@ -31,6 +31,28 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
     }
   }, [showReactions]);
 
+  // System messages are rendered as centered info cards, not chat bubbles
+  if (message.messageType === "system") {
+    return (
+      <div className="flex justify-center px-8 my-3">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 max-w-md w-full">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-sm">🛡️</span>
+            <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+              ToyX Safety Reminder
+            </span>
+          </div>
+          <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
+            {message.content}
+          </p>
+          <p className="text-[10px] text-blue-400 dark:text-blue-500 mt-1.5">
+            {new Date(message.createdAt ?? 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} relative group`}>
       <div className={`flex items-end gap-2 max-w-[75%] ${isOwn ? 'flex-row-reverse' : ''}`}>
