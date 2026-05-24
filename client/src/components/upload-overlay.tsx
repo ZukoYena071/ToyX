@@ -61,8 +61,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
 
-  // Restore draft from upgrade context if available
-  const getInitialDraft = () => {
+  // Restore draft from upgrade context if available (runs once on mount only)
+  const [draft] = useState(() => {
     if (toy) return null;
     const ctx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
     if (ctx) {
@@ -70,15 +70,12 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
         const parsed = JSON.parse(ctx);
         if (parsed.formDraft) {
           console.log("RESTORE: draft restored from upgrade context");
-          localStorage.removeItem("toyx_upgrade_context");
-          sessionStorage.removeItem("toyx_upgrade_context");
           return parsed.formDraft;
         }
       } catch {}
     }
     return null;
-  };
-  const draft = getInitialDraft();
+  });
 
   const [images, setImages] = useState<string[]>(draft?.images || toy?.imageUrls || []);
   const [imageHashes, setImageHashes] = useState<string[]>(draft?.imageHashes || []);
