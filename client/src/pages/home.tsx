@@ -18,6 +18,7 @@ export default function HomePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
+  const [restoreDraft, setRestoreDraft] = useState<any>(null);
   const [enablingLoc, setEnablingLoc] = useState(false);
   const [dismissedCta, setDismissedCta] = useState(false);
   // Open upload modal when redirected from /list-toy or after subscription upgrade
@@ -26,8 +27,14 @@ export default function HomePage() {
     const upgradeCtx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
     if (upgradeCtx) {
       console.log("HOME: found upgrade context:", upgradeCtx);
+      // Clear immediately so hard refresh never re-triggers with stale data
+      localStorage.removeItem("toyx_upgrade_context");
+      sessionStorage.removeItem("toyx_upgrade_context");
       try {
         const ctx = JSON.parse(upgradeCtx);
+        if (ctx.formDraft) {
+          setRestoreDraft(ctx.formDraft);
+        }
         if (ctx.action === "open-upload-modal") {
           console.log("RESTORE: upgrade context found, opening upload modal");
           setTimeout(() => {
@@ -242,7 +249,7 @@ export default function HomePage() {
 
       <BottomNav />
 
-      {showUpload && <UploadOverlay onClose={() => setShowUpload(false)} />}
+      {showUpload && <UploadOverlay onClose={() => { setShowUpload(false); setRestoreDraft(null); }} restoreDraft={restoreDraft} />}
     </PageContainer>
   );
 }

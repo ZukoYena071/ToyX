@@ -18,6 +18,7 @@ import type { User } from "@shared/schema";
 interface UploadOverlayProps {
   onClose: () => void;
   toy?: any;
+  restoreDraft?: any;
 }
 
 const categories = [
@@ -54,7 +55,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   return closest.name;
 }
 
-export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
+export default function UploadOverlay({ onClose, toy, restoreDraft }: UploadOverlayProps) {
   const { user: rawUser } = useAuth();
   const user = rawUser as User | undefined;
   const { toast } = useToast();
@@ -64,6 +65,10 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   // Restore draft from upgrade context if available (runs once on mount only)
   const [draft] = useState(() => {
     if (toy) return null;
+    if (restoreDraft) {
+      console.log("RESTORE: draft restored from Home prop");
+      return restoreDraft;
+    }
     const ctx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
     if (ctx) {
       try {
