@@ -23,7 +23,7 @@ export default function HomePage() {
   // Open upload modal when redirected from /list-toy or after subscription upgrade
   useEffect(() => {
     console.log("HOME: mounted, checking upgrade context...");
-    const upgradeCtx = sessionStorage.getItem("toyx_upgrade_context") || localStorage.getItem("toyx_upgrade_context");
+    const upgradeCtx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
     if (upgradeCtx) {
       console.log("HOME: found upgrade context:", upgradeCtx);
       try {

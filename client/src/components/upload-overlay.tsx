@@ -64,7 +64,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   // Restore draft from upgrade context if available
   const getInitialDraft = () => {
     if (toy) return null;
-    const ctx = sessionStorage.getItem("toyx_upgrade_context") || localStorage.getItem("toyx_upgrade_context");
+    const ctx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
     if (ctx) {
       try {
         const parsed = JSON.parse(ctx);
