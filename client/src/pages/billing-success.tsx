@@ -21,22 +21,10 @@ export default function BillingSuccess() {
       .then((data) => {
         if (data.ok) {
           setStatus("success");
-          console.log("BILLING_SUCCESS: mounted, sessionStorage context:", sessionStorage.getItem("toyx_upgrade_context"));
-          console.log("BILLING_SUCCESS: localStorage context:", localStorage.getItem("toyx_upgrade_context"));
-          // Check localStorage first — sessionStorage is lost across external Paystack redirect
-          let ctx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
-          let returnTo = "/profile";
-          if (ctx) {
-            try {
-              const parsed = JSON.parse(ctx);
-              if (parsed.returnTo) returnTo = parsed.returnTo;
-              console.log("BILLING_SUCCESS: found context, returnTo:", returnTo);
-            } catch (e) {
-              console.log("BILLING_SUCCESS: failed to parse context", e);
-            }
-          } else {
-            console.log("BILLING_SUCCESS: no context found, falling back to /profile");
-          }
+          // Use returnTo from URL (passed through Paystack callback_url) — survives external redirect
+          const returnFromUrl = params.get("returnTo");
+          let returnTo = returnFromUrl || "/profile";
+          console.log("BILLING_SUCCESS: returnTo from URL:", returnFromUrl, "→ using:", returnTo);
           setTimeout(() => {
             console.log("BILLING_SUCCESS: redirecting to", returnTo);
             window.location.href = returnTo;

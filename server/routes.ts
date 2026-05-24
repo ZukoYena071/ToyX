@@ -1726,19 +1726,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user?.email) {
         return res.status(400).json({ message: "User email not found" });
       }
-      const { planType } = req.body;
+      const { planType, returnTo } = req.body;
       if (planType !== "monthly" && planType !== "yearly") {
         return res.status(400).json({ message: "planType must be 'monthly' or 'yearly'" });
       }
       const planCode = planType === "monthly" ? PAYSTACK_MONTHLY_PLAN_CODE : PAYSTACK_YEARLY_PLAN_CODE;
       const amount = planType === "monthly" ? PAYSTACK_MONTHLY_AMOUNT : PAYSTACK_YEARLY_AMOUNT;
+      let callbackUrl = `${APP_BASE_URL}/billing-success`;
+      if (returnTo) {
+        callbackUrl += `?returnTo=${encodeURIComponent(returnTo)}`;
+      }
       const result = await paystackFetch("/transaction/initialize", {
         method: "POST",
         body: JSON.stringify({
           email: user.email,
           amount,
           plan: planCode,
-          callback_url: `${APP_BASE_URL}/billing-success`,
+          callback_url: callbackUrl,
           metadata: { userId },
         }),
       });
