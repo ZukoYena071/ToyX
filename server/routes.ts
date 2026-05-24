@@ -1740,7 +1740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount,
           plan: planCode,
           callback_url: `${APP_BASE_URL}/billing-success`,
-          metadata: { userId, ...(returnTo ? { returnTo } : {}) },
+          metadata: { userId, ...(returnTo ? { returnTo } : {}), ...(req.body.action ? { action: req.body.action } : {}) },
         }),
       });
       if (!result.status) {
@@ -1790,7 +1790,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const updatedUser = await storage.setUserSubscriptionByUserId(userId, updateData);
       const returnTo = data.metadata?.returnTo || null;
-      res.json({ ok: true, user: updatedUser, returnTo });
+      const action = data.metadata?.action || null;
+      res.json({ ok: true, user: updatedUser, returnTo, action });
     } catch (error: any) {
       console.error("Error verifying Paystack transaction:", error);
       res.status(500).json({ message: error.message || "Verification failed" });
