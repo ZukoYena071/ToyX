@@ -70,8 +70,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
         const parsed = JSON.parse(ctx);
         if (parsed.formDraft) {
           console.log("RESTORE: draft restored from upgrade context");
-          sessionStorage.removeItem("toyx_upgrade_context");
           localStorage.removeItem("toyx_upgrade_context");
+          sessionStorage.removeItem("toyx_upgrade_context");
           return parsed.formDraft;
         }
       } catch {}
@@ -152,8 +152,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
           formDraft: { images, imageHashes, formData, selectedCoords },
         });
         console.log("UPGRADE CONTEXT: writing", ctx);
-        sessionStorage.setItem("toyx_upgrade_context", ctx);
         localStorage.setItem("toyx_upgrade_context", ctx);
+        sessionStorage.setItem("toyx_upgrade_context", ctx);
         console.log("UPGRADE CONTEXT: verified stored", {
           session: sessionStorage.getItem("toyx_upgrade_context"),
           local: localStorage.getItem("toyx_upgrade_context"),
