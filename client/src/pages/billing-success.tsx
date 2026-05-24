@@ -25,10 +25,18 @@ export default function BillingSuccess() {
           setStatus("success");
           // Use returnTo from Paystack metadata (survives external redirect via server-side storage)
           const returnTo = data.returnTo || "/profile";
-          // Re-write upgrade context to localStorage with action so Home can open modal
+          // Merge action into existing upgrade context (preserving formDraft) so Home can open modal
           if (data.action) {
-            localStorage.setItem("toyx_upgrade_context", JSON.stringify({ returnTo, action: data.action }));
-            console.log("BILLING_SUCCESS: restored action to localStorage:", data.action);
+            const existingCtx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
+            let merged: any = { returnTo, action: data.action };
+            if (existingCtx) {
+              try {
+                const parsed = JSON.parse(existingCtx);
+                if (parsed.formDraft) merged.formDraft = parsed.formDraft;
+              } catch {}
+            }
+            localStorage.setItem("toyx_upgrade_context", JSON.stringify(merged));
+            console.log("BILLING_SUCCESS: restored action, formDraft preserved:", !!merged.formDraft);
           }
           console.log("BILLING_SUCCESS: returnTo from Paystack metadata:", data.returnTo, "→ using:", returnTo);
           setTimeout(() => {

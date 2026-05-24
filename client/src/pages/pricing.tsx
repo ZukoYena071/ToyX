@@ -80,10 +80,6 @@ export default function Pricing() {
       });
       const data = await res.json();
       if (data.authorizationUrl) {
-        if (returnTo) {
-          localStorage.removeItem("toyx_upgrade_context");
-          sessionStorage.removeItem("toyx_upgrade_context");
-        }
         window.location.href = data.authorizationUrl;
       } else {
         toast({ title: "Error", description: data.message || "Failed to initialize payment", variant: "destructive" });
