@@ -418,57 +418,65 @@ export default function Chat() {
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="space-y-2">
-            {(exchange?.status === "pending" || exchange?.status === "accepted") && (
-              (() => {
-                const userIsRequester = exchange.requesterId === (user as any)?.id;
-                const userIsOwner = exchange.ownerId === (user as any)?.id;
-                const userConfirmed = (userIsRequester && exchange.requesterConfirmed) || (userIsOwner && exchange.ownerConfirmed);
-                if (userConfirmed) {
-                  return (
-                    <div className="flex justify-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-2xl border border-blue-200 dark:border-blue-700">
-                        ⏳ Waiting for the other party to confirm completion
-                      </div>
-                    </div>
-                  );
-                }
+            {(() => {
+              if (!exchange) return null;
+              const userIsRequester = exchange.requesterId === (user as any)?.id;
+              const userIsOwner = exchange.ownerId === (user as any)?.id;
+              const userConfirmed = (userIsRequester && exchange.requesterConfirmed) || (userIsOwner && exchange.ownerConfirmed);
+
+              // ── Pending state: Accept (owner) + Cancel ──
+              if (exchange?.status === "pending" && !userConfirmed) {
                 return (
-                  <div className="flex gap-2 flex-wrap">
-                    {/* Owner can accept the exchange request (only when pending) */}
-                    {userIsOwner && exchange?.status === "pending" && (
+                  <div className="flex gap-2">
+                    {userIsOwner && (
                       <Button size="sm" onClick={() => acceptExchangeMutation.mutate(exchange.id)} disabled={acceptExchangeMutation.isPending}
                         className="!bg-green-500 hover:!bg-green-600 !text-white">
                         {acceptExchangeMutation.isPending ? "Accepting..." : "Accept"}
                       </Button>
                     )}
-                    <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending}>
-                      {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Complete"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (window.confirm("Are you sure you want to cancel this exchange request?")) {
-                          cancelExchangeMutation.mutate(exchange.id);
-                        }
-                      }}
+                    <Button size="sm" variant="outline" onClick={() => { if (window.confirm("Are you sure you want to cancel this exchange request?")) { cancelExchangeMutation.mutate(exchange.id); } }}
                       disabled={cancelExchangeMutation.isPending}
-                      className="text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
+                      className="text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20">
                       {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel"}
                     </Button>
                   </div>
                 );
-              })()
-            )}
+              }
 
-            {exchange?.status === "accepted" && (
-              <div className="flex justify-center">
-                <div className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-2xl border border-green-200 dark:border-green-700">
-                  ✅ Exchange accepted — arrange a meetup with the other parent
-                </div>
-              </div>
-            )}
+              // ── Accepted state: banner + Mark Complete + Cancel ──
+              if (exchange?.status === "accepted" && !userConfirmed) {
+                return (
+                  <>
+                    <div className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-2xl border border-green-200 dark:border-green-700 text-center">
+                      ✅ Exchange accepted — coordinate your meetup safely
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending}>
+                        {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Complete"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { if (window.confirm("Are you sure you want to cancel this exchange request?")) { cancelExchangeMutation.mutate(exchange.id); } }}
+                        disabled={cancelExchangeMutation.isPending}
+                        className="text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20">
+                        {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel"}
+                      </Button>
+                    </div>
+                  </>
+                );
+              }
+
+              // ── User has already confirmed — waiting for the other party ──
+              if (userConfirmed && exchange?.status !== "completed" && exchange?.status !== "canceled") {
+                return (
+                  <div className="flex justify-center">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-2xl border border-blue-200 dark:border-blue-700">
+                      ⏳ Waiting for the other party to confirm completion
+                    </div>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
 
             {exchange?.status === "canceled" && (
               <div className="flex justify-center">
