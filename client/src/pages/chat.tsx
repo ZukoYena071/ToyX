@@ -418,7 +418,7 @@ export default function Chat() {
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="space-y-2">
-            {exchange?.status === "pending" && (
+            {(exchange?.status === "pending" || exchange?.status === "accepted") && (
               (() => {
                 const userIsRequester = exchange.requesterId === (user as any)?.id;
                 const userIsOwner = exchange.ownerId === (user as any)?.id;
@@ -433,8 +433,8 @@ export default function Chat() {
                   );
                 }
                 return (
-                  <div className="flex gap-2">
-                    {/* Owner can accept the exchange request */}
+                  <div className="flex gap-2 flex-wrap">
+                    {/* Owner can accept the exchange request (only when pending) */}
                     {userIsOwner && exchange?.status === "pending" && (
                       <Button size="sm" onClick={() => acceptExchangeMutation.mutate(exchange.id)} disabled={acceptExchangeMutation.isPending}
                         className="!bg-green-500 hover:!bg-green-600 !text-white">
