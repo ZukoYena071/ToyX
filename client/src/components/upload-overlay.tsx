@@ -137,6 +137,8 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       } else if (!toy) {
         setTimeout(() => toast({ title: "Tip", description: "Add 2 photos + a 30+ character description to earn +5 points next time." }), 1000);
       }
+      localStorage.removeItem("toyx_upgrade_context");
+      sessionStorage.removeItem("toyx_upgrade_context");
       onClose();
     },
     onError: (error: any) => {
@@ -264,6 +266,10 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     }
   };
 
+  const clearUpgradeContext = () => {
+    localStorage.removeItem("toyx_upgrade_context");
+    sessionStorage.removeItem("toyx_upgrade_context");
+  };
   const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition && formData.location && images.length >= 1;
 
   return (
@@ -277,7 +283,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               <h2 className="text-lg font-bold text-white mb-1">{toy ? "Edit Toy" : "List a Toy"}</h2>
               <p className="text-sm text-purple-100">{toy ? "Update your toy listing" : "Share your toy with the community"}</p>
             </div>
-            <button onClick={onClose} className="min-w-[44px] min-h-[44px] bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors shrink-0">
+            <button onClick={() => { clearUpgradeContext(); onClose(); }} className="min-w-[44px] min-h-[44px] bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors shrink-0">
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
@@ -599,7 +605,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
           {/* Bottom footer */}
           <div className="shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
+            <button onClick={() => { clearUpgradeContext(); onClose(); }} className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
               Cancel
             </button>
             <button onClick={handleSubmit} disabled={!isFormValid || createToyMutation.isPending}
