@@ -21,15 +21,24 @@ export default function BillingSuccess() {
       .then((data) => {
         if (data.ok) {
           setStatus("success");
-          const ctx = sessionStorage.getItem("toyx_upgrade_context");
+          console.log("BILLING_SUCCESS: mounted, sessionStorage context:", sessionStorage.getItem("toyx_upgrade_context"));
+          console.log("BILLING_SUCCESS: localStorage context:", localStorage.getItem("toyx_upgrade_context"));
+          // Check sessionStorage first, then localStorage as fallback
+          let ctx = sessionStorage.getItem("toyx_upgrade_context") || localStorage.getItem("toyx_upgrade_context");
           let returnTo = "/profile";
           if (ctx) {
             try {
               const parsed = JSON.parse(ctx);
               if (parsed.returnTo) returnTo = parsed.returnTo;
-            } catch {}
+              console.log("BILLING_SUCCESS: found context, returnTo:", returnTo);
+            } catch (e) {
+              console.log("BILLING_SUCCESS: failed to parse context", e);
+            }
+          } else {
+            console.log("BILLING_SUCCESS: no context found, falling back to /profile");
           }
           setTimeout(() => {
+            console.log("BILLING_SUCCESS: redirecting to", returnTo);
             window.location.href = returnTo;
           }, 2000);
         } else {

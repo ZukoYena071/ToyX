@@ -64,13 +64,14 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   // Restore draft from upgrade context if available
   const getInitialDraft = () => {
     if (toy) return null;
-    const ctx = sessionStorage.getItem("toyx_upgrade_context");
+    const ctx = sessionStorage.getItem("toyx_upgrade_context") || localStorage.getItem("toyx_upgrade_context");
     if (ctx) {
       try {
         const parsed = JSON.parse(ctx);
         if (parsed.formDraft) {
           console.log("RESTORE: draft restored from upgrade context");
           sessionStorage.removeItem("toyx_upgrade_context");
+          localStorage.removeItem("toyx_upgrade_context");
           return parsed.formDraft;
         }
       } catch {}
@@ -145,11 +146,18 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       const msg = error?.message || "";
       const body = msg.includes("{") ? JSON.parse(msg.substring(msg.indexOf("{"))) : null;
       if (body?.code === "LIMIT_ACTIVE_LISTINGS") {
-        sessionStorage.setItem("toyx_upgrade_context", JSON.stringify({
+        const ctx = JSON.stringify({
           returnTo: "/",
           action: "open-upload-modal",
           formDraft: { images, imageHashes, formData, selectedCoords },
-        }));
+        });
+        console.log("UPGRADE CONTEXT: writing", ctx);
+        sessionStorage.setItem("toyx_upgrade_context", ctx);
+        localStorage.setItem("toyx_upgrade_context", ctx);
+        console.log("UPGRADE CONTEXT: verified stored", {
+          session: sessionStorage.getItem("toyx_upgrade_context"),
+          local: localStorage.getItem("toyx_upgrade_context"),
+        });
       }
       toast({ title: body?.code === "LIMIT_ACTIVE_LISTINGS" ? "Upgrade Required" : "Error", description: body?.message || (toy ? "Failed to update toy." : "Failed to list toy."), variant: "destructive" });
       if (body?.upgradeUrl) setTimeout(() => window.location.href = body.upgradeUrl, 2000);

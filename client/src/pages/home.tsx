@@ -22,8 +22,10 @@ export default function HomePage() {
   const [dismissedCta, setDismissedCta] = useState(false);
   // Open upload modal when redirected from /list-toy or after subscription upgrade
   useEffect(() => {
-    const upgradeCtx = sessionStorage.getItem("toyx_upgrade_context");
+    console.log("HOME: mounted, checking upgrade context...");
+    const upgradeCtx = sessionStorage.getItem("toyx_upgrade_context") || localStorage.getItem("toyx_upgrade_context");
     if (upgradeCtx) {
+      console.log("HOME: found upgrade context:", upgradeCtx);
       try {
         const ctx = JSON.parse(upgradeCtx);
         if (ctx.action === "open-upload-modal") {
