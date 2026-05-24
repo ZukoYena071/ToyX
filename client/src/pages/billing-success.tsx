@@ -9,6 +9,8 @@ export default function BillingSuccess() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    console.log("BILLING_SUCCESS: raw URL search:", window.location.search);
+    console.log("BILLING_SUCCESS: all params:", Object.fromEntries(params.entries()));
     const reference = params.get("reference");
     if (!reference) {
       setStatus("error");
@@ -21,8 +23,25 @@ export default function BillingSuccess() {
       .then((data) => {
         if (data.ok) {
           setStatus("success");
+          // Use returnTo from Paystack metadata (survives external redirect via server-side storage)
+          const returnTo = data.returnTo || "/profile";
+          // Merge action into existing upgrade context (preserving formDraft) so Home can open modal
+          if (data.action) {
+            const existingCtx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
+            let merged: any = { returnTo, action: data.action };
+            if (existingCtx) {
+              try {
+                const parsed = JSON.parse(existingCtx);
+                if (parsed.formDraft) merged.formDraft = parsed.formDraft;
+              } catch {}
+            }
+            localStorage.setItem("toyx_upgrade_context", JSON.stringify(merged));
+            console.log("BILLING_SUCCESS: restored action, formDraft preserved:", !!merged.formDraft);
+          }
+          console.log("BILLING_SUCCESS: returnTo from Paystack metadata:", data.returnTo, "→ using:", returnTo);
           setTimeout(() => {
-            window.location.href = "/profile";
+            console.log("BILLING_SUCCESS: redirecting to", returnTo);
+            window.location.href = returnTo;
           }, 2000);
         } else {
           setStatus("error");

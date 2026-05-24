@@ -57,10 +57,25 @@ export default function Pricing() {
   const handleSubscribe = async (planType: "monthly" | "yearly") => {
     setLoading(planType);
     try {
+      // Check for upgrade context from interrupted flow (e.g. listing limit)
+      let returnTo: string | undefined;
+      let action: string | undefined;
+      const ctx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
+      console.log("PRICING: context check:", ctx ? "found" : "not found");
+      if (ctx) {
+        try {
+          const parsed = JSON.parse(ctx);
+          if (parsed.returnTo) returnTo = parsed.returnTo;
+          if (parsed.action) action = parsed.action;
+          console.log("PRICING: returnTo from context:", returnTo, "action:", action);
+        } catch (e) {
+          console.log("PRICING: failed to parse context", e);
+        }
+      }
       const res = await fetch("/api/billing/paystack/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planType }),
+        body: JSON.stringify({ planType, ...(returnTo ? { returnTo } : {}), ...(action ? { action } : {}) }),
         credentials: "include",
       });
       const data = await res.json();

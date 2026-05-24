@@ -18,6 +18,7 @@ import type { User } from "@shared/schema";
 interface UploadOverlayProps {
   onClose: () => void;
   toy?: any;
+  restoreDraft?: any;
 }
 
 const categories = [
@@ -54,15 +55,36 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   return closest.name;
 }
 
-export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
+export default function UploadOverlay({ onClose, toy, restoreDraft }: UploadOverlayProps) {
   const { user: rawUser } = useAuth();
   const user = rawUser as User | undefined;
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
-  const [images, setImages] = useState<string[]>(toy?.imageUrls || []);
-  const [imageHashes, setImageHashes] = useState<string[]>([]);
-  const [formData, setFormData] = useState({
+
+  // Restore draft from upgrade context if available (runs once on mount only)
+  const [draft] = useState(() => {
+    if (toy) return null;
+    if (restoreDraft) {
+      console.log("RESTORE: draft restored from Home prop");
+      return restoreDraft;
+    }
+    const ctx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
+    if (ctx) {
+      try {
+        const parsed = JSON.parse(ctx);
+        if (parsed.formDraft) {
+          console.log("RESTORE: draft restored from upgrade context");
+          return parsed.formDraft;
+        }
+      } catch {}
+    }
+    return null;
+  });
+
+  const [images, setImages] = useState<string[]>(draft?.images || toy?.imageUrls || []);
+  const [imageHashes, setImageHashes] = useState<string[]>(draft?.imageHashes || []);
+  const [formData, setFormData] = useState(draft?.formData || {
     name: toy?.name || "",
     description: toy?.description || "",
     category: toy?.category || "",
@@ -75,7 +97,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationResults, setLocationResults] = useState<{ displayName: string; lat: number; lng: number }[]>([]);
   const [searchingLocation, setSearchingLocation] = useState(false);
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(draft?.selectedCoords || null);
   const locationDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const { latitude, longitude, error: locationError, loading: locationLoading, requestLocation } = useGeolocation();
@@ -96,7 +118,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       setSelectedCoords({ lat: latitude, lng: longitude });
       reverseGeocode(latitude, longitude).then(location => {
         setDetectedLocation(location);
-        setFormData(prev => {
+        setFormData((prev: any) => {
           if (!prev.location) return { ...prev, location };
           return prev;
         });
@@ -120,11 +142,27 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
       } else if (!toy) {
         setTimeout(() => toast({ title: "Tip", description: "Add 2 photos + a 30+ character description to earn +5 points next time." }), 1000);
       }
+      localStorage.removeItem("toyx_upgrade_context");
+      sessionStorage.removeItem("toyx_upgrade_context");
       onClose();
     },
     onError: (error: any) => {
       const msg = error?.message || "";
       const body = msg.includes("{") ? JSON.parse(msg.substring(msg.indexOf("{"))) : null;
+      if (body?.code === "LIMIT_ACTIVE_LISTINGS") {
+        const ctx = JSON.stringify({
+          returnTo: "/",
+          action: "open-upload-modal",
+          formDraft: { images, imageHashes, formData, selectedCoords },
+        });
+        console.log("UPGRADE CONTEXT: writing", ctx);
+        localStorage.setItem("toyx_upgrade_context", ctx);
+        sessionStorage.setItem("toyx_upgrade_context", ctx);
+        console.log("UPGRADE CONTEXT: verified stored", {
+          session: sessionStorage.getItem("toyx_upgrade_context"),
+          local: localStorage.getItem("toyx_upgrade_context"),
+        });
+      }
       toast({ title: body?.code === "LIMIT_ACTIVE_LISTINGS" ? "Upgrade Required" : "Error", description: body?.message || (toy ? "Failed to update toy." : "Failed to list toy."), variant: "destructive" });
       if (body?.upgradeUrl) setTimeout(() => window.location.href = body.upgradeUrl, 2000);
     },
@@ -175,7 +213,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     const idx = current.indexOf(cat);
     if (idx >= 0) current.splice(idx, 1);
     else current.push(cat);
-    setFormData(prev => ({ ...prev, category: current.join(", ") }));
+    setFormData((prev: any) => ({ ...prev, category: current.join(", ") }));
   };
 
   const toggleAgeGroup = (age: string) => {
@@ -183,7 +221,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
     const idx = current.indexOf(age);
     if (idx >= 0) current.splice(idx, 1);
     else current.push(age);
-    setFormData(prev => ({ ...prev, ageGroup: current.join(", ") }));
+    setFormData((prev: any) => ({ ...prev, ageGroup: current.join(", ") }));
   };
 
   useEffect(() => {
@@ -228,11 +266,15 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
 
   const handleUseDetectedLocation = () => {
     if (detectedLocation) {
-      setFormData(prev => ({ ...prev, location: detectedLocation }));
+      setFormData((prev: any) => ({ ...prev, location: detectedLocation }));
       if (latitude && longitude) setSelectedCoords({ lat: latitude, lng: longitude });
     }
   };
 
+  const clearUpgradeContext = () => {
+    localStorage.removeItem("toyx_upgrade_context");
+    sessionStorage.removeItem("toyx_upgrade_context");
+  };
   const isFormValid = formData.name && formData.category && formData.ageGroup && formData.condition && formData.location && images.length >= 1;
 
   return (
@@ -246,7 +288,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               <h2 className="text-lg font-bold text-white mb-1">{toy ? "Edit Toy" : "List a Toy"}</h2>
               <p className="text-sm text-purple-100">{toy ? "Update your toy listing" : "Share your toy with the community"}</p>
             </div>
-            <button onClick={onClose} className="min-w-[44px] min-h-[44px] bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors shrink-0">
+            <button onClick={() => { clearUpgradeContext(); onClose(); }} className="min-w-[44px] min-h-[44px] bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors shrink-0">
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
@@ -328,16 +370,99 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe your toy's condition, what's included, and why kids would love it..."
+                placeholder="Include condition, missing parts, accessories, and anything parents &amp; kids should know."
                 rows={4}
               />
               <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">{formData.description.length}/500</div>
             </div>
 
+            {/* Categories */}
+            <div>
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
+                Categories <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Select one or more categories</p>
+              <div className="grid grid-cols-2 gap-3">
+                {categories.map((category) => {
+                  const selected = formData.category.split(", ").includes(category);
+                  return (
+                    <button key={category} onClick={() => toggleCategory(category)}
+                      className={`p-4 rounded-xl border-2 transition-all text-left relative min-h-[44px] ${
+                        selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {category}
+                      </div>
+                      {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {formData.category && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {formData.category.split(", ").map((c: string) => (
+                    <Badge key={c} variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                      {c}
+                      <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600 min-h-[24px] min-w-[24px]">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Age Range + Condition — grouped side-by-side */}
+            <div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Age Range</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select one or more</p>
+                  <div className="space-y-2">
+                    {ageGroups.map((age) => {
+                      const selected = formData.ageGroup.split(", ").includes(age);
+                      return (
+                        <button key={age} onClick={() => toggleAgeGroup(age)}
+                          className={`w-full p-3 rounded-xl border-2 text-left transition-all relative min-h-[44px] ${
+                            selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                          }`}
+                        >
+                          <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                            Ages {age}
+                          </div>
+                          {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
+                    Condition <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-2">
+                    {conditions.map((condition) => (
+                      <button key={condition} onClick={() => setFormData({ ...formData, condition })}
+                        className={`w-full p-3 rounded-xl border-2 text-left transition-all min-h-[44px] ${
+                          formData.condition === condition ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <div className={`text-sm font-medium ${formData.condition === condition ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          {condition}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Looking For */}
             <div>
               <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-1">
-                What are you hoping to get in exchange? <span className="text-xs text-gray-400 font-normal">(optional)</span>
+                What would you like in exchange? <span className="text-xs text-gray-400 font-normal">(optional)</span>
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Pick up to 5 categories</p>
               <div className="grid grid-cols-2 gap-3">
@@ -386,90 +511,9 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
               <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">{(formData.lookingForDetails || "").length}/200</div>
             </div>
 
-            {/* Category */}
-            <div>
-              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
-                Categories <span className="text-red-500">*</span>
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Select one or more categories</p>
-              <div className="grid grid-cols-2 gap-3">
-                {categories.map((category) => {
-                  const selected = formData.category.split(", ").includes(category);
-                  return (
-                    <button key={category} onClick={() => toggleCategory(category)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left relative min-h-[44px] ${
-                        selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                    >
-                      <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {category}
-                      </div>
-                      {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
-                    </button>
-                  );
-                })}
-              </div>
-              {formData.category && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {formData.category.split(", ").map((c: string) => (
-                    <Badge key={c} variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
-                      {c}
-                      <button onClick={() => toggleCategory(c)} className="ml-1 text-purple-400 hover:text-purple-600 min-h-[24px] min-w-[24px]">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Age Group and Condition */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Age Range</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select one or more</p>
-                <div className="space-y-2">
-                  {ageGroups.map((age) => {
-                    const selected = formData.ageGroup.split(", ").includes(age);
-                    return (
-                      <button key={age} onClick={() => toggleAgeGroup(age)}
-                        className={`w-full p-3 rounded-xl border-2 text-left transition-all relative min-h-[44px] ${
-                          selected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        <div className={`text-sm font-medium ${selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                          Ages {age}
-                        </div>
-                        {selected && <Check className="absolute top-2 right-2 w-4 h-4 text-purple-500" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">
-                  Condition <span className="text-red-500">*</span>
-                </label>
-                <div className="space-y-2">
-                  {conditions.map((condition) => (
-                    <button key={condition} onClick={() => setFormData({ ...formData, condition })}
-                      className={`w-full p-3 rounded-xl border-2 text-left transition-all min-h-[44px] ${
-                        formData.condition === condition ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                    >
-                      <div className={`text-sm font-medium ${formData.condition === condition ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {condition}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             {/* Location */}
             <div>
-              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Location</label>
+              <label className="block text-base font-semibold text-gray-900 dark:text-gray-50 mb-3">Location <span className="text-xs text-gray-400 font-normal">(Where your toy will be for exchange)</span></label>
               <div className="space-y-3">
                 <div className="relative">
                   <input
@@ -566,7 +610,7 @@ export default function UploadOverlay({ onClose, toy }: UploadOverlayProps) {
           {/* Bottom footer */}
           <div className="shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
+            <button onClick={() => { clearUpgradeContext(); onClose(); }} className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
               Cancel
             </button>
             <button onClick={handleSubmit} disabled={!isFormValid || createToyMutation.isPending}
