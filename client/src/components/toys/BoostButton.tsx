@@ -73,7 +73,7 @@ export default function BoostButton({ toyId, isBoosted: _ignored, boostedUntil, 
       const res = await fetch(`/api/toys/${toyId}/boost/paystack/init`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ boostType }),
+        body: JSON.stringify({ boostType, returnTo: window.location.pathname }),
         credentials: "include",
       });
       const data = await res.json();
