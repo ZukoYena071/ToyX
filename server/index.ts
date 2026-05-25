@@ -1,5 +1,4 @@
 import "dotenv/config";
-import "./instrument";
 import * as Sentry from "@sentry/node";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
