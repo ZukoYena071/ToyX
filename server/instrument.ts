@@ -1,0 +1,15 @@
+import "dotenv/config";
+import * as Sentry from "@sentry/node";
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
+    integrations: [],
+    tracesSampleRate: 0,
+    beforeSend(event) {
+      if (process.env.NODE_ENV === "development" && !process.env.SENTRY_ENVIRONMENT) return null;
+      return event;
+    },
+  });
+}
