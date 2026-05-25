@@ -1,10 +1,24 @@
 import "dotenv/config";
+import * as Sentry from "@sentry/node";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
 import { toys } from "@shared/schema";
 import { eq } from "drizzle-orm";
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
+    integrations: [],
+    tracesSampleRate: 0,
+    beforeSend(event) {
+      if (process.env.NODE_ENV === "development" && !process.env.SENTRY_ENVIRONMENT) return null;
+      return event;
+    },
+  });
+}
 
 declare global {
   namespace Express {
@@ -136,6 +150,11 @@ app.use((req, res, next) => {
     log("Marketing table verified");
   } catch (e: any) {
     log(`Marketing table error: ${e.message}`);
+  }
+
+  // Sentry error handler (captures exceptions, must be before Express error handler)
+  if (process.env.SENTRY_DSN) {
+    Sentry.setupExpressErrorHandler(app);
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
