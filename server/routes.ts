@@ -1641,7 +1641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       if (!user?.email) return res.status(400).json({ message: "User email not found" });
       const toyId = parseInt(req.params.toyId);
-      const { boostType } = req.body;
+      const { boostType, returnTo } = req.body;
       const plans: Record<string, { amount: number; hours: number; label: string }> = {
         boost_lite: { amount: 1900, hours: 24, label: "Boost Lite" },
         boost_plus: { amount: 4900, hours: 72, label: "Boost Plus" },
@@ -1661,7 +1661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           amount: plan.amount,
           callback_url: `${APP_BASE_URL}/billing-success`,
-          metadata: { userId, toyId, boostType, hours: plan.hours, purpose: "toy_boost" },
+          metadata: { userId, toyId, boostType, hours: plan.hours, purpose: "toy_boost", ...(returnTo ? { returnTo } : {}) },
         }),
       });
       if (!result.status) return res.status(400).json({ message: result.message || "Paystack init failed" });
@@ -1803,14 +1803,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       // Handle toy_boost payments separately — do NOT update subscription
       if (data.metadata?.purpose === "toy_boost") {
-        const { toyId, boostType } = data.metadata;
+        const { toyId, boostType, returnTo } = data.metadata;
         const hours: Record<string, number> = { boost_lite: 24, boost_plus: 72, boost_max: 168 };
         const h = hours[boostType] || 24;
         if (toyId) {
           await applyPaidBoost(toyId, userId, h);
           await awardPoints({ userId, eventType: "PAID_BOOST", referenceType: "toy", referenceId: String(toyId), points: 0, meta: { boostType, hours: h, amount: data.amount } });
         }
-        return res.json({ ok: true, purpose: "toy_boost", boostedToyId: toyId });
+        return res.json({ ok: true, purpose: "toy_boost", boostedToyId: toyId, returnTo: returnTo || null });
       }
 
       const updatedUser = await storage.setUserSubscriptionByUserId(userId, updateData);
