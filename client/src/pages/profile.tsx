@@ -1035,6 +1035,14 @@ export default function Profile() {
         </div>
       )}
 
+      {import.meta.env.DEV && (
+        <button
+          onClick={() => { throw new Error("ToyX frontend verification"); }}
+          className="mx-auto mt-2 block text-[10px] text-gray-300 dark:text-gray-600 hover:text-gray-500 min-h-[24px]"
+        >
+          [Debug: trigger Sentry error]
+        </button>
+      )}
       <BottomNav />
     </PageContainer>
   );
