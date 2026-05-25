@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "./instrument";
 import * as Sentry from "@sentry/node";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -6,19 +7,6 @@ import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
 import { toys } from "@shared/schema";
 import { eq } from "drizzle-orm";
-
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
-    integrations: [],
-    tracesSampleRate: 0,
-    beforeSend(event) {
-      if (process.env.NODE_ENV === "development" && !process.env.SENTRY_ENVIRONMENT) return null;
-      return event;
-    },
-  });
-}
 
 declare global {
   namespace Express {
