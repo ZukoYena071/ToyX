@@ -1801,6 +1801,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (data.subscription?.email_token) {
         updateData.paystackEmailToken = data.subscription.email_token;
       }
+      // Handle toy_boost payments separately — do NOT update subscription
+      if (data.metadata?.purpose === "toy_boost") {
+        const { toyId, boostType } = data.metadata;
+        const hours: Record<string, number> = { boost_lite: 24, boost_plus: 72, boost_max: 168 };
+        const h = hours[boostType] || 24;
+        if (toyId) {
+          await applyPaidBoost(toyId, userId, h);
+          await awardPoints({ userId, eventType: "PAID_BOOST", referenceType: "toy", referenceId: String(toyId), points: 0, meta: { boostType, hours: h, amount: data.amount } });
+        }
+        return res.json({ ok: true, purpose: "toy_boost", boostedToyId: toyId });
+      }
+
       const updatedUser = await storage.setUserSubscriptionByUserId(userId, updateData);
       const returnTo = data.metadata?.returnTo || null;
       const action = data.metadata?.action || null;
