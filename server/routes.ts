@@ -8,6 +8,7 @@ import multer from "multer";
 import { uploadImage, validateImage, isR2Configured, processImages } from "./r2";
 import { sendEmail } from "./email";
 import { welcomeTemplate } from "./email/templates/welcome";
+import { exchangeRequestTemplate } from "./email/templates/exchange-request";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
@@ -971,6 +972,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (safetyError) {
         console.error("Failed to insert safety reminder:", safetyError);
+      }
+
+      // Send exchange request email to toy owner (best-effort, must not block exchange)
+      try {
+        const owner = toy.ownerId ? await storage.getUser(toy.ownerId) : null;
+        if (owner?.email) {
+          const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+          const exchangeUrl = `${baseUrl}/chat/${exchange.id}`;
+          const requesterName = user?.firstName || user?.email || "A parent";
+          const { subject, html } = exchangeRequestTemplate(requesterName, toy.name || "a toy", exchangeUrl);
+          await sendEmail({ to: owner.email, subject, html, emailType: "exchange-request" });
+        }
+      } catch (emailError) {
+        console.error("EXCHANGE_REQUEST_EMAIL_ERROR:", emailError);
       }
       
       res.status(201).json(exchange);
