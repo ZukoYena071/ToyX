@@ -9,6 +9,7 @@ import { uploadImage, validateImage, isR2Configured, processImages } from "./r2"
 import { sendEmail } from "./email";
 import { welcomeTemplate } from "./email/templates/welcome";
 import { exchangeRequestTemplate } from "./email/templates/exchange-request";
+import { exchangeAcceptedTemplate } from "./email/templates/exchange-accepted";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
@@ -1000,6 +1001,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exchangeId = parseInt(req.params.id);
       const { status } = req.body;
       const exchange = await storage.updateExchangeStatus(exchangeId, status);
+
+      // If accepted, send email notification to requester
+      if (status === "accepted") {
+        try {
+          const exchData = await db.select({
+            requesterId: exchanges.requesterId,
+            ownerId: exchanges.ownerId,
+            toyId: exchanges.toyId,
+          }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
+          if (exchData.length) {
+            const requester = await storage.getUser(exchData[0].requesterId);
+            const toy = await storage.getToy(exchData[0].toyId);
+            if (requester?.email && toy?.name) {
+              const ownerName = (await storage.getUser(exchData[0].ownerId))?.firstName || "The owner";
+              const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+              const { subject, html } = exchangeAcceptedTemplate(ownerName, toy.name, `${baseUrl}/chat/${exchangeId}`);
+              await sendEmail({ to: requester.email, subject, html, emailType: "exchange-accepted" });
+            }
+          }
+        } catch (emailError) {
+          console.error("EXCHANGE_ACCEPTED_EMAIL_ERROR:", emailError);
+        }
+      }
+
       // If completed, mark both toys as unavailable
       if (status === "completed") {
         const exch = await db.select({ toyId: exchanges.toyId, offeredToyId: exchanges.offeredToyId }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
