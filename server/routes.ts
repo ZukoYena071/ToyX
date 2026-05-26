@@ -457,6 +457,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // Block enforcement: bidirectional invisible separation
+      const viewerId = (req as any).user?.claims?.sub;
+      if (viewerId && viewerId !== user.id) {
+        const [blockedByTarget, blockedViewer] = await Promise.all([
+          storage.isBlocked(user.id, viewerId),
+          storage.isBlocked(viewerId, user.id),
+        ]);
+        if (blockedByTarget || blockedViewer) {
+          return res.status(404).json({ message: "User not found" });
+        }
+      }
+
       if (user.profileImageUrl) {
         user.profileImageUrl = user.profileImageUrl.replace(/^http:/, "https:");
       }
@@ -469,6 +482,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/users/:id/toys', async (req, res) => {
     try {
+      // Block enforcement: hide toys if viewer is blocked by or has blocked the target user
+      const viewerId = (req as any).user?.claims?.sub;
+      if (viewerId && viewerId !== req.params.id) {
+        const [blockedByTarget, blockedViewer] = await Promise.all([
+          storage.isBlocked(req.params.id, viewerId),
+          storage.isBlocked(viewerId, req.params.id),
+        ]);
+        if (blockedByTarget || blockedViewer) {
+          return res.status(404).json({ message: "User not found" });
+        }
+      }
+
       const toys = await storage.getToysByUser(req.params.id);
       const toysWithMeta = await Promise.all(toys.map(async (t: any) => {
         const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
@@ -582,17 +607,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { search, category } = req.query;
       let toys;
+      const uid = req.user?.claims?.sub;
+
+      // Collect blocked user IDs for filtering (bidirectional)
+      let blockedIds: string[] = [];
+      if (uid) {
+        const [blocked, blockers] = await Promise.all([
+          storage.getBlockedUserIds(uid),
+          storage.getBlockerUserIds(uid),
+        ]);
+        blockedIds = Array.from(new Set([...blocked, ...blockers]));
+      }
       
+      // Fetch toys
       if (search) {
-        toys = await storage.searchToys(search as string);
+        toys = await storage.searchToys(search as string, blockedIds);
       } else if (category) {
-        toys = await storage.getToysByCategory(category as string);
+        toys = await storage.getToysByCategory(category as string, blockedIds);
       } else {
-        toys = await storage.getToys();
+        toys = await storage.getToys(blockedIds);
       }
       
       // Add favorite status, owner rating, and exchange status
-      const uid = req.user?.claims?.sub;
       for (const toy of toys) {
         toy.isFavorited = uid ? await storage.isFavorite(uid, toy.id) : false;
         toy.ownerRating = await storage.getUserAverageRating(toy.ownerId);
@@ -650,6 +686,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!toy) {
         return res.status(404).json({ message: "Toy not found" });
+      }
+
+      // Block enforcement: if viewer is blocked by or has blocked the owner, hide the listing
+      const viewerId = (req as any).user?.claims?.sub;
+      if (viewerId) {
+        const [blockedByOwner, blockedViewer] = await Promise.all([
+          storage.isBlocked(toy.ownerId, viewerId),
+          storage.isBlocked(viewerId, toy.ownerId),
+        ]);
+        if (blockedByOwner || blockedViewer) {
+          return res.status(404).json({ message: "Toy not found" });
+        }
       }
       
       res.json(toy);
