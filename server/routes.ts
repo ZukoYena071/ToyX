@@ -621,16 +621,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Sort: boosted first (boostedUntil DESC), then distance ASC, then createdAt DESC, then id DESC
+      // Sort: boosted first (boostedUntil DESC), then distance ASC, then id DESC (newest first)
       toys.sort((a: any, b: any) => {
         const aBoosted = !!(a.boostedUntil && new Date(a.boostedUntil) > now);
         const bBoosted = !!(b.boostedUntil && new Date(b.boostedUntil) > now);
         if (aBoosted !== bBoosted) return aBoosted ? -1 : 1;
         if (aBoosted && bBoosted) return new Date(b.boostedUntil).getTime() - new Date(a.boostedUntil).getTime();
         if (a.distanceKm != null && b.distanceKm != null) return a.distanceKm - b.distanceKm;
-        const aTime = new Date(a.createdAt || 0).getTime();
-        const bTime = new Date(b.createdAt || 0).getTime();
-        if (aTime !== bTime) return bTime - aTime;
         return (b.id || 0) - (a.id || 0);
       });
       

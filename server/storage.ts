@@ -175,7 +175,7 @@ export class DatabaseStorage implements IStorage {
       .from(toys)
       .leftJoin(users, eq(toys.ownerId, users.id))
       .where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)))
-      .orderBy(desc(toys.createdAt))
+      .orderBy(desc(toys.id))
       .then(rows => 
         rows.map(row => ({
           ...row.toys,
@@ -248,7 +248,7 @@ export class DatabaseStorage implements IStorage {
           )
         )
       )
-      .orderBy(desc(toys.createdAt))
+      .orderBy(desc(toys.id))
       .then(rows => 
         rows.map(row => ({
           ...row.toys,
@@ -269,7 +269,7 @@ export class DatabaseStorage implements IStorage {
           eq(toys.category, category)
         )
       )
-      .orderBy(desc(toys.createdAt))
+      .orderBy(desc(toys.id))
       .then(rows => 
         rows.map(row => ({
           ...row.toys,
