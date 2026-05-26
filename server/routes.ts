@@ -180,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Reset onboarding (dev-only)
     app.post("/api/dev/reset-onboarding", isAuthenticated, async (req: any, res) => {
       try {
-        const userId = req.user.claims.sub;
+      const userId = (req as any).user?.claims?.sub;
         await storage.updateUser(userId, { onboardingVersion: 0 });
         res.json({ ok: true });
       } catch (e: any) {
@@ -1046,8 +1046,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/exchanges/:id/status', isAuthenticated, async (req, res) => {
     try {
       const exchangeId = parseInt(req.params.id);
+      const actor = req as any;
+      const userId = actor.user?.claims?.sub;
       const { status } = req.body;
-      const exchange = await storage.updateExchangeStatus(exchangeId, status);
+
+      // Verify the user is a participant in this exchange (requester or owner)
+      const [exchange] = await db.select({
+        requesterId: exchanges.requesterId,
+        ownerId: exchanges.ownerId,
+      }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
+      if (!exchange) return res.status(404).json({ message: "Exchange not found" });
+      if (exchange.requesterId !== userId && exchange.ownerId !== userId) {
+        return res.status(403).json({ code: "FORBIDDEN", message: "You are not a participant in this exchange" });
+      }
+
+      const updated = await storage.updateExchangeStatus(exchangeId, status);
 
       // If accepted, send email notification to requester
       if (status === "accepted") {
@@ -1082,7 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      res.json(exchange);
+      res.json(updated);
     } catch (error) {
       console.error("Error updating exchange status:", error);
       res.status(500).json({ message: "Failed to update exchange status" });
