@@ -45,8 +45,21 @@ export default function Chat() {
 
   const { data: messages } = useQuery<MessageWithSender[]>({
     queryKey: ["/api/exchanges", exchangeId, "messages"],
-    enabled: !!exchangeId,
+    enabled: !!exchangeId && exchangeId !== "system",
   });
+
+  // Moderation messages for the system thread
+  const { data: modMessages } = useQuery({
+    queryKey: ["/api/me/moderation-messages"],
+    enabled: exchangeId === "system",
+  });
+
+  const { data: modUnreadData } = useQuery({
+    queryKey: ["/api/me/moderation-messages/unread-count"],
+    enabled: !exchangeId,
+    refetchInterval: 60000,
+  });
+  const modUnreadCount = (modUnreadData as any)?.unreadCount || 0;
 
   const { data: canReviewData } = useQuery<{ canReview: boolean }>({
     queryKey: ["/api/exchanges", exchangeId, "can-review"],
@@ -194,6 +207,33 @@ export default function Chat() {
             <EmptyState icon={<span className="text-6xl">💬</span>} title="No conversations yet" subtitle="Start by requesting an exchange for a toy you're interested in" />
           ) : (
             <div className="space-y-3">
+              {/* System thread — ToyX Safety Team */}
+              <Link href="/chat/system">
+                <SectionCard className={`p-4 hover:shadow-sm transition-all duration-200 ${modUnreadCount > 0 ? 'ring-2 ring-purple-300 dark:ring-purple-700' : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <span className="text-lg">🛡️</span>
+                      </div>
+                      {modUnreadCount > 0 && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
+                          <span className="text-white text-[8px] font-bold">{modUnreadCount > 9 ? '9+' : modUnreadCount}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">ToyX Safety Team</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Official ToyX Communication</p>
+                    </div>
+                    {modUnreadCount > 0 && (
+                      <div className="bg-purple-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">{modUnreadCount}</div>
+                    )}
+                  </div>
+                </SectionCard>
+              </Link>
+
               {[...(exchanges || [])].sort((a, b) => {
                 const aUnread = (a as any).hasUnread ? 1 : 0;
                 const bUnread = (b as any).hasUnread ? 1 : 0;
@@ -238,6 +278,47 @@ export default function Chat() {
           )}
         </div>
 
+        <BottomNav />
+      </PageContainer>
+    );
+  }
+
+  // System conversation — moderation messages thread
+  if (exchangeId === "system") {
+    const msgs: any[] = Array.isArray(modMessages) ? modMessages : (modMessages as any)?.messages || [];
+    return (
+      <PageContainer className="pb-24">
+        <div className="sticky top-0 z-50 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3">
+            <button onClick={() => setLocation("/chat")} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </button>
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-50">ToyX Safety Team</h1>
+            <div className="w-10" />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 max-w-lg mx-auto min-h-[60vh]">
+          {msgs.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-xs text-gray-400">No messages yet</div>
+          ) : (
+            msgs.map((msg: any) => (
+              <div key={msg.id} className="flex justify-center">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 max-w-md w-full">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-sm">🛡️</span>
+                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                      {msg.subject || "ToyX Safety Team"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+                  <p className="text-[10px] text-blue-400 dark:text-blue-500 mt-1.5">
+                    {msg.createdAt ? new Date(msg.createdAt).toLocaleString() : ""}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
         <BottomNav />
       </PageContainer>
     );
