@@ -1522,9 +1522,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = new Date(Date.now() + days * 86400000);
       await db.update(users).set({ suspendedUntil: expiresAt, suspensionReason: reason || null }).where(eq(users.id, targetId));
       await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "suspend", message: reason || null, durationDays: days, expiresAt }).returning();
-      if (messageToUser) {
-        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account suspended", body: messageToUser });
-      }
+      const suspensionBody = messageToUser || (
+        `Your account has been temporarily suspended for ${days} day${days > 1 ? 's' : ''} due to: ${reason || "a community guideline concern"}.\n\nDuring this period you cannot:\n• create listings\n• request exchanges\n• send messages\n\nIf you believe this was a mistake, please contact support.`
+      );
+      await db.insert(moderationMessages).values({
+        userId: targetId, adminUserId: adminId, reportId: reportId || null,
+        subject: "Account suspended",
+        body: suspensionBody,
+      });
 
       // Send suspension notification email to the affected user
       try {
@@ -1551,9 +1556,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { reason, messageToUser, reportId } = req.body;
       await db.update(users).set({ bannedAt: new Date(), suspensionReason: reason || null }).where(eq(users.id, targetId));
       await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "ban", message: reason || null }).returning();
-      if (messageToUser) {
-        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account banned", body: messageToUser });
-      }
+      const banBody = messageToUser || (
+        `Your ToyX account has been permanently closed due to: ${reason || "a community guideline concern"}.\n\nIf you believe this was a mistake, please contact support.`
+      );
+      await db.insert(moderationMessages).values({
+        userId: targetId, adminUserId: adminId, reportId: reportId || null,
+        subject: "Account closed",
+        body: banBody,
+      });
 
       // Send account closure notification email to the affected user
       try {
