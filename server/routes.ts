@@ -13,9 +13,10 @@ import { exchangeAcceptedTemplate } from "./email/templates/exchange-accepted";
 import { moderationMessageTemplate } from "./email/templates/moderation-message";
 import { accountSuspendedTemplate } from "./email/templates/account-suspended";
 import { accountBannedTemplate } from "./email/templates/account-banned";
+import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, insertMarketingSubscriberSchema, insertSupportRequestSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -56,6 +57,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("MARKETING_SUBSCRIPTION_ERROR:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Support / appeals request endpoint
+  app.post("/api/support", async (req, res) => {
+    try {
+      const parsed = insertSupportRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const firstError = parsed.error.errors[0];
+        return res.status(400).json({ message: firstError?.message || "Invalid input" });
+      }
+      const parsedData = parsed.data;
+      const userId = (req as any).user?.claims?.sub || null;
+      const email = parsedData.email || (userId ? (await storage.getUser(userId))?.email : null) || null;
+      const { category, subject, message } = parsedData;
+
+      await db.insert(supportRequests).values({
+        userId,
+        email,
+        category,
+        subject,
+        message,
+      });
+
+      // Send internal notification email to support/admin
+      try {
+        const userEmail = email || "(authenticated)";
+        const fromName = userId ? `User ${userId.substring(0, 12)}` : (email || "Anonymous");
+        const { html } = supportRequestTemplate(fromName, category, subject, message, userEmail);
+        await sendEmail({
+          to: "The ToyX Team <hello@toyxchange.online>",
+          subject: `[Support] ${subject.substring(0, 60)}`,
+          html,
+          emailType: "support-request",
+        });
+      } catch (emailError) {
+        console.error("SUPPORT_EMAIL_ERROR:", emailError);
+      }
+
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("SUPPORT_REQUEST_ERROR:", error);
+      res.status(500).json({ message: "Failed to submit support request" });
     }
   });
 

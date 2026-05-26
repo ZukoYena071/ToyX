@@ -34,6 +34,7 @@ import AdminModeration from "@/pages/admin-moderation";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import DataDeletionPage from "@/pages/data-deletion";
+import SupportPage from "@/pages/support";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
 function ListToyRoute() {
   const [, setLocation] = useLocation();
@@ -45,7 +46,7 @@ function ListToyRoute() {
 
 const PUBLIC_ROUTES = new Set([
   "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
-  "/pricing", "/terms", "/privacy-policy", "/data-deletion", "/billing-success", "/billing-cancel",
+  "/pricing", "/terms", "/privacy-policy", "/data-deletion", "/support", "/billing-success", "/billing-cancel",
   "/rewards", "/invite", "/exchange-request",
 ]);
 
@@ -89,6 +90,7 @@ function Router() {
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/data-deletion" component={DataDeletionPage} />
+        <Route path="/support" component={SupportPage} />
         <Route path="/billing-success" component={BillingSuccess} />
         <Route path="/billing-cancel" component={BillingCancel} />
         <Route path="/rewards" component={Rewards} />
@@ -132,6 +134,7 @@ function Router() {
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/data-deletion" component={DataDeletionPage} />
+        <Route path="/support" component={SupportPage} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />
       <Route path="/loading-demo" component={LoadingDemo} />

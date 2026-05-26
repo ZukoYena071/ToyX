@@ -327,6 +327,30 @@ export const insertMarketingSubscriberSchema = createInsertSchema(marketingSubsc
   email: z.string().email("Invalid email address"),
 });
 
+// Support requests
+export const supportRequests = pgTable("support_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  email: varchar("email"),
+  category: varchar("category", { length: 64 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("open"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSupportRequestSchema = createInsertSchema(supportRequests).pick({
+  email: true,
+  category: true,
+  subject: true,
+  message: true,
+}).extend({
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  category: z.enum(["account-issue", "moderation-review", "safety-concern", "billing", "general-support"]),
+  subject: z.string().min(3, "Subject must be at least 3 characters").max(255),
+  message: z.string().min(10, "Message must be at least 10 characters").max(5000),
+});
+
 // Insert schemas
 export const insertToySchema = createInsertSchema(toys, {
   imageUrls: z.array(z.string().min(1)).min(1, "At least 1 image is required"),
