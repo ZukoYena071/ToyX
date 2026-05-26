@@ -286,6 +286,16 @@ export default function Chat() {
   // System conversation — moderation messages thread
   if (exchangeId === "system") {
     const msgs: any[] = Array.isArray(modMessages) ? modMessages : (modMessages as any)?.messages || [];
+
+    // Auto-mark all unread messages as read
+    useEffect(() => {
+      msgs.forEach((msg: any) => {
+        if (!msg.readAt) {
+          fetch(`/api/me/moderation-messages/${msg.id}/read`, { method: "PATCH", credentials: "include" }).catch(() => {});
+        }
+      });
+    }, [modMessages]);
+
     return (
       <PageContainer className="pb-24">
         <div className="sticky top-0 z-50 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
