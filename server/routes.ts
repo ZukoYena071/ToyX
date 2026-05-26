@@ -10,6 +10,7 @@ import { sendEmail } from "./email";
 import { welcomeTemplate } from "./email/templates/welcome";
 import { exchangeRequestTemplate } from "./email/templates/exchange-request";
 import { exchangeAcceptedTemplate } from "./email/templates/exchange-accepted";
+import { moderationMessageTemplate } from "./email/templates/moderation-message";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
@@ -1445,6 +1446,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!msgBody) return res.status(400).json({ message: "Message body required" });
       const [msg] = await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: subject || "Message from ToyX", body: msgBody }).returning();
       await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "message", message: msgBody }).returning();
+
+      // Send moderation notification email to the affected user
+      try {
+        const targetUser = await storage.getUser(targetId);
+        if (targetUser?.email) {
+          const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+          const { subject: emailSubject, html } = moderationMessageTemplate(`${baseUrl}/privacy/messages`);
+          await sendEmail({ to: targetUser.email, subject: emailSubject, html, emailType: "moderation-message" });
+        }
+      } catch (emailError) {
+        console.error("MODERATION_MESSAGE_EMAIL_ERROR:", emailError);
+      }
+
       res.json({ ok: true, id: msg.id });
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
