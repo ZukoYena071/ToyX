@@ -617,6 +617,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           storage.getBlockerUserIds(uid),
         ]);
         blockedIds = Array.from(new Set([...blocked, ...blockers]));
+        if (blockedIds.length > 0) {
+          console.log("BLOCK_FILTER: viewer", uid.substring(0, 12), "blocking", blockedIds.length, "users, filtered from toys query");
+        }
       }
       
       // Fetch toys
