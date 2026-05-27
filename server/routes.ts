@@ -1825,6 +1825,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Paystack billing endpoints
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "";
+  if (!PAYSTACK_SECRET_KEY) {
+    console.warn("PAYSTACK_SECRET_KEY not set — payments will fail");
+  }
   const PAYSTACK_MONTHLY_PLAN_CODE = process.env.PAYSTACK_MONTHLY_PLAN_CODE || "PLN_qa2hymptm1v3pks";
   const PAYSTACK_YEARLY_PLAN_CODE = process.env.PAYSTACK_YEARLY_PLAN_CODE || "PLN_6r1rrbz34iv7ct4";
   const PAYSTACK_MONTHLY_AMOUNT = parseInt(process.env.PAYSTACK_MONTHLY_AMOUNT || "8900");

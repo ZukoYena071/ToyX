@@ -9,6 +9,15 @@ import { storage } from "./storage";
 
 const MemoryStore = memorystore(session);
 
+// Fail fast in production if SESSION_SECRET is missing — prevents insecure session forgery
+if (!process.env.SESSION_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    console.error("FATAL: SESSION_SECRET must be set in production");
+    process.exit(1);
+  }
+  console.warn("SESSION_SECRET not set — using insecure default (dev only)");
+}
+
 export function getSession() {
   return session({
     secret: process.env.SESSION_SECRET || "local-dev-secret",
