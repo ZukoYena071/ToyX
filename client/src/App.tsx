@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ import BillingCancel from "@/pages/billing-cancel";
 import Rewards from "@/pages/rewards";
 import Invite from "@/pages/invite";
 import LoadingLogo from "@/components/ui/LoadingLogo";
+import FullscreenLoader from "@/components/ui/FullscreenLoader";
 import PrivacySafety from "@/pages/privacy-safety";
 import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
@@ -53,23 +54,21 @@ const PUBLIC_ROUTES = new Set([
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
+  const [authDone, setAuthDone] = useState(false);
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // Fullscreen branded loader during auth hydration only
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-b from-purple-50 via-white to-pink-50 dark:from-gray-950 dark:via-slate-950 dark:to-indigo-950">
-        <div className="flex flex-col items-center justify-center">
-          <img
-            src="https://toyxchange.online/assets/toyx-logo.png"
-            alt="ToyX"
-            className="h-40 w-auto toyx-pulse dark:brightness-110 mb-6"
-          />
-          <p className="text-sm text-gray-500 dark:text-gray-400 animate-fade-in">Preparing your ToyX community…</p>
-        </div>
-      </div>
-    );
+  // Keep loader briefly after auth resolves so the simulation completes gracefully
+  useEffect(() => {
+    if (!isLoading) {
+      const timer = setTimeout(() => setAuthDone(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
+
+  // Fullscreen simulated loader during + briefly after auth
+  if (isLoading || !authDone) {
+    return <FullscreenLoader />;
   }
 
   // Save protected route path for redirect after login
