@@ -190,6 +190,13 @@ export async function setupAuth(app: Express) {
     console.log("Facebook OAuth configured");
   } else if (ENABLE_FACEBOOK_AUTH) {
     console.warn("FACEBOOK_AUTH_MISCONFIGURED: ENABLE_FACEBOOK_AUTH=true but FACEBOOK_APP_ID or FACEBOOK_APP_SECRET missing");
+    import("@sentry/node").then(Sentry => {
+      Sentry.captureMessage("FACEBOOK_AUTH_MISCONFIGURED: feature flag enabled but credentials missing", "warning");
+    }).catch(() => {});
+  } else {
+    import("@sentry/node").then(Sentry => {
+      Sentry.captureMessage("FACEBOOK_AUTH_DISABLED: ENABLE_FACEBOOK_AUTH not true", "info");
+    }).catch(() => {});
   }
 
   // Always register routes so they don't 404 in production — handler checks config at runtime

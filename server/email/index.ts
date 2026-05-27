@@ -21,6 +21,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
   if (!process.env.RESEND_API_KEY) {
     console.warn("EMAIL_SKIPPED: RESEND_API_KEY not set");
+    try {
+      const Sentry = await import("@sentry/node");
+      Sentry.captureMessage("EMAIL_SKIPPED: RESEND_API_KEY not set", "warning");
+    } catch {}
     return { sent: false, error: "RESEND_API_KEY not set" };
   }
 

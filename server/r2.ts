@@ -91,7 +91,10 @@ export async function uploadImage(
       key,
     };
   } catch (error: any) {
-    console.error("R2 upload error:", error);
+    console.error("R2_UPLOAD_ERROR:", error.message);
+    import("@sentry/node").then(Sentry => {
+      Sentry.captureException(error, { tags: { operation: "r2-upload" } });
+    }).catch(() => {});
     return {
       success: false,
       error: error.message || "Upload failed",
@@ -134,6 +137,11 @@ export async function processImages(urls: string[]): Promise<string[]> {
       results.push(url);
     } else if (url.startsWith(DATA_URI_PREFIX)) {
       if (!isR2Configured()) {
+        console.warn("R2_UNAVAILABLE: uploads falling back to base64 storage");
+        // Capture in Sentry if available
+        import("@sentry/node").then(Sentry => {
+          Sentry.captureMessage("R2_UNAVAILABLE: uploads falling back to base64 storage", "warning");
+        }).catch(() => {});
         results.push(url);
         continue;
       }
