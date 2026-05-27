@@ -70,8 +70,8 @@ function Router() {
   // Show loading screen while auth is loading
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
-        <LoadingLogo label="Loading..." />
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 via-white to-pink-50 dark:from-gray-950 dark:via-slate-950 dark:to-indigo-950">
+        <LoadingLogo rotating />
       </div>
     );
   }
