@@ -409,8 +409,8 @@ export default function ToyDetail() {
       )}
 
       {showToySelectionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col shadow-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 modal-overlay">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col shadow-lg modal-content">
             <div className="p-6 pb-0 shrink-0">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4"><User className="w-6 h-6 text-white" /></div>
@@ -449,8 +449,8 @@ export default function ToyDetail() {
       )}
 
       {showRequestModal && selectedToyForExchange && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <SectionCard className="p-6 w-full max-w-sm mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 modal-overlay">
+          <SectionCard className="p-6 w-full max-w-sm mx-4 modal-content">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4"><User className="w-6 h-6 text-white" /></div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Confirm Exchange Request</h3>
@@ -550,8 +550,8 @@ export default function ToyDetail() {
 
       {/* Share modal */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowShareModal(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm mx-4 overflow-hidden shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm mx-4 overflow-hidden shadow-xl modal-content" onClick={e => e.stopPropagation()}>
             <div className="p-6 pb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 text-center mb-1">Share this toy</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">{(toy as any)?.name}</p>
