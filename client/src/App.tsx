@@ -67,11 +67,18 @@ function Router() {
   // Check if user has completed onboarding from their profile (with localStorage fallback for migration)
   const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2 || localStorage.getItem('toyxOnboardingVersion') === '2';
 
-  // Show loading screen while auth is loading
+  // Fullscreen branded loader — used for auth/session restore, never shows skeletons underneath
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 via-white to-pink-50 dark:from-gray-950 dark:via-slate-950 dark:to-indigo-950">
-        <LoadingLogo rotating />
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-b from-purple-50 via-white to-pink-50 dark:from-gray-950 dark:via-slate-950 dark:to-indigo-950">
+        <div className="flex flex-col items-center justify-center">
+          <img
+            src="https://toyxchange.online/assets/toyx-logo.png"
+            alt="ToyX"
+            className="h-40 w-auto toyx-pulse dark:brightness-110 mb-6"
+          />
+          <p className="text-sm text-gray-500 dark:text-gray-400 animate-fade-in">Preparing your ToyX community…</p>
+        </div>
       </div>
     );
   }
