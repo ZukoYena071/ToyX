@@ -6,7 +6,6 @@ import { Search, MapPin } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import UploadOverlay from "@/components/upload-overlay";
 import BottomNav from "@/components/bottom-nav";
-import { PageLoadingSkeleton } from "@/components/loading-skeletons";
 import PageContainer from "@/components/ui/PageContainer";
 import ToyCarouselCard from "@/components/toys/ToyCarouselCard";
 import { apiRequest } from "@/lib/queryClient";
@@ -140,8 +139,6 @@ export default function HomePage() {
       </div>
     </div>
   );
-
-  if (isLoading) return <PageLoadingSkeleton />;
 
   return (
     <PageContainer className="pb-24">
