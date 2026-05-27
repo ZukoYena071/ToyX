@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -53,20 +53,11 @@ const PUBLIC_ROUTES = new Set([
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
-  const [initialLoad, setInitialLoad] = useState(true);
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // Keep fullscreen loader briefly after auth settles so initial queries populate
-  useEffect(() => {
-    if (!isLoading) {
-      const timer = setTimeout(() => setInitialLoad(false), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading]);
-
-  // Show fullscreen branded loader during auth hydration or initial bootstrap
-  if (isLoading || initialLoad) {
+  // Fullscreen branded loader during auth hydration only
+  if (isLoading) {
     return (
       <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-b from-purple-50 via-white to-pink-50 dark:from-gray-950 dark:via-slate-950 dark:to-indigo-950">
         <div className="flex flex-col items-center justify-center">
