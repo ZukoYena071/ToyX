@@ -59,7 +59,7 @@ function Router() {
 
   // Force fullscreen loader on initial app bootstrap, even if auth resolves instantly
   useEffect(() => {
-    const timer = setTimeout(() => setInitialLoad(false), 600);
+    const timer = setTimeout(() => setInitialLoad(false), 1400);
     return () => clearTimeout(timer);
   }, []);
 
