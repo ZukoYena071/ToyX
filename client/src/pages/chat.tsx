@@ -38,14 +38,16 @@ export default function Chat() {
     enabled: !exchangeId,
   });
 
+  const isSystemThread = exchangeId === "system";
+
   const { data: exchange } = useQuery<ExchangeWithDetails>({
     queryKey: ["/api/exchanges", exchangeId],
-    enabled: !!exchangeId,
+    enabled: !!exchangeId && !isSystemThread,
   });
 
   const { data: messages } = useQuery<MessageWithSender[]>({
     queryKey: ["/api/exchanges", exchangeId, "messages"],
-    enabled: !!exchangeId && exchangeId !== "system",
+    enabled: !!exchangeId && !isSystemThread,
   });
 
   // Moderation messages for the system thread
@@ -63,15 +65,27 @@ export default function Chat() {
 
   const { data: canReviewData } = useQuery<{ canReview: boolean }>({
     queryKey: ["/api/exchanges", exchangeId, "can-review"],
-    enabled: !!exchangeId && !!user,
+    enabled: !!exchangeId && !!user && !isSystemThread,
   });
 
   const blockStatusQueryKey = [`/api/exchanges/${exchangeId}/block-status`] as const;
 
   const { data: blockStatus } = useQuery<{ blockedByMe: boolean; blockedMe: boolean }>({
     queryKey: blockStatusQueryKey,
-    enabled: !!exchangeId,
+    enabled: !!exchangeId && !isSystemThread,
   });
+
+  // Auto-mark moderation messages as read when viewing the system thread
+  useEffect(() => {
+    if (isSystemThread && modMessages) {
+      const msgs: any[] = Array.isArray(modMessages) ? modMessages : (modMessages as any)?.messages || [];
+      msgs.forEach((msg: any) => {
+        if (!msg.readAt) {
+          fetch(`/api/me/moderation-messages/${msg.id}/read`, { method: "PATCH", credentials: "include" }).catch(() => {});
+        }
+      });
+    }
+  }, [exchangeId, modMessages]);
 
   useEffect(() => {
     if (exchangeId) {
@@ -286,15 +300,6 @@ export default function Chat() {
   // System conversation — moderation messages thread
   if (exchangeId === "system") {
     const msgs: any[] = Array.isArray(modMessages) ? modMessages : (modMessages as any)?.messages || [];
-
-    // Auto-mark all unread messages as read
-    useEffect(() => {
-      msgs.forEach((msg: any) => {
-        if (!msg.readAt) {
-          fetch(`/api/me/moderation-messages/${msg.id}/read`, { method: "PATCH", credentials: "include" }).catch(() => {});
-        }
-      });
-    }, [modMessages]);
 
     return (
       <PageContainer className="pb-24">
