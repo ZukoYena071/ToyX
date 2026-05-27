@@ -20,6 +20,27 @@ export default function HomePage() {
   const [restoreDraft, setRestoreDraft] = useState<any>(null);
   const [enablingLoc, setEnablingLoc] = useState(false);
   const [dismissedCta, setDismissedCta] = useState(false);
+  // Save scroll position before navigating away (restore on return)
+  useEffect(() => {
+    const handleBeforeNav = () => {
+      if (window.scrollY > 0) {
+        sessionStorage.setItem("toyx_home_scroll", String(window.scrollY));
+      }
+    };
+    // Listen for carousel card clicks
+    document.addEventListener("click", handleBeforeNav, true);
+    return () => document.removeEventListener("click", handleBeforeNav, true);
+  }, []);
+
+  // Restore scroll position when returning from toy detail
+  useEffect(() => {
+    const saved = sessionStorage.getItem("toyx_home_scroll");
+    if (saved) {
+      sessionStorage.removeItem("toyx_home_scroll");
+      setTimeout(() => window.scrollTo(0, parseInt(saved, 10)), 50);
+    }
+  }, []);
+
   // Open upload modal when redirected from /list-toy or after subscription upgrade
   useEffect(() => {
     console.log("HOME: mounted, checking upgrade context...");
