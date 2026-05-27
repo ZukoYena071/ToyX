@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,15 @@ import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import PageContainer from "@/components/ui/PageContainer";
 
 export default function Signup() {
+  const [providers, setProviders] = useState<{ google: boolean; facebook: boolean }>({ google: true, facebook: true });
+
+  useEffect(() => {
+    fetch("/api/auth/providers", { credentials: "include" })
+      .then(r => r.json())
+      .then(data => setProviders(data))
+      .catch(() => {});
+  }, []);
+
   const [formData, setFormData] = useState({
     firstName: '',
     email: '',
@@ -117,15 +126,17 @@ export default function Signup() {
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Continue with Google</span>
           </button>
 
-          <button
-            onClick={() => window.location.href = "/api/auth/facebook"}
-            className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
-          >
-            <svg className="w-5 h-5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Continue with Facebook</span>
-          </button>
+          {providers.facebook && (
+            <button
+              onClick={() => window.location.href = "/api/auth/facebook"}
+              className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
+            >
+              <svg className="w-5 h-5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Continue with Facebook</span>
+            </button>
+          )}
 
         </div>
 

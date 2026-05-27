@@ -207,6 +207,14 @@ export async function setupAuth(app: Express) {
   });
 
   // Demo users no longer auto-created per cleanup policy
+
+  // Provider availability endpoint — lets the frontend hide unavailable auth buttons
+  const facebookAvailable = !!(FACEBOOK_APP_ID && FACEBOOK_APP_SECRET && APP_BASE_URL && ENABLE_FACEBOOK_AUTH);
+  const googleAvailable = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && APP_BASE_URL);
+
+  app.get("/api/auth/providers", (req, res) => {
+    res.json({ google: googleAvailable, facebook: facebookAvailable });
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
