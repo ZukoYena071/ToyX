@@ -60,7 +60,7 @@ function Router() {
   // Keep fullscreen loader briefly after auth settles so initial queries populate
   useEffect(() => {
     if (!isLoading) {
-      const timer = setTimeout(() => setInitialLoad(false), 1200);
+      const timer = setTimeout(() => setInitialLoad(false), 500);
       return () => clearTimeout(timer);
     }
   }, [isLoading]);
