@@ -57,11 +57,20 @@ function Router() {
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // Force fullscreen loader on initial app bootstrap, even if auth resolves instantly
+  // Keep fullscreen loader until auth + critical queries complete
   useEffect(() => {
-    const timer = setTimeout(() => setInitialLoad(false), 1400);
-    return () => clearTimeout(timer);
-  }, []);
+    const checkReady = () => {
+      const toysState = queryClient.getQueryState(["/api/toys"]);
+      // Hide loader when auth is done AND toys have loaded (or failed)
+      if (!isLoading && toysState && (toysState.status === "success" || toysState.status === "error")) {
+        setInitialLoad(false);
+      } else {
+        // Re-check every 300ms until ready
+        setTimeout(checkReady, 300);
+      }
+    };
+    checkReady();
+  }, [isLoading]);
 
   // Show fullscreen branded loader during auth hydration or initial bootstrap
   if (isLoading || initialLoad) {
