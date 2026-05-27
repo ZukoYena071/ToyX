@@ -132,8 +132,9 @@ export default function HomePage() {
           />
         ))}
         {sectionToys.length === 0 && (
-          <div className="flex-shrink-0 w-[78%] h-40 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500">No toys found</p>
+          <div className="flex-shrink-0 w-[78%] h-40 bg-gray-50 dark:bg-gray-800/50 rounded-2xl flex flex-col items-center justify-center px-6">
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 mb-1">No toys nearby just yet</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center leading-relaxed">Be the first family in your area to start sharing toys 🧸</p>
           </div>
         )}
       </div>

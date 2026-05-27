@@ -314,7 +314,10 @@ export default function Chat() {
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 max-w-lg mx-auto min-h-[60vh]">
           {msgs.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-xs text-gray-400">No messages yet</div>
+            <div className="flex flex-col items-center justify-center h-40">
+              <span className="text-lg mb-2">🛡️</span>
+              <p className="text-xs text-gray-400">Messages from the ToyX Safety Team will appear here</p>
+            </div>
           ) : (
             msgs.map((msg: any) => (
               <div key={msg.id} className="flex justify-center">

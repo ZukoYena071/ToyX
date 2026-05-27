@@ -12,6 +12,7 @@ import {
 import { useState, useEffect, useRef, useCallback } from "react";
 import BottomNav from "@/components/bottom-nav";
 import BoostButton from "@/components/toys/BoostButton";
+import { ToyDetailSkeleton } from "@/components/loading-skeletons";
 import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import { normalizeList, ChipRow } from "@/components/toys/MetaChip";
@@ -140,14 +141,7 @@ export default function ToyDetail() {
   if (isLoading) {
     return (
       <PageContainer>
-        <div className="animate-pulse">
-          <div className="h-80 bg-gray-200 dark:bg-gray-800" />
-          <div className="px-4 py-6 space-y-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded" />
-            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-2/3" />
-            <div className="h-20 bg-gray-200 dark:bg-gray-800 rounded" />
-          </div>
-        </div>
+        <ToyDetailSkeleton />
       </PageContainer>
     );
   }

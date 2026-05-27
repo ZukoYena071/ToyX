@@ -51,7 +51,7 @@ export default function PrivacyMessages() {
       return (
         <PageContainer className="pb-24">
           <PageHeader title="Message" rightAction={<button onClick={goBack} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>} />
-          <div className="px-4 py-4 text-center text-sm text-gray-500">Loading...</div>
+          <div className="px-4 py-8 text-center text-sm text-gray-400"><div className="w-5 h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-auto" /></div>
           <BottomNav />
         </PageContainer>
       );
@@ -89,7 +89,7 @@ export default function PrivacyMessages() {
       <PageHeader title="Messages from ToyX" rightAction={<Link href="/privacy-safety"><button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ArrowLeft className="w-4 h-4 text-gray-600" /></button></Link>} />
       <div className="px-4 py-4">
         {loading ? (
-          <div className="text-center py-12 text-sm text-gray-500">Loading...</div>
+          <div className="text-center py-12"><div className="w-5 h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-auto" /></div>
         ) : messages.length === 0 ? (
           <div className="text-center py-12">
             <Mail className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />

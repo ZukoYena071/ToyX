@@ -228,4 +228,25 @@ export const PageLoadingSkeleton = ({ title }: { title?: string }) => {
   );
 };
 
+export const ToyDetailSkeleton = () => {
+  return (
+    <div className="animate-pulse">
+      <div className="h-[300px] sm:h-[400px] bg-gray-100 dark:bg-gray-800" />
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <Skeleton className="h-7 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+        <div className="flex gap-2">
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-6 w-16 rounded-full" />
+        </div>
+        <div className="space-y-2 pt-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export { Skeleton };
