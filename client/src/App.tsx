@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -53,22 +53,18 @@ const PUBLIC_ROUTES = new Set([
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
+  const [initialLoad, setInitialLoad] = useState(true);
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // Save protected route path for redirect after login
-  if (!isLoading && !isAuthenticated) {
-    const path = location.split("?")[0];
-    if (!PUBLIC_ROUTES.has(path) && path !== "/login" && !path.startsWith("/login")) {
-      sessionStorage.setItem("toyx_redirect_after_login", location);
-    }
-  }
+  // Force fullscreen loader on initial app bootstrap, even if auth resolves instantly
+  useEffect(() => {
+    const timer = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Check if user has completed onboarding from their profile (with localStorage fallback for migration)
-  const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2 || localStorage.getItem('toyxOnboardingVersion') === '2';
-
-  // Fullscreen branded loader — used for auth/session restore, never shows skeletons underneath
-  if (isLoading) {
+  // Show fullscreen branded loader during auth hydration or initial bootstrap
+  if (isLoading || initialLoad) {
     return (
       <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-b from-purple-50 via-white to-pink-50 dark:from-gray-950 dark:via-slate-950 dark:to-indigo-950">
         <div className="flex flex-col items-center justify-center">
@@ -82,6 +78,17 @@ function Router() {
       </div>
     );
   }
+
+  // Save protected route path for redirect after login
+  if (!isLoading && !isAuthenticated) {
+    const path = location.split("?")[0];
+    if (!PUBLIC_ROUTES.has(path) && path !== "/login" && !path.startsWith("/login")) {
+      sessionStorage.setItem("toyx_redirect_after_login", location);
+    }
+  }
+
+  // Check if user has completed onboarding from their profile (with localStorage fallback for migration)
+  const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2 || localStorage.getItem('toyxOnboardingVersion') === '2';
 
   // Render only one route configuration at a time to prevent double rendering
   if (!isAuthenticated) {
