@@ -12,7 +12,9 @@ interface ChatMessageProps {
 
 export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProps) {
   const [showReactions, setShowReactions] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
+  const [trayStyle, setTrayStyle] = useState<React.CSSProperties>({});
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const trayRef = useRef<HTMLDivElement>(null);
   const reactions: Array<{ userId: string; emoji: string }> = (message as any).reactions || [];
 
   const grouped = reactions.reduce((acc: Record<string, string[]>, r) => {
@@ -22,16 +24,26 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
   }, {} as Record<string, string[]>);
 
   useEffect(() => {
-    if (!showReactions || !pickerRef.current) return;
-    const rect = pickerRef.current.getBoundingClientRect();
-    if (rect.top < 60) {
-      pickerRef.current.style.top = "auto";
-      pickerRef.current.style.bottom = "100%";
-      pickerRef.current.style.marginBottom = "4px";
-    }
-  }, [showReactions]);
+    if (!showReactions) return;
+    const pos = () => {
+      if (!bubbleRef.current || !trayRef.current) return;
+      const bubbleRect = bubbleRef.current.getBoundingClientRect();
+      const trayWidth = trayRef.current.offsetWidth;
+      let left: number;
+      if (isOwn) {
+        left = bubbleRect.right - trayWidth;
+      } else {
+        left = bubbleRect.left;
+      }
+      left = Math.max(8, Math.min(left, window.innerWidth - trayWidth - 8));
+      setTrayStyle({
+        left: `${left}px`,
+        bottom: `${window.innerHeight - bubbleRect.top + 8}px`,
+      });
+    };
+    requestAnimationFrame(pos);
+  }, [showReactions, isOwn]);
 
-  // System messages are rendered as centered info cards, not chat bubbles
   if (message.messageType === "system") {
     return (
       <div className="flex justify-center px-8 my-3">
@@ -56,16 +68,13 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
   return (
     <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} relative group`}>
       <div className={`flex items-end gap-2 max-w-[75%] ${isOwn ? 'flex-row-reverse' : ''}`}>
-        {/* Avatar */}
         <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shrink-0 mb-1">
           <span className="text-white text-xs font-bold">
             {message.sender.firstName?.[0] || message.sender.email?.[0] || 'U'}
           </span>
         </div>
 
-        {/* Message + Reactions */}
-        <div className="flex flex-col min-w-0">
-          {/* Bubble */}
+        <div className="flex flex-col min-w-0" ref={bubbleRef}>
           <div className={`rounded-2xl px-4 py-2 ${
             isOwn
               ? 'bg-purple-500 text-white rounded-tr-sm'
@@ -84,7 +93,6 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
             </p>
           </div>
 
-          {/* Reaction badges */}
           {Object.entries(grouped).length > 0 && (
             <div className={`flex flex-wrap gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
               {Object.entries(grouped).map(([emoji, users]) => (
@@ -106,36 +114,38 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
         </div>
       </div>
 
-      {/* Reaction button */}
       <div className={`absolute bottom-0 ${isOwn ? 'right-[calc(100%+4px)]' : 'left-[calc(100%+4px)]'}`}>
-        <div className="relative" ref={pickerRef}>
-          <button
-            onClick={() => setShowReactions(!showReactions)}
-            className="min-w-[36px] min-h-[36px] bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            <Smile className="w-3.5 h-3.5 text-gray-500" />
-          </button>
-          {showReactions && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowReactions(false)} />
-              <div className="absolute z-50 bottom-full mb-2 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2.5 py-1.5 flex gap-1">
-                {QUICK_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => {
-                      onReact(message.id, emoji);
-                      setShowReactions(false);
-                    }}
-                    className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <button
+          onClick={() => setShowReactions(!showReactions)}
+          className="min-w-[36px] min-h-[36px] bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          <Smile className="w-3.5 h-3.5 text-gray-500" />
+        </button>
       </div>
+
+      {showReactions && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowReactions(false)} />
+          <div
+            ref={trayRef}
+            className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2 py-1 flex gap-0.5"
+            style={trayStyle}
+          >
+            {QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => {
+                  onReact(message.id, emoji);
+                  setShowReactions(false);
+                }}
+                className="w-7 h-7 flex items-center justify-center text-base hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
