@@ -12,6 +12,7 @@ import ChatMessage from "@/components/chat-message";
 import ReviewForm from "@/components/review-form";
 import ReportUserModal from "@/components/toys/ReportUserModal";
 import EmojiPicker from "@/components/emoji-picker";
+import ToyImage from "@/components/ToyImage";
 import BottomNav from "@/components/bottom-nav";
 import SafetyChecklist from "@/components/SafetyChecklist";
 import PageContainer from "@/components/ui/PageContainer";
@@ -454,6 +455,57 @@ export default function Chat() {
           </div>
         </div>
       </div>
+
+      {/* Exchange toy comparison cards */}
+      {exchange && (exchange.offeredToyId || exchange.offeredToy) && (
+        <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+          <div className="max-w-lg mx-auto px-4 py-3">
+            <div className="flex items-center gap-3">
+              {/* Their toy (requested) */}
+              <Link href={`/toy/${exchange.toy.id}`} className="flex-1 min-w-0">
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">
+                    {exchange.toy.imageUrls?.[0] ? (
+                      <ToyImage src={exchange.toy.imageUrls[0]} alt={exchange.toy.name} className="w-full h-full" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><span className="text-2xl">🧸</span></div>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">They want</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{exchange.toy.name}</p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Arrow */}
+              <div className="shrink-0 flex flex-col items-center gap-1">
+                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" /></svg>
+                </div>
+                <span className="text-[10px] text-purple-500 font-medium">swap</span>
+              </div>
+
+              {/* Their offered toy */}
+              <Link href={`/toy/${(exchange.offeredToyId || exchange.offeredToy?.id)}`} className="flex-1 min-w-0">
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">
+                    {(exchange.offeredToy?.imageUrls?.[0] || exchange.toy.imageUrls?.[0]) ? (
+                      <ToyImage src={exchange.offeredToy?.imageUrls?.[0] || exchange.toy.imageUrls?.[0]} alt={exchange.offeredToy?.name || exchange.toy.name} className="w-full h-full" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><span className="text-2xl">🧸</span></div>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs font-medium text-green-600 dark:text-green-400 truncate">They offer</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{exchange.offeredToy?.name || exchange.toy.name}</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">

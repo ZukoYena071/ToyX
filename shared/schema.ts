@@ -393,6 +393,7 @@ export type ExchangeWithDetails = Exchange & {
   requester: User; 
   owner: User; 
   toy: Toy;
+  offeredToy?: Toy | null;
   messages: Message[];
 };
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
