@@ -1810,14 +1810,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user && (req.user as any).claims?.sub === referrer.id) {
         return res.status(400).json({ message: "Cannot refer yourself" });
       }
-      if (req.user) {
-        const userId = (req.user as any).claims?.sub;
-        const existing = await db.select().from(referrals).where(
-          and(eq(referrals.referrerId, referrer.id), eq(referrals.refereeId, userId))
-        ).limit(1);
-        if (existing.length) return res.status(400).json({ message: "Already referred" });
-        await db.insert(referrals).values({ referrerId: referrer.id, refereeId: userId, status: "pending" });
+      if (!req.user) return res.status(401).json({ message: "Authentication required" });
+      const userId = (req.user as any).claims?.sub;
+      // Guard A: referee can only be claimed once (prevents multi-referrer abuse)
+      const alreadyReferred = await db.select().from(referrals).where(
+        eq(referrals.refereeId, userId)
+      ).limit(1);
+      if (alreadyReferred.length) return res.status(400).json({ message: "You have already been referred" });
+      // Guard B: referrer cannot accumulate more pending referrals than monthly cap allows
+      if (!(await checkMonthlyReferralCap(referrer.id))) {
+        return res.status(400).json({ message: "Referrer has reached their monthly referral limit" });
       }
+      const existing = await db.select().from(referrals).where(
+        and(eq(referrals.referrerId, referrer.id), eq(referrals.refereeId, userId))
+      ).limit(1);
+      if (existing.length) return res.status(400).json({ message: "Already referred by this user" });
+      await db.insert(referrals).values({ referrerId: referrer.id, refereeId: userId, status: "pending" });
       res.json({ ok: true });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
