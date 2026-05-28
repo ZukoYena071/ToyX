@@ -461,8 +461,8 @@ export default function Chat() {
         <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
           <div className="max-w-lg mx-auto px-4 py-3">
             <div className="flex items-center gap-3">
-              {/* Their toy (requested) */}
-              <Link href={`/toy/${exchange.toy.id}`} className="flex-1 min-w-0">
+              {/* Their toy (requested) — full page nav preserves browser back to chat */}
+              <div onClick={() => window.location.href = `/toy/${exchange.toy.id}`} className="flex-1 min-w-0 cursor-pointer">
                 <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                   <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">
                     {exchange.toy.imageUrls?.[0] ? (
@@ -476,7 +476,7 @@ export default function Chat() {
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{exchange.toy.name}</p>
                   </div>
                 </div>
-              </Link>
+              </div>
 
               {/* Arrow */}
               <div className="shrink-0 flex flex-col items-center gap-1">
@@ -486,8 +486,8 @@ export default function Chat() {
                 <span className="text-[10px] text-purple-500 font-medium">swap</span>
               </div>
 
-              {/* Their offered toy */}
-              <Link href={`/toy/${(exchange.offeredToyId || exchange.offeredToy?.id)}`} className="flex-1 min-w-0">
+              {/* Their offered toy — full page nav preserves browser back to chat */}
+              <div onClick={() => window.location.href = `/toy/${(exchange.offeredToyId || exchange.offeredToy?.id)}`} className="flex-1 min-w-0 cursor-pointer">
                 <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                   <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">
                     {(exchange.offeredToy?.imageUrls?.[0] || exchange.toy.imageUrls?.[0]) ? (
@@ -501,7 +501,7 @@ export default function Chat() {
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{exchange.offeredToy?.name || exchange.toy.name}</p>
                   </div>
                 </div>
-              </Link>
+              </div>
             </div>
           </div>
         </div>
