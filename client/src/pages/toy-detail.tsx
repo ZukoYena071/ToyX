@@ -207,11 +207,9 @@ export default function ToyDetail() {
 
         {/* Overlay buttons */}
         <div className="absolute top-3 left-3 z-10">
-          <Link href="/search">
-            <OverlayBtn className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
-              <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
-            </OverlayBtn>
-          </Link>
+          <OverlayBtn onClick={() => window.history.length > 1 ? window.history.back() : window.location.href = "/search"} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
+            <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+          </OverlayBtn>
         </div>
 
         <div className="absolute top-3 right-3 flex gap-2 z-10">
