@@ -137,7 +137,7 @@ export async function setupAuth(app: Express) {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_BASE_URL) {
       return res.status(503).json({ code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google OAuth is not configured on this server." });
     }
-    passport.authenticate("google", { scope: ["profile", "email"], session: true })(req, res, next);
+    passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account", session: true })(req, res, next);
   });
   app.get("/api/auth/google/callback", (req, res, next) => {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_BASE_URL) {
