@@ -158,6 +158,33 @@ export default function ToyDetail() {
     );
   }
 
+  const isUnavailable = (toy as any)?.isAvailable === false;
+  const isArchived = isUnavailable && (toy as any)?.deletedAt;
+
+  if (isUnavailable) {
+    return (
+      <PageContainer className="flex items-center justify-center">
+        <div className="text-center px-6 max-w-sm">
+          <div className="text-5xl mb-4">{isArchived ? "📦" : "🤝"}</div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
+            {isArchived ? "This toy was removed" : "Toy No Longer Available"}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            {isArchived
+              ? "This toy has been removed by its owner."
+              : "This toy has already been exchanged."}
+          </p>
+          <div className="flex justify-center gap-3">
+            <Button variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : window.location.href = "/chat"}>
+              Back to Chat
+            </Button>
+            <Link href="/"><Button>Browse Toys</Button></Link>
+          </div>
+        </div>
+      </PageContainer>
+    );
+  }
+
   const isOwner = (user as any)?.id === (toy as any)?.ownerId;
   const imageUrls = (toy as any)?.imageUrls || [];
   const ages = normalizeList((toy as any)?.ageGroup);
