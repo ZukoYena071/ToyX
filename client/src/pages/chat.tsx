@@ -594,24 +594,20 @@ export default function Chat() {
                 );
               }
 
-              // ── Accepted state: compact action panel ──
+              // ── Accepted state: single-line action bar ──
               if (exchange?.status === "accepted" && !userConfirmed) {
                 return (
-                  <div className="rounded-xl border border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20 px-4 py-3 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">✅</span>
-                      <span className="text-[13px] font-semibold text-green-700 dark:text-green-300">Exchange accepted</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending}>
-                        {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Complete"}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => { if (window.confirm("Are you sure you want to cancel this exchange request?")) { cancelExchangeMutation.mutate(exchange.id); } }}
-                        disabled={cancelExchangeMutation.isPending}
-                        className="text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20">
-                        {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel"}
-                      </Button>
-                    </div>
+                  <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700 px-3 py-2 flex-wrap">
+                    <span className="text-sm shrink-0">✅</span>
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-300 flex-1 min-w-0">Exchange accepted</span>
+                    <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending} className="shrink-0">
+                      {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Complete"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { if (window.confirm("Are you sure you want to cancel this exchange request?")) { cancelExchangeMutation.mutate(exchange.id); } }}
+                      disabled={cancelExchangeMutation.isPending}
+                      className="text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0">
+                      {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel"}
+                    </Button>
                   </div>
                 );
               }
