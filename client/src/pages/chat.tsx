@@ -134,6 +134,9 @@ export default function Chat() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId, "messages"] });
     },
+    onError: (error: Error) => {
+      toast({ title: "Reaction failed", description: error.message || "Could not save reaction. Please try again.", variant: "destructive" });
+    },
   });
 
   const confirmExchangeMutation = useMutation({

@@ -106,8 +106,8 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
         </div>
       </div>
 
-      {/* Reaction button on hover */}
-      <div className={`absolute bottom-0 ${isOwn ? 'right-[calc(100%+4px)]' : 'left-[calc(100%+4px)]'} opacity-0 group-hover:opacity-100 transition-opacity`}>
+      {/* Reaction button */}
+      <div className={`absolute bottom-0 ${isOwn ? 'right-[calc(100%+4px)]' : 'left-[calc(100%+4px)]'}`}>
         <div className="relative" ref={pickerRef}>
           <button
             onClick={() => setShowReactions(!showReactions)}
