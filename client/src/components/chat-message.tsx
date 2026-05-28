@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Smile } from "lucide-react";
 import type { MessageWithSender } from "@shared/schema";
 
@@ -15,6 +15,33 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
   const [trayStyle, setTrayStyle] = useState<React.CSSProperties>({});
   const bubbleRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      const pad = 8;
+      if (rect.left < pad) {
+        el.style.left = `${pad}px`;
+        el.style.right = 'auto';
+      } else if (rect.right > window.innerWidth - pad) {
+        el.style.right = `${pad}px`;
+        el.style.left = 'auto';
+      } else {
+        el.style.left = '';
+        el.style.right = '';
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      el.style.left = '';
+      el.style.right = '';
+    };
+  }, [isOwn]);
   const reactions: Array<{ userId: string; emoji: string }> = (message as any).reactions || [];
 
   const grouped = reactions.reduce((acc: Record<string, string[]>, r) => {
@@ -114,7 +141,7 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
         </div>
       </div>
 
-      <div className={`absolute bottom-0 ${isOwn ? 'right-[calc(100%+4px)]' : 'left-[calc(100%+4px)]'}`}>
+      <div ref={buttonRef} className={`absolute bottom-0 ${isOwn ? 'right-[calc(100%+4px)]' : 'left-[calc(100%+4px)]'}`}>
         <button
           onClick={() => setShowReactions(!showReactions)}
           className="min-w-[36px] min-h-[36px] bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700"
