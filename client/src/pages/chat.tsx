@@ -143,7 +143,13 @@ export default function Chat() {
     mutationFn: async (exchangeId: number) => {
       return await apiRequest("POST", `/api/exchanges/${exchangeId}/confirm`, {});
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      if (data?.referralReward?.refereeUnlockedPremium) {
+        toast({ title: "🎉 You unlocked 7 days of Premium!", description: "Complete your first exchange through a referral. Enjoy premium features!", variant: "default" });
+      }
+      if (data?.referralReward?.pointsAwarded) {
+        toast({ title: "🎁 Referral bonus earned!", description: `You earned ${data.referralReward.pointsAwarded} points from your referral.` });
+      }
       toast({ title: "Confirmation Recorded", description: "Your completion confirmation has been saved. Waiting for the other party to confirm." });
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId] });

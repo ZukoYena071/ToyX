@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Search, Plus, MessageCircle } from "lucide-react";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
@@ -24,6 +25,16 @@ const FEATURES = [
 
 export default function Welcome() {
   const [, setLocation] = useLocation();
+  const [referred, setReferred] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) {
+      localStorage.setItem("pendingReferralRef", ref);
+      setReferred(true);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 px-4 pt-6 pb-[calc(24px+env(safe-area-inset-bottom))]">
@@ -35,6 +46,12 @@ export default function Welcome() {
         <p className="mt-0 text-xl font-semibold text-gray-900 dark:text-gray-100 text-center">
           Welcome to ToyX!
         </p>
+
+        {referred && (
+          <div className="mt-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl px-4 py-3 text-center text-xs text-purple-700 dark:text-purple-300 leading-relaxed">
+            🎉 You were invited to join ToyX! Complete your first exchange to unlock <strong>7 days of Premium</strong> ✨
+          </div>
+        )}
 
         {/* Main headline — gradient */}
         <h1

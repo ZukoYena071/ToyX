@@ -66,6 +66,18 @@ function Router() {
     }
   }, [isLoading]);
 
+  // Claim pending referral after auth (handles OAuth signup flow)
+  useEffect(() => {
+    if (isAuthenticated) {
+      const ref = localStorage.getItem("pendingReferralRef");
+      if (ref) {
+        fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" })
+          .then(() => localStorage.removeItem("pendingReferralRef"))
+          .catch(() => {});
+      }
+    }
+  }, [isAuthenticated]);
+
   // Fullscreen simulated loader during + briefly after auth
   if (isLoading || !authDone) {
     return <FullscreenLoader />;

@@ -42,6 +42,11 @@ export default function Signup() {
         credentials: "include",
       });
       if (res.ok) {
+        const ref = localStorage.getItem("pendingReferralRef");
+        if (ref) {
+          try { await fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" }); } catch {}
+          localStorage.removeItem("pendingReferralRef");
+        }
         const saved = sessionStorage.getItem("toyx_redirect_after_login");
         sessionStorage.removeItem("toyx_redirect_after_login");
         const target = saved && saved.includes("list-toy") ? "/" : saved || "/";
