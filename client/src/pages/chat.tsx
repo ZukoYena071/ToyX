@@ -479,11 +479,11 @@ export default function Chat() {
               </button>
 
               {/* Arrow */}
-              <div className="shrink-0 flex flex-col items-center gap-1">
-                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" /></svg>
+              <div className="shrink-0 flex flex-col items-center gap-0.5">
+                <div className="w-7 h-7 rounded-full bg-purple-100/60 dark:bg-purple-900/20 flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" /></svg>
                 </div>
-                <span className="text-[10px] text-purple-500 font-medium">swap</span>
+                <span className="text-[9px] text-purple-400/70 font-medium">swap</span>
               </div>
 
               {/* Their offered toy */}
@@ -594,12 +594,13 @@ export default function Chat() {
                 );
               }
 
-              // ── Accepted state: banner + Mark Complete + Cancel ──
+              // ── Accepted state: compact action panel ──
               if (exchange?.status === "accepted" && !userConfirmed) {
                 return (
-                  <>
-                    <div className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-2xl border border-green-200 dark:border-green-700 text-center">
-                      ✅ Exchange accepted — coordinate your meetup safely
+                  <div className="rounded-xl border border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20 px-4 py-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">✅</span>
+                      <span className="text-[13px] font-semibold text-green-700 dark:text-green-300">Exchange accepted</span>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending}>
@@ -611,7 +612,7 @@ export default function Chat() {
                         {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel"}
                       </Button>
                     </div>
-                  </>
+                  </div>
                 );
               }
 
