@@ -562,7 +562,7 @@ export default function Chat() {
 
       {/* Safety checklist */}
       <div className="max-w-lg mx-auto px-4 pt-3 pb-1">
-        <SafetyChecklist compact />
+        <SafetyChecklist compact collapsible />
       </div>
 
       {/* Message Input */}
