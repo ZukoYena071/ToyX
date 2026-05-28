@@ -1793,8 +1793,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         code = (user?.firstName || user?.email || "user").substring(0, 4).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
         await db.update(users).set({ referralCode: code }).where(eq(users.id, userId));
       }
-      const myRefs = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(referrals.createdAt).limit(20);
-      res.json({ referralCode: code, inviteLink: `/welcome?ref=${code}`, referrals: myRefs });
+      const myRefs = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt)).limit(20);
+      const enrichedRefs = await Promise.all(myRefs.map(async (ref) => {
+        if (!ref.refereeId) return { ...ref, refereeName: null, refereeEmail: null };
+        const refUser = await storage.getUser(ref.refereeId);
+        return { ...ref, refereeName: refUser ? `${refUser.firstName || ""} ${refUser.lastName || ""}`.trim() || null : null, refereeEmail: refUser?.email || null };
+      }));
+      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+      const monthlyQualified = enrichedRefs.filter(r => r.status === "qualified" && r.qualifiedAt && new Date(r.qualifiedAt) >= startOfMonth).length;
+      const totalQualified = enrichedRefs.filter(r => r.status === "qualified").length;
+      const totalPending = enrichedRefs.filter(r => r.status === "pending").length;
+      const [pointsResult] = await db.select({ total: sql<number>`coalesce(sum(points), 0)` }).from(rewardLedger).where(
+        and(eq(rewardLedger.userId, userId), inArray(rewardLedger.eventType, ["REFERRAL_QUALIFIED", "REFERRAL_QUALIFIED_REFEREE"]))
+      );
+      const pointsFromReferrals = pointsResult?.total || 0;
+      const premiumDaysFromReferrals = totalQualified * 7;
+      res.json({
+        referralCode: code,
+        inviteLink: `/welcome?ref=${code}`,
+        referrals: enrichedRefs,
+        stats: {
+          monthlyQualified,
+          monthlyLimit: 5,
+          totalQualified,
+          totalPending,
+          pointsFromReferrals,
+          premiumDaysFromReferrals,
+        },
+      });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
     }
