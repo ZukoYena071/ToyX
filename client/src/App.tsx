@@ -95,7 +95,7 @@ function Router() {
           ? Promise.race([Promise.all(urls.map(preloadImage)), new Promise<void>(r => setTimeout(r, 3000))])
           : Promise.resolve();
         imagesLoaded.then(fade);
-      });
+      }).catch(() => fade());
     } else {
       fade();
     }
