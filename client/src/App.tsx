@@ -60,31 +60,45 @@ function Router() {
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // When auth resolves: prefetch home data, enforce min 500ms, then fade out
+  function preloadImage(url: string): Promise<void> {
+    return new Promise((resolve) => { const img = new Image(); img.onload = () => resolve(); img.onerror = () => resolve(); img.src = url; });
+  }
+
+  // When auth resolves: prefetch home data + above-the-fold images, then fade out
   useEffect(() => {
     if (isLoading || prefetched.current) return;
     prefetched.current = true;
 
-    const go = () => {
+    const fade = () => {
       const elapsed = Date.now() - startRef.current;
       const remaining = Math.max(0, 500 - elapsed);
       setTimeout(() => setLoadState("fading"), remaining);
     };
 
     if (isAuthenticated) {
-      // Prefetch critical home page data while loader is visible
-      queryClient.prefetchQuery({ queryKey: ["/api/toys"] });
-      queryClient.prefetchQuery({ queryKey: ["/api/recommendations/home"] });
-      queryClient.prefetchQuery({ queryKey: ["/api/favorites"] });
-      // Claim referral if pending
+      // Claim referral if pending (fire-and-forget)
       const ref = localStorage.getItem("pendingReferralRef");
       if (ref) {
         fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" })
           .then((res) => { if (!res.ok) console.warn("[referral] claim failed:", res.status, res.statusText); else localStorage.removeItem("pendingReferralRef"); })
           .catch((err) => console.warn("[referral] claim network error:", err));
       }
+      // Prefetch home data, then preload first visible toy images
+      Promise.all([
+        queryClient.prefetchQuery({ queryKey: ["/api/toys"] }),
+        queryClient.prefetchQuery({ queryKey: ["/api/recommendations/home"] }),
+        queryClient.prefetchQuery({ queryKey: ["/api/favorites"] }),
+      ]).then(() => {
+        const toysData = queryClient.getQueryData(["/api/toys"]);
+        const urls = (Array.isArray(toysData) ? toysData : []).slice(0, 6).map((t: any) => t.imageUrls?.[0]).filter(Boolean);
+        const imagesLoaded = urls.length > 0
+          ? Promise.race([Promise.all(urls.map(preloadImage)), new Promise<void>(r => setTimeout(r, 3000))])
+          : Promise.resolve();
+        imagesLoaded.then(fade);
+      });
+    } else {
+      fade();
     }
-    go();
   }, [isLoading, isAuthenticated]);
 
   // After fade animation, mark ready
