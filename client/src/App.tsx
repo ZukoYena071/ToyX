@@ -61,7 +61,7 @@ function Router() {
   // Keep loader briefly after auth resolves so the simulation completes gracefully
   useEffect(() => {
     if (!isLoading) {
-      const timer = setTimeout(() => setAuthDone(true), 200);
+      const timer = setTimeout(() => setAuthDone(true), 400);
       return () => clearTimeout(timer);
     }
   }, [isLoading]);
