@@ -115,16 +115,30 @@ function Router() {
       const prefetchMs = (performance.getEntriesByName("prefetch-duration")[0] as any)?.duration;
       const imgMs = (performance.getEntriesByName("image-preload-duration")[0] as any)?.duration;
       const totalToFade = performance.now() - startPerf.current;
-      console.log(`╔══════════════════════════════════════╗`);
-      console.log(`║      STARTUP PERFORMANCE REPORT      ║`);
-      console.log(`╚══════════════════════════════════════╝`);
-      if (nav) console.log(`  Total page load:  ${(nav.loadEventEnd - nav.startTime).toFixed(0)}ms`);
-      console.log(`  Auth resolve:      ${authMs.toFixed(0)}ms`);
-      if (prefetchMs != null) console.log(`  Toys prefetch:     ${prefetchMs.toFixed(0)}ms`);
-      if (imgMs != null) console.log(`  Image preload:     ${imgMs.toFixed(0)}ms`);
-      console.log(`  App mount→fade:    ${totalToFade.toFixed(0)}ms`);
+      const res = (name: string) => {
+        const e = performance.getEntriesByType("resource").find((r: any) => r.name.includes(name)) as any;
+        if (!e) return "";
+        return `TTFB=${(e.responseStart - e.requestStart).toFixed(0)}ms | download=${(e.responseEnd - e.responseStart).toFixed(0)}ms | total=${e.duration.toFixed(0)}ms | size=${(e.transferSize || 0).toFixed(0)}B`;
+      };
+      console.log(`╔══════════════════════════════════════════════════════╗`);
+      console.log(`║           STARTUP PERFORMANCE REPORT               ║`);
+      console.log(`╚══════════════════════════════════════════════════════╝`);
+      if (nav) {
+        console.log(`  Page load:      ${(nav.loadEventEnd - nav.startTime).toFixed(0)}ms`);
+        console.log(`    TTFB:         ${(nav.responseStart - nav.requestStart).toFixed(0)}ms`);
+        console.log(`    DOM content:  ${(nav.domContentLoadedEventEnd - nav.startTime).toFixed(0)}ms`);
+      }
+      console.log(`  Auth resolve:   ${authMs.toFixed(0)}ms`);
+      console.log(`    ${res("/api/auth/user")}`);
+      if (prefetchMs != null) {
+        console.log(`  Toys prefetch:  ${prefetchMs.toFixed(0)}ms`);
+        console.log(`    ${res("/api/toys")}`);
+      }
+      if (imgMs != null) console.log(`  Image preload:  ${imgMs.toFixed(0)}ms`);
+      console.log(`  App mount→fade: ${totalToFade.toFixed(0)}ms`);
       console.log(`──`);
-      console.log(`To capture FCP/LCP: Chrome DevTools → Performance → View`);
+      console.log(`Total page resources: ${performance.getEntriesByType("resource").length}`);
+      console.log(`Largest Contentful Paint: check DevTools → Performance`);
       performance.clearMeasures();
       performance.clearMarks();
     }, 1500);
