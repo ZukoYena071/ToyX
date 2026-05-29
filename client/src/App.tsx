@@ -156,10 +156,18 @@ function Router() {
     }
   }, [loadState]);
 
-  // Fullscreen loader with fade-out before revealing content
-  if (loadState !== "ready") {
-    return <FullscreenLoader fadeOut={loadState === "fading"} />;
-  }
+  // Manage inline splash (index.html) — keeps it visible during loading, fades on ready
+  useEffect(() => {
+    const splash = document.getElementById("splash");
+    if (!splash) return;
+    if (loadState === "fading") {
+      splash.style.transition = "opacity 0.5s";
+      splash.style.opacity = "0";
+    }
+    if (loadState === "ready") {
+      splash.remove();
+    }
+  }, [loadState]);
 
   // Save protected route path for redirect after login
   if (!isLoading && !isAuthenticated) {
@@ -250,9 +258,6 @@ function App() {
       console.log("DEBUG: Captured /list-toy intent. Writing storage flag.");
       sessionStorage.setItem("toyx_pending_action", "list");
     }
-    // Remove inline splash once React mounts (eliminates blank screen before loader)
-    const splash = document.getElementById("splash");
-    if (splash) { splash.style.opacity = "0"; setTimeout(() => splash.remove(), 500); }
   }, []);
 
   return (
