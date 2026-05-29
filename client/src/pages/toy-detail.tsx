@@ -12,6 +12,7 @@ import {
 import { useState, useEffect, useRef, useCallback } from "react";
 import BottomNav from "@/components/bottom-nav";
 import BoostButton from "@/components/toys/BoostButton";
+import { ToyDetailSkeleton } from "@/components/loading-skeletons";
 import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import { normalizeList, ChipRow } from "@/components/toys/MetaChip";
@@ -140,14 +141,7 @@ export default function ToyDetail() {
   if (isLoading) {
     return (
       <PageContainer>
-        <div className="animate-pulse">
-          <div className="h-80 bg-gray-200 dark:bg-gray-800" />
-          <div className="px-4 py-6 space-y-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded" />
-            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-2/3" />
-            <div className="h-20 bg-gray-200 dark:bg-gray-800 rounded" />
-          </div>
-        </div>
+        <ToyDetailSkeleton />
       </PageContainer>
     );
   }
@@ -159,6 +153,33 @@ export default function ToyDetail() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Toy not found</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">This toy might have been removed or doesn't exist.</p>
           <Link href="/"><Button>Back to Home</Button></Link>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const isUnavailable = (toy as any)?.isAvailable === false;
+  const isArchived = isUnavailable && (toy as any)?.deletedAt;
+
+  if (isUnavailable) {
+    return (
+      <PageContainer className="flex items-center justify-center">
+        <div className="text-center px-6 max-w-sm">
+          <div className="text-5xl mb-4">{isArchived ? "📦" : "🤝"}</div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
+            {isArchived ? "This toy was removed" : "Toy No Longer Available"}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            {isArchived
+              ? "This toy has been removed by its owner."
+              : "This toy has already been exchanged."}
+          </p>
+          <div className="flex justify-center gap-3">
+            <Button variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : window.location.href = "/chat"}>
+              Back to Chat
+            </Button>
+            <Link href="/"><Button>Browse Toys</Button></Link>
+          </div>
         </div>
       </PageContainer>
     );
@@ -213,11 +234,9 @@ export default function ToyDetail() {
 
         {/* Overlay buttons */}
         <div className="absolute top-3 left-3 z-10">
-          <Link href="/search">
-            <OverlayBtn className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
-              <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
-            </OverlayBtn>
-          </Link>
+          <OverlayBtn onClick={() => window.history.length > 1 ? window.history.back() : window.location.href = "/search"} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
+            <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+          </OverlayBtn>
         </div>
 
         <div className="absolute top-3 right-3 flex gap-2 z-10">
@@ -348,8 +367,8 @@ export default function ToyDetail() {
       </div>
 
       {/* Sticky action bar */}
-        <div className="fixed bottom-16 left-0 right-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-3 z-40 rounded-t-2xl">
-          <div className="max-w-lg mx-auto flex gap-3">
+        <div className="fixed bottom-16 left-0 right-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-2.5 z-40 rounded-t-2xl">
+          <div className="max-w-lg mx-auto flex gap-2">
             {/* Share — available to everyone */}
             <button onClick={() => {
               const shareUrl = `https://app.toyxchange.online/toy/${id}`;
@@ -359,40 +378,40 @@ export default function ToyDetail() {
                 navigator.clipboard.writeText(shareUrl).catch(() => {});
               }
             }}
-              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">
-              <Share2 className="w-4 h-4" />
+              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
+              <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
             </button>
             {/* Post to Social — owner only */}
             {isOwner && (
               <button onClick={() => setShowShareModal(true)}
-                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span>Post to Social</span>
+                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Post</span>
               </button>
             )}
             {/* Non-owner actions */}
             {!isOwner && (
               <>
                 <button onClick={() => setShowMessageModal(true)}
-                  className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]">
-                  <MessageCircle className="w-4 h-4" />
+                  className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
+                  <MessageCircle className="w-3.5 h-3.5" />
                   <span>Message</span>
                 </button>
                 {(toy as any)?.isAvailable === false ? (
-                  <div className="flex-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 min-h-[44px]">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div className="flex-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <span>In Progress</span>
                   </div>
                 ) : hasExistingRequest ? (
-                  <div className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-3 rounded-xl font-medium flex items-center justify-center gap-2 min-h-[44px]">
-                    <Check className="w-4 h-4" />
+                  <div className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                    <Check className="w-3.5 h-3.5" />
                     <span>Requested</span>
                   </div>
                 ) : (
                   <button onClick={() => setShowToySelectionModal(true)}
-                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors min-h-[44px]">
-                    <User className="w-4 h-4" />
+                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors min-h-[40px]">
+                    <User className="w-3.5 h-3.5" />
                     <span>Request Exchange</span>
                   </button>
                 )}
@@ -415,8 +434,8 @@ export default function ToyDetail() {
       )}
 
       {showToySelectionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col shadow-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 modal-overlay">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col shadow-lg modal-content">
             <div className="p-6 pb-0 shrink-0">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4"><User className="w-6 h-6 text-white" /></div>
@@ -455,8 +474,8 @@ export default function ToyDetail() {
       )}
 
       {showRequestModal && selectedToyForExchange && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <SectionCard className="p-6 w-full max-w-sm mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 modal-overlay">
+          <SectionCard className="p-6 w-full max-w-sm mx-4 modal-content">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4"><User className="w-6 h-6 text-white" /></div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Confirm Exchange Request</h3>
@@ -556,8 +575,8 @@ export default function ToyDetail() {
 
       {/* Share modal */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowShareModal(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm mx-4 overflow-hidden shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm mx-4 overflow-hidden shadow-xl modal-content" onClick={e => e.stopPropagation()}>
             <div className="p-6 pb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 text-center mb-1">Share this toy</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">{(toy as any)?.name}</p>

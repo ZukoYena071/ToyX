@@ -122,7 +122,7 @@ export default function Rewards() {
 
       <div className="px-4 pt-4 space-y-4">
         {loading ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading...</div>
+          <div className="text-center py-12"><div className="w-5 h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-auto" /></div>
         ) : (
           <>
             {/* Balance card */}

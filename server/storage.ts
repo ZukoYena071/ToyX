@@ -41,14 +41,14 @@ export interface IStorage {
   countActiveOutgoingExchanges(userId: string): Promise<number>;
   
   // Toy operations
-  getToys(): Promise<ToyWithOwner[]>;
+  getToys(blockedIds?: string[]): Promise<ToyWithOwner[]>;
   getToy(id: number): Promise<ToyWithOwner | undefined>;
   getToysByUser(userId: string): Promise<Toy[]>;
   createToy(toy: InsertToy): Promise<Toy>;
   updateToy(id: number, toy: Partial<InsertToy>): Promise<Toy>;
   deleteToy(id: number): Promise<void>;
-  searchToys(query: string): Promise<ToyWithOwner[]>;
-  getToysByCategory(category: string): Promise<ToyWithOwner[]>;
+  searchToys(query: string, blockedIds?: string[]): Promise<ToyWithOwner[]>;
+  getToysByCategory(category: string, blockedIds?: string[]): Promise<ToyWithOwner[]>;
   
   // Exchange operations
   getExchanges(userId: string): Promise<ExchangeWithDetails[]>;
@@ -77,6 +77,7 @@ export interface IStorage {
   unblockUser(blockerId: string, blockedId: string): Promise<void>;
   isBlocked(blockerId: string, blockedId: string): Promise<boolean>;
   getBlockedUserIds(userId: string): Promise<string[]>;
+  getBlockerUserIds(userId: string): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -169,19 +170,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Toy operations
-  async getToys(): Promise<ToyWithOwner[]> {
-    return await db
+  async getToys(blockedIds?: string[]): Promise<ToyWithOwner[]> {
+    const rows = await db
       .select()
       .from(toys)
       .leftJoin(users, eq(toys.ownerId, users.id))
       .where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)))
-      .orderBy(desc(toys.createdAt))
-      .then(rows => 
-        rows.map(row => ({
-          ...row.toys,
-          owner: row.users!
-        }))
-      );
+      .orderBy(sql`CASE WHEN ${toys.boostedUntil} > NOW() THEN 0 ELSE 1 END`, desc(toys.id));
+    
+    let results = rows.map(row => ({ ...row.toys, owner: row.users! }));
+    if (blockedIds && blockedIds.length > 0) {
+      results = results.filter(t => !blockedIds.includes(t.ownerId));
+    }
+    return results;
   }
 
   async getToy(id: number): Promise<ToyWithOwner | undefined> {
@@ -232,8 +233,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(toys).where(eq(toys.id, id));
   }
 
-  async searchToys(query: string): Promise<ToyWithOwner[]> {
-    return await db
+  async searchToys(query: string, blockedIds?: string[]): Promise<ToyWithOwner[]> {
+    const rows = await db
       .select()
       .from(toys)
       .leftJoin(users, eq(toys.ownerId, users.id))
@@ -248,17 +249,16 @@ export class DatabaseStorage implements IStorage {
           )
         )
       )
-      .orderBy(desc(toys.createdAt))
-      .then(rows => 
-        rows.map(row => ({
-          ...row.toys,
-          owner: row.users!
-        }))
-      );
+      .orderBy(sql`CASE WHEN ${toys.boostedUntil} > NOW() THEN 0 ELSE 1 END`, desc(toys.id));
+    let results = rows.map(row => ({ ...row.toys, owner: row.users! }));
+    if (blockedIds && blockedIds.length > 0) {
+      results = results.filter(t => !blockedIds.includes(t.ownerId));
+    }
+    return results;
   }
 
-  async getToysByCategory(category: string): Promise<ToyWithOwner[]> {
-    return await db
+  async getToysByCategory(category: string, blockedIds?: string[]): Promise<ToyWithOwner[]> {
+    const rows = await db
       .select()
       .from(toys)
       .leftJoin(users, eq(toys.ownerId, users.id))
@@ -269,13 +269,12 @@ export class DatabaseStorage implements IStorage {
           eq(toys.category, category)
         )
       )
-      .orderBy(desc(toys.createdAt))
-      .then(rows => 
-        rows.map(row => ({
-          ...row.toys,
-          owner: row.users!
-        }))
-      );
+      .orderBy(sql`CASE WHEN ${toys.boostedUntil} > NOW() THEN 0 ELSE 1 END`, desc(toys.id));
+    let results = rows.map(row => ({ ...row.toys, owner: row.users! }));
+    if (blockedIds && blockedIds.length > 0) {
+      results = results.filter(t => !blockedIds.includes(t.ownerId));
+    }
+    return results;
   }
 
   // Exchange operations
@@ -297,12 +296,18 @@ export class DatabaseStorage implements IStorage {
           const requester = await this.getUser(row.exchanges.requesterId);
           const owner = await this.getUser(row.exchanges.ownerId);
           const exchangeMessages = await this.getMessages(row.exchanges.id);
+          // Also fetch the offered toy if present (exchange comparison UX)
+          let offeredToy = null;
+          if (row.exchanges.offeredToyId) {
+            [offeredToy] = await db.select().from(toys).where(eq(toys.id, row.exchanges.offeredToyId)).limit(1);
+          }
           
           return {
             ...row.exchanges,
             requester: requester!,
             owner: owner!,
             toy: row.toys!,
+            offeredToy,
             messages: exchangeMessages
           };
         }));
@@ -323,12 +328,17 @@ export class DatabaseStorage implements IStorage {
     const requester = await this.getUser(result.exchanges.requesterId);
     const owner = await this.getUser(result.exchanges.ownerId);
     const exchangeMessages = await this.getMessages(id);
+    let offeredToy = null;
+    if (result.exchanges.offeredToyId) {
+      [offeredToy] = await db.select().from(toys).where(eq(toys.id, result.exchanges.offeredToyId)).limit(1);
+    }
     
     return {
       ...result.exchanges,
       requester: requester!,
       owner: owner!,
       toy: result.toys!,
+      offeredToy,
       messages: exchangeMessages
     };
   }
@@ -568,6 +578,11 @@ export class DatabaseStorage implements IStorage {
   async getBlockedUserIds(userId: string): Promise<string[]> {
     const rows = await db.select({ blockedId: blocks.blockedId }).from(blocks).where(eq(blocks.blockerId, userId));
     return rows.map(r => r.blockedId);
+  }
+
+  async getBlockerUserIds(userId: string): Promise<string[]> {
+    const rows = await db.select({ blockerId: blocks.blockerId }).from(blocks).where(eq(blocks.blockedId, userId));
+    return rows.map(r => r.blockerId);
   }
 
   // ---- Personalization methods ----

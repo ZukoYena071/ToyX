@@ -9,6 +9,15 @@ import { storage } from "./storage";
 
 const MemoryStore = memorystore(session);
 
+// Fail fast in production if SESSION_SECRET is missing — prevents insecure session forgery
+if (!process.env.SESSION_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    console.error("FATAL: SESSION_SECRET must be set in production");
+    process.exit(1);
+  }
+  console.warn("SESSION_SECRET not set — using insecure default (dev only)");
+}
+
 export function getSession() {
   return session({
     secret: process.env.SESSION_SECRET || "local-dev-secret",
@@ -18,6 +27,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   });
@@ -127,7 +137,7 @@ export async function setupAuth(app: Express) {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_BASE_URL) {
       return res.status(503).json({ code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google OAuth is not configured on this server." });
     }
-    passport.authenticate("google", { scope: ["profile", "email"], session: true })(req, res, next);
+    passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account", session: true })(req, res, next);
   });
   app.get("/api/auth/google/callback", (req, res, next) => {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_BASE_URL) {
@@ -180,6 +190,13 @@ export async function setupAuth(app: Express) {
     console.log("Facebook OAuth configured");
   } else if (ENABLE_FACEBOOK_AUTH) {
     console.warn("FACEBOOK_AUTH_MISCONFIGURED: ENABLE_FACEBOOK_AUTH=true but FACEBOOK_APP_ID or FACEBOOK_APP_SECRET missing");
+    import("@sentry/node").then(Sentry => {
+      Sentry.captureMessage("FACEBOOK_AUTH_MISCONFIGURED: feature flag enabled but credentials missing", "warning");
+    }).catch(() => {});
+  } else {
+    import("@sentry/node").then(Sentry => {
+      Sentry.captureMessage("FACEBOOK_AUTH_DISABLED: ENABLE_FACEBOOK_AUTH not true", "info");
+    }).catch(() => {});
   }
 
   // Always register routes so they don't 404 in production — handler checks config at runtime
@@ -197,6 +214,14 @@ export async function setupAuth(app: Express) {
   });
 
   // Demo users no longer auto-created per cleanup policy
+
+  // Provider availability endpoint — lets the frontend hide unavailable auth buttons
+  const facebookAvailable = !!(FACEBOOK_APP_ID && FACEBOOK_APP_SECRET && APP_BASE_URL && ENABLE_FACEBOOK_AUTH);
+  const googleAvailable = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && APP_BASE_URL);
+
+  app.get("/api/auth/providers", (req, res) => {
+    res.json({ google: googleAvailable, facebook: facebookAvailable });
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

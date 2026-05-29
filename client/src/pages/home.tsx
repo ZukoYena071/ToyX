@@ -6,7 +6,6 @@ import { Search, MapPin } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import UploadOverlay from "@/components/upload-overlay";
 import BottomNav from "@/components/bottom-nav";
-import { PageLoadingSkeleton } from "@/components/loading-skeletons";
 import PageContainer from "@/components/ui/PageContainer";
 import ToyCarouselCard from "@/components/toys/ToyCarouselCard";
 import { apiRequest } from "@/lib/queryClient";
@@ -21,6 +20,27 @@ export default function HomePage() {
   const [restoreDraft, setRestoreDraft] = useState<any>(null);
   const [enablingLoc, setEnablingLoc] = useState(false);
   const [dismissedCta, setDismissedCta] = useState(false);
+  // Save scroll position before navigating away (restore on return)
+  useEffect(() => {
+    const handleBeforeNav = () => {
+      if (window.scrollY > 0) {
+        sessionStorage.setItem("toyx_home_scroll", String(window.scrollY));
+      }
+    };
+    // Listen for carousel card clicks
+    document.addEventListener("click", handleBeforeNav, true);
+    return () => document.removeEventListener("click", handleBeforeNav, true);
+  }, []);
+
+  // Restore scroll position when returning from toy detail
+  useEffect(() => {
+    const saved = sessionStorage.getItem("toyx_home_scroll");
+    if (saved) {
+      sessionStorage.removeItem("toyx_home_scroll");
+      setTimeout(() => window.scrollTo(0, parseInt(saved, 10)), 50);
+    }
+  }, []);
+
   // Open upload modal when redirected from /list-toy or after subscription upgrade
   useEffect(() => {
     console.log("HOME: mounted, checking upgrade context...");
@@ -61,7 +81,7 @@ export default function HomePage() {
   const u = user as any;
   const hasLocation = !!(u?.locationEnabled && u?.latitude != null && u?.longitude != null);
 
-  const { data: toys, isLoading } = useQuery({ queryKey: ["/api/toys"] });
+  const { data: toys, isLoading } = useQuery({ queryKey: ["/api/toys"], placeholderData: (prev) => prev });
   const { data: recs } = useQuery({ queryKey: ["/api/recommendations/home"], enabled: !!user });
   const { data: matches } = useQuery({ queryKey: ["/api/me/matches"], enabled: !!user });
   const { data: wishlist } = useQuery({ queryKey: ["/api/me/wishlist"], enabled: !!user });
@@ -133,15 +153,14 @@ export default function HomePage() {
           />
         ))}
         {sectionToys.length === 0 && (
-          <div className="flex-shrink-0 w-[78%] h-40 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500">No toys found</p>
+          <div className="flex-shrink-0 w-[78%] h-40 bg-gray-50 dark:bg-gray-800/50 rounded-2xl flex flex-col items-center justify-center px-6">
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 mb-1">No toys nearby just yet</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center leading-relaxed">Be the first family in your area to start sharing toys 🧸</p>
           </div>
         )}
       </div>
     </div>
   );
-
-  if (isLoading) return <PageLoadingSkeleton />;
 
   return (
     <PageContainer className="pb-24">

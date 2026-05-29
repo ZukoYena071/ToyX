@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -28,12 +28,14 @@ import BillingCancel from "@/pages/billing-cancel";
 import Rewards from "@/pages/rewards";
 import Invite from "@/pages/invite";
 import LoadingLogo from "@/components/ui/LoadingLogo";
+import FullscreenLoader from "@/components/ui/FullscreenLoader";
 import PrivacySafety from "@/pages/privacy-safety";
 import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import DataDeletionPage from "@/pages/data-deletion";
+import SupportPage from "@/pages/support";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
 function ListToyRoute() {
   const [, setLocation] = useLocation();
@@ -45,15 +47,41 @@ function ListToyRoute() {
 
 const PUBLIC_ROUTES = new Set([
   "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
-  "/pricing", "/terms", "/privacy-policy", "/data-deletion", "/billing-success", "/billing-cancel",
+  "/pricing", "/terms", "/privacy-policy", "/data-deletion", "/support", "/billing-success", "/billing-cancel",
   "/rewards", "/invite", "/exchange-request",
 ]);
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
+  const [authDone, setAuthDone] = useState(false);
 
   console.log("Router render:", { isAuthenticated, isLoading });
+
+  // Keep loader briefly after auth resolves so the simulation completes gracefully
+  useEffect(() => {
+    if (!isLoading) {
+      const timer = setTimeout(() => setAuthDone(true), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
+
+  // Claim pending referral after auth (handles OAuth signup flow)
+  useEffect(() => {
+    if (isAuthenticated) {
+      const ref = localStorage.getItem("pendingReferralRef");
+      if (ref) {
+        fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" })
+          .then((res) => { if (!res.ok) console.warn("[referral] claim failed:", res.status, res.statusText); else localStorage.removeItem("pendingReferralRef"); })
+          .catch((err) => console.warn("[referral] claim network error:", err));
+      }
+    }
+  }, [isAuthenticated]);
+
+  // Fullscreen simulated loader during + briefly after auth
+  if (isLoading || !authDone) {
+    return <FullscreenLoader />;
+  }
 
   // Save protected route path for redirect after login
   if (!isLoading && !isAuthenticated) {
@@ -65,15 +93,6 @@ function Router() {
 
   // Check if user has completed onboarding from their profile (with localStorage fallback for migration)
   const hasCompletedOnboarding = (user as any)?.onboardingVersion >= 2 || localStorage.getItem('toyxOnboardingVersion') === '2';
-
-  // Show loading screen while auth is loading
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
-        <LoadingLogo label="Loading..." />
-      </div>
-    );
-  }
 
   // Render only one route configuration at a time to prevent double rendering
   if (!isAuthenticated) {
@@ -89,6 +108,7 @@ function Router() {
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/data-deletion" component={DataDeletionPage} />
+        <Route path="/support" component={SupportPage} />
         <Route path="/billing-success" component={BillingSuccess} />
         <Route path="/billing-cancel" component={BillingCancel} />
         <Route path="/rewards" component={Rewards} />
@@ -132,6 +152,7 @@ function Router() {
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/data-deletion" component={DataDeletionPage} />
+        <Route path="/support" component={SupportPage} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/exchange-request" component={ExchangeRequest} />
       <Route path="/loading-demo" component={LoadingDemo} />

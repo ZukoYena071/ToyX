@@ -6,9 +6,17 @@ import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import cors from "cors";
 import multer from "multer";
 import { uploadImage, validateImage, isR2Configured, processImages } from "./r2";
+import { sendEmail } from "./email";
+import { welcomeTemplate } from "./email/templates/welcome";
+import { exchangeRequestTemplate } from "./email/templates/exchange-request";
+import { exchangeAcceptedTemplate } from "./email/templates/exchange-accepted";
+import { moderationMessageTemplate } from "./email/templates/moderation-message";
+import { accountSuspendedTemplate } from "./email/templates/account-suspended";
+import { accountBannedTemplate } from "./email/templates/account-banned";
+import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, insertMarketingSubscriberSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, insertMarketingSubscriberSchema, insertSupportRequestSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -41,103 +49,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always save to DB
       await db.insert(marketingSubscribers).values({ email }).onConflictDoNothing();
 
-      // Send branded welcome email via Resend if key is configured
-      if (process.env.RESEND_API_KEY) {
-        try {
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "The ToyX Team <hello@toyxchange.online>",
-              to: email,
-              subject: "Welcome to the ToyX Family! 💜",
-              html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to ToyX</title>
-</head>
-<body style="margin:0;padding:0;background-color:#F7F5FB;font-family:'Inter','Helvetica',Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F7F5FB;">
-    <tr>
-      <td align="center" style="padding:40px 16px;">
-        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;">
-
-          <!-- Logo -->
-          <tr>
-            <td align="center" style="padding:40px 24px 24px;">
-              <img src="https://toyxchange.online/assets/toyx-logo.png" alt="ToyX" style="max-height:50px;width:auto;display:block;" />
-            </td>
-          </tr>
-
-          <!-- Hero Image -->
-          <tr>
-            <td align="center" style="padding:0 24px 24px;">
-              <img src="https://toyxchange.online/assets/hero.png" alt="ToyX Heroes" style="width:100%;max-width:432px;border-radius:12px;display:block;" />
-            </td>
-          </tr>
-
-          <!-- Headline -->
-          <tr>
-            <td align="center" style="padding:0 24px 8px;">
-              <h1 style="margin:0;font-size:28px;font-weight:700;color:#1f2937;letter-spacing:-0.5px;">Share toys, spread joy.</h1>
-            </td>
-          </tr>
-
-          <!-- Body -->
-          <tr>
-            <td align="center" style="padding:0 24px 24px;">
-              <p style="margin:0;font-size:16px;line-height:1.7;color:#6b7280;">
-                Hi there! Thanks for joining the ToyX community. We're building the safest space for parents in South Africa to swap toys, save money, and live greener. Your journey to discovery starts now!
-              </p>
-            </td>
-          </tr>
-
-          <!-- CTA Button -->
-          <tr>
-            <td align="center" style="padding:0 24px 32px;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border-radius:12px;">
-                    <a href="https://toyxchange.online/go/app" target="_blank" style="display:inline-block;padding:14px 40px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Start Exploring</a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color:#F9FAFB;padding:20px 24px;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">
-                &copy; 2024 ToyX. All Rights Reserved. Made with 💜 for South African Parents.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
-            }),
-          });
-        } catch (emailErr) {
-          console.error("MARKETING_SUBSCRIPTION_EMAIL_ERROR:", emailErr);
-        }
-      } else {
-        console.warn("Missing RESEND_API_KEY");
-      }
+      // Send branded welcome email via shared email service
+      const { subject, html } = welcomeTemplate(email);
+      await sendEmail({ to: email, subject, html, emailType: "welcome" });
 
       res.json({ message: "Subscribed successfully" });
     } catch (error) {
       console.error("MARKETING_SUBSCRIPTION_ERROR:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Support / appeals request endpoint
+  app.post("/api/support", async (req, res) => {
+    try {
+      const parsed = insertSupportRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const firstError = parsed.error.errors[0];
+        return res.status(400).json({ message: firstError?.message || "Invalid input" });
+      }
+      const parsedData = parsed.data;
+      const userId = (req as any).user?.claims?.sub || null;
+      const email = parsedData.email || (userId ? (await storage.getUser(userId))?.email : null) || null;
+      const { category, subject, message } = parsedData;
+
+      await db.insert(supportRequests).values({
+        userId,
+        email,
+        category,
+        subject,
+        message,
+      });
+
+      // Send internal notification email to support/admin
+      try {
+        const userEmail = email || "(authenticated)";
+        const fromName = userId ? `User ${userId.substring(0, 12)}` : (email || "Anonymous");
+        const { html } = supportRequestTemplate(fromName, category, subject, message, userEmail);
+        await sendEmail({
+          to: "The ToyX Team <hello@toyxchange.online>",
+          subject: `[Support] ${subject.substring(0, 60)}`,
+          html,
+          emailType: "support-request",
+        });
+      } catch (emailError) {
+        console.error("SUPPORT_EMAIL_ERROR:", emailError);
+      }
+
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error("SUPPORT_REQUEST_ERROR:", error);
+      res.status(500).json({ message: "Failed to submit support request" });
     }
   });
 
@@ -218,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Reset onboarding (dev-only)
     app.post("/api/dev/reset-onboarding", isAuthenticated, async (req: any, res) => {
       try {
-        const userId = req.user.claims.sub;
+      const userId = (req as any).user?.claims?.sub;
         await storage.updateUser(userId, { onboardingVersion: 0 });
         res.json({ ok: true });
       } catch (e: any) {
@@ -495,6 +457,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // Block enforcement: bidirectional invisible separation
+      const viewerId = (req as any).user?.claims?.sub;
+      if (viewerId && viewerId !== user.id) {
+        const [blockedByTarget, blockedViewer] = await Promise.all([
+          storage.isBlocked(user.id, viewerId),
+          storage.isBlocked(viewerId, user.id),
+        ]);
+        if (blockedByTarget || blockedViewer) {
+          return res.status(404).json({ message: "User not found" });
+        }
+      }
+
       if (user.profileImageUrl) {
         user.profileImageUrl = user.profileImageUrl.replace(/^http:/, "https:");
       }
@@ -507,6 +482,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/users/:id/toys', async (req, res) => {
     try {
+      // Block enforcement: hide toys if viewer is blocked by or has blocked the target user
+      const viewerId = (req as any).user?.claims?.sub;
+      if (viewerId && viewerId !== req.params.id) {
+        const [blockedByTarget, blockedViewer] = await Promise.all([
+          storage.isBlocked(req.params.id, viewerId),
+          storage.isBlocked(viewerId, req.params.id),
+        ]);
+        if (blockedByTarget || blockedViewer) {
+          return res.status(404).json({ message: "User not found" });
+        }
+      }
+
       const toys = await storage.getToysByUser(req.params.id);
       const toysWithMeta = await Promise.all(toys.map(async (t: any) => {
         const [exch] = await db.select({ id: exchanges.id }).from(exchanges).where(
@@ -620,17 +607,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { search, category } = req.query;
       let toys;
+      const uid = req.user?.claims?.sub;
+
+      // Collect blocked user IDs for filtering (bidirectional)
+      let blockedIds: string[] = [];
+      if (uid) {
+        const [blocked, blockers] = await Promise.all([
+          storage.getBlockedUserIds(uid),
+          storage.getBlockerUserIds(uid),
+        ]);
+        blockedIds = Array.from(new Set([...blocked, ...blockers]));
+        if (blockedIds.length > 0) {
+          console.log("BLOCK_FILTER: viewer", uid.substring(0, 12), "blocking", blockedIds.length, "users, filtered from toys query");
+        }
+      }
       
+      // Fetch toys
       if (search) {
-        toys = await storage.searchToys(search as string);
+        toys = await storage.searchToys(search as string, blockedIds);
       } else if (category) {
-        toys = await storage.getToysByCategory(category as string);
+        toys = await storage.getToysByCategory(category as string, blockedIds);
       } else {
-        toys = await storage.getToys();
+        toys = await storage.getToys(blockedIds);
       }
       
       // Add favorite status, owner rating, and exchange status
-      const uid = req.user?.claims?.sub;
       for (const toy of toys) {
         toy.isFavorited = uid ? await storage.isFavorite(uid, toy.id) : false;
         toy.ownerRating = await storage.getUserAverageRating(toy.ownerId);
@@ -659,16 +660,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Sort: boosted first (boostedUntil DESC), then distance ASC, then createdAt DESC, then id DESC
+      // Sort: boosted first (boostedUntil DESC), then distance ASC, then id DESC (newest first)
       toys.sort((a: any, b: any) => {
         const aBoosted = !!(a.boostedUntil && new Date(a.boostedUntil) > now);
         const bBoosted = !!(b.boostedUntil && new Date(b.boostedUntil) > now);
         if (aBoosted !== bBoosted) return aBoosted ? -1 : 1;
         if (aBoosted && bBoosted) return new Date(b.boostedUntil).getTime() - new Date(a.boostedUntil).getTime();
         if (a.distanceKm != null && b.distanceKm != null) return a.distanceKm - b.distanceKm;
-        const aTime = new Date(a.createdAt || 0).getTime();
-        const bTime = new Date(b.createdAt || 0).getTime();
-        if (aTime !== bTime) return bTime - aTime;
         return (b.id || 0) - (a.id || 0);
       });
       
@@ -691,6 +689,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!toy) {
         return res.status(404).json({ message: "Toy not found" });
+      }
+
+      // Block enforcement: if viewer is blocked by or has blocked the owner, hide the listing
+      const viewerId = (req as any).user?.claims?.sub;
+      if (viewerId) {
+        const [blockedByOwner, blockedViewer] = await Promise.all([
+          storage.isBlocked(toy.ownerId, viewerId),
+          storage.isBlocked(viewerId, toy.ownerId),
+        ]);
+        if (blockedByOwner || blockedViewer) {
+          return res.status(404).json({ message: "Toy not found" });
+        }
       }
       
       res.json(toy);
@@ -1059,6 +1069,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (safetyError) {
         console.error("Failed to insert safety reminder:", safetyError);
       }
+
+      // Send exchange request email to toy owner (best-effort, must not block exchange)
+      try {
+        const owner = toy.ownerId ? await storage.getUser(toy.ownerId) : null;
+        if (owner?.email) {
+          const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+          const exchangeUrl = `${baseUrl}/chat/${exchange.id}`;
+          const requesterName = user?.firstName || user?.email || "A parent";
+          const { subject, html } = exchangeRequestTemplate(requesterName, toy.name || "a toy", exchangeUrl);
+          await sendEmail({ to: owner.email, subject, html, emailType: "exchange-request" });
+        }
+      } catch (emailError) {
+        console.error("EXCHANGE_REQUEST_EMAIL_ERROR:", emailError);
+      }
       
       res.status(201).json(exchange);
     } catch (error: any) {
@@ -1070,8 +1094,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/exchanges/:id/status', isAuthenticated, async (req, res) => {
     try {
       const exchangeId = parseInt(req.params.id);
+      const actor = req as any;
+      const userId = actor.user?.claims?.sub;
       const { status } = req.body;
-      const exchange = await storage.updateExchangeStatus(exchangeId, status);
+
+      // Verify the user is a participant in this exchange (requester or owner)
+      const [exchange] = await db.select({
+        requesterId: exchanges.requesterId,
+        ownerId: exchanges.ownerId,
+      }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
+      if (!exchange) return res.status(404).json({ message: "Exchange not found" });
+      if (exchange.requesterId !== userId && exchange.ownerId !== userId) {
+        return res.status(403).json({ code: "FORBIDDEN", message: "You are not a participant in this exchange" });
+      }
+
+      const updated = await storage.updateExchangeStatus(exchangeId, status);
+
+      // If accepted, send email notification to requester
+      if (status === "accepted") {
+        try {
+          const exchData = await db.select({
+            requesterId: exchanges.requesterId,
+            ownerId: exchanges.ownerId,
+            toyId: exchanges.toyId,
+          }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
+          if (exchData.length) {
+            const requester = await storage.getUser(exchData[0].requesterId);
+            const toy = await storage.getToy(exchData[0].toyId);
+            if (requester?.email && toy?.name) {
+              const ownerName = (await storage.getUser(exchData[0].ownerId))?.firstName || "The owner";
+              const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+              const { subject, html } = exchangeAcceptedTemplate(ownerName, toy.name, `${baseUrl}/chat/${exchangeId}`);
+              await sendEmail({ to: requester.email, subject, html, emailType: "exchange-accepted" });
+            }
+          }
+        } catch (emailError) {
+          console.error("EXCHANGE_ACCEPTED_EMAIL_ERROR:", emailError);
+        }
+      }
+
       // If completed, mark both toys as unavailable
       if (status === "completed") {
         const exch = await db.select({ toyId: exchanges.toyId, offeredToyId: exchanges.offeredToyId }).from(exchanges).where(eq(exchanges.id, exchangeId)).limit(1);
@@ -1082,7 +1143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      res.json(exchange);
+      res.json(updated);
     } catch (error) {
       console.error("Error updating exchange status:", error);
       res.status(500).json({ message: "Failed to update exchange status" });
@@ -1105,8 +1166,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.logToyInteraction(exchange.requesterId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
         await storage.logToyInteraction(exchange.ownerId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
         // Check for referral qualification
-        await qualifyReferral(exchange.requesterId);
-        await qualifyReferral(exchange.ownerId);
+        const [requesterRef, ownerRef] = [await qualifyReferral(exchange.requesterId), await qualifyReferral(exchange.ownerId)];
+        console.log(`[referral] exchange ${exchange.id} completed: requesterRef=${requesterRef?.userId || 'none'}, ownerRef=${ownerRef?.userId || 'none'}`);
+        const refResult = [requesterRef, ownerRef].filter(Boolean);
+        const myRefResult = refResult.find(r => r && (r as any).userId === userId) as { refereeUnlockedPremium: boolean; pointsAwarded: number } | null;
+        return res.json({ ...exchange, referralReward: myRefResult || undefined });
       }
       res.json(exchange);
     } catch (error: any) {
@@ -1461,9 +1525,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = new Date(Date.now() + days * 86400000);
       await db.update(users).set({ suspendedUntil: expiresAt, suspensionReason: reason || null }).where(eq(users.id, targetId));
       await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "suspend", message: reason || null, durationDays: days, expiresAt }).returning();
-      if (messageToUser) {
-        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account suspended", body: messageToUser });
+      const suspensionBody = messageToUser || (
+        `Your account has been temporarily suspended for ${days} day${days > 1 ? 's' : ''} due to: ${reason || "a community guideline concern"}.\n\nDuring this period you cannot:\n• create listings\n• request exchanges\n• send messages\n\nIf you believe this was a mistake, please contact support.`
+      );
+      await db.insert(moderationMessages).values({
+        userId: targetId, adminUserId: adminId, reportId: reportId || null,
+        subject: "Account suspended",
+        body: suspensionBody,
+      });
+
+      // Send suspension notification email to the affected user
+      try {
+        const targetUser = await storage.getUser(targetId);
+        if (targetUser?.email) {
+          const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+          const durationText = days === 1 ? "1 day" : days === 7 ? "7 days" : "30 days";
+          const { subject: emailSubject, html } = accountSuspendedTemplate(durationText, reason || "Community guidelines", `${baseUrl}`);
+          await sendEmail({ to: targetUser.email, subject: emailSubject, html, emailType: "account-suspended" });
+        }
+      } catch (emailError) {
+        console.error("ACCOUNT_SUSPENDED_EMAIL_ERROR:", emailError);
       }
+
       res.json({ ok: true, suspendedUntil: expiresAt });
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
@@ -1476,9 +1559,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { reason, messageToUser, reportId } = req.body;
       await db.update(users).set({ bannedAt: new Date(), suspensionReason: reason || null }).where(eq(users.id, targetId));
       await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "ban", message: reason || null }).returning();
-      if (messageToUser) {
-        await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: "Account banned", body: messageToUser });
+      const banBody = messageToUser || (
+        `Your ToyX account has been permanently closed due to: ${reason || "a community guideline concern"}.\n\nIf you believe this was a mistake, please contact support.`
+      );
+      await db.insert(moderationMessages).values({
+        userId: targetId, adminUserId: adminId, reportId: reportId || null,
+        subject: "Account closed",
+        body: banBody,
+      });
+
+      // Send account closure notification email to the affected user
+      try {
+        const targetUser = await storage.getUser(targetId);
+        if (targetUser?.email) {
+          const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+          const { subject: emailSubject, html } = accountBannedTemplate(reason || "Community guidelines", `${baseUrl}`);
+          await sendEmail({ to: targetUser.email, subject: emailSubject, html, emailType: "account-banned" });
+        }
+      } catch (emailError) {
+        console.error("ACCOUNT_BANNED_EMAIL_ERROR:", emailError);
       }
+
       res.json({ ok: true });
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
@@ -1492,6 +1593,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!msgBody) return res.status(400).json({ message: "Message body required" });
       const [msg] = await db.insert(moderationMessages).values({ userId: targetId, adminUserId: adminId, reportId: reportId || null, subject: subject || "Message from ToyX", body: msgBody }).returning();
       await db.insert(moderationActions).values({ adminUserId: adminId, targetUserId: targetId, reportId: reportId || null, actionType: "message", message: msgBody }).returning();
+
+      // Send moderation notification email to the affected user
+      try {
+        const targetUser = await storage.getUser(targetId);
+        if (targetUser?.email) {
+          const baseUrl = process.env.APP_BASE_URL || "https://app.toyxchange.online";
+          const { subject: emailSubject, html } = moderationMessageTemplate(`${baseUrl}/privacy/messages`);
+          await sendEmail({ to: targetUser.email, subject: emailSubject, html, emailType: "moderation-message" });
+        }
+      } catch (emailError) {
+        console.error("MODERATION_MESSAGE_EMAIL_ERROR:", emailError);
+      }
+
       res.json({ ok: true, id: msg.id });
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
@@ -1681,8 +1795,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         code = (user?.firstName || user?.email || "user").substring(0, 4).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
         await db.update(users).set({ referralCode: code }).where(eq(users.id, userId));
       }
-      const myRefs = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(referrals.createdAt).limit(20);
-      res.json({ referralCode: code, inviteLink: `/welcome?ref=${code}`, referrals: myRefs });
+      const myRefs = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt)).limit(20);
+      const enrichedRefs = await Promise.all(myRefs.map(async (ref) => {
+        if (!ref.refereeId) return { ...ref, refereeName: null, refereeEmail: null };
+        const refUser = await storage.getUser(ref.refereeId);
+        return { ...ref, refereeName: refUser ? `${refUser.firstName || ""} ${refUser.lastName || ""}`.trim() || null : null, refereeEmail: refUser?.email || null };
+      }));
+      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+      const monthlyQualified = enrichedRefs.filter(r => r.status === "qualified" && r.qualifiedAt && new Date(r.qualifiedAt) >= startOfMonth).length;
+      const totalQualified = enrichedRefs.filter(r => r.status === "qualified").length;
+      const totalPending = enrichedRefs.filter(r => r.status === "pending").length;
+      const [pointsResult] = await db.select({ total: sql<number>`coalesce(sum(points), 0)` }).from(rewardLedger).where(
+        and(eq(rewardLedger.userId, userId), inArray(rewardLedger.eventType, ["REFERRAL_QUALIFIED", "REFERRAL_QUALIFIED_REFEREE"]))
+      );
+      const pointsFromReferrals = pointsResult?.total || 0;
+      const premiumDaysFromReferrals = totalQualified * 7;
+      res.json({
+        referralCode: code,
+        inviteLink: `/welcome?ref=${code}`,
+        referrals: enrichedRefs,
+        stats: {
+          monthlyQualified,
+          monthlyLimit: 5,
+          totalQualified,
+          totalPending,
+          pointsFromReferrals,
+          premiumDaysFromReferrals,
+        },
+      });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
     }
@@ -1698,14 +1838,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user && (req.user as any).claims?.sub === referrer.id) {
         return res.status(400).json({ message: "Cannot refer yourself" });
       }
-      if (req.user) {
-        const userId = (req.user as any).claims?.sub;
-        const existing = await db.select().from(referrals).where(
-          and(eq(referrals.referrerId, referrer.id), eq(referrals.refereeId, userId))
-        ).limit(1);
-        if (existing.length) return res.status(400).json({ message: "Already referred" });
-        await db.insert(referrals).values({ referrerId: referrer.id, refereeId: userId, status: "pending" });
+      if (!req.user) return res.status(401).json({ message: "Authentication required" });
+      const userId = (req.user as any).claims?.sub;
+      // Guard A: referee can only be claimed once (prevents multi-referrer abuse)
+      const alreadyReferred = await db.select().from(referrals).where(
+        eq(referrals.refereeId, userId)
+      ).limit(1);
+      if (alreadyReferred.length) return res.status(400).json({ message: "You have already been referred" });
+      // Guard B: referrer cannot accumulate more pending referrals than monthly cap allows
+      if (!(await checkMonthlyReferralCap(referrer.id))) {
+        return res.status(400).json({ message: "Referrer has reached their monthly referral limit" });
       }
+      const existing = await db.select().from(referrals).where(
+        and(eq(referrals.referrerId, referrer.id), eq(referrals.refereeId, userId))
+      ).limit(1);
+      if (existing.length) return res.status(400).json({ message: "Already referred by this user" });
+      await db.insert(referrals).values({ referrerId: referrer.id, refereeId: userId, status: "pending" });
       res.json({ ok: true });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
@@ -1714,6 +1862,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Paystack billing endpoints
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "";
+  if (!PAYSTACK_SECRET_KEY) {
+    console.warn("PAYSTACK_SECRET_KEY not set — payments will fail");
+  }
   const PAYSTACK_MONTHLY_PLAN_CODE = process.env.PAYSTACK_MONTHLY_PLAN_CODE || "PLN_qa2hymptm1v3pks";
   const PAYSTACK_YEARLY_PLAN_CODE = process.env.PAYSTACK_YEARLY_PLAN_CODE || "PLN_6r1rrbz34iv7ct4";
   const PAYSTACK_MONTHLY_AMOUNT = parseInt(process.env.PAYSTACK_MONTHLY_AMOUNT || "8900");

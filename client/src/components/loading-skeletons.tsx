@@ -6,7 +6,7 @@ const Skeleton = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
   return (
     <div
       className={cn(
-        "animate-pulse rounded-md bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-muted/40 dark:via-muted/60 dark:to-muted/40 bg-[length:200%_100%] animate-shimmer",
+        "animate-pulse rounded-lg bg-gradient-to-r from-gray-100/70 via-gray-200/50 to-gray-100/70 dark:from-gray-800/30 dark:via-gray-700/40 dark:to-gray-800/30 bg-[length:200%_100%] animate-shimmer",
         className
       )}
       {...props}
@@ -14,36 +14,28 @@ const Skeleton = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
   );
 };
 
-// Toy card skeleton with cute animations
+// Toy card skeleton — softer, cleaner placeholder
 export const ToyCardSkeleton = () => {
   return (
-    <div className="bg-white dark:bg-card border border-gray-100 dark:border-border rounded-2xl p-4 shadow-sm">
-      {/* Image skeleton */}
-      <div className="aspect-square bg-gradient-to-br from-peach/20 via-mint/20 to-powder/20 rounded-2xl mb-3 relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <LoadingLogo label="" className="scale-50" />
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-3 shadow-sm">
+      {/* Image placeholder */}
+      <div className="aspect-square bg-gray-50 dark:bg-gray-800/50 rounded-xl mb-3">
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
         </div>
-        <Skeleton className="absolute inset-0 rounded-2xl opacity-30" />
       </div>
       
-      {/* Title skeleton */}
-      <Skeleton className="h-5 w-3/4 mb-2 rounded-full" />
+      {/* Title */}
+      <Skeleton className="h-4 w-3/4 mb-2" />
       
-      {/* Description skeleton */}
-      <Skeleton className="h-3 w-full mb-1 rounded-full" />
-      <Skeleton className="h-3 w-2/3 mb-3 rounded-full" />
-      
-      {/* Badges skeleton */}
+      {/* Badge row */}
       <div className="flex gap-2 mb-2">
-        <Skeleton className="h-6 w-16 rounded-full" />
-        <Skeleton className="h-6 w-14 rounded-full" />
+        <Skeleton className="h-5 w-14 rounded-md" />
+        <Skeleton className="h-5 w-12 rounded-md" />
       </div>
       
-      {/* Location skeleton */}
-      <div className="flex items-center gap-1">
-        <Skeleton className="h-3 w-3 rounded-full" />
-        <Skeleton className="h-3 w-20 rounded-full" />
-      </div>
+      {/* Location */}
+      <Skeleton className="h-3 w-1/2" />
     </div>
   );
 };
@@ -230,6 +222,27 @@ export const PageLoadingSkeleton = ({ title }: { title?: string }) => {
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="w-8 h-8 rounded-full" />
           ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const ToyDetailSkeleton = () => {
+  return (
+    <div className="animate-pulse">
+      <div className="h-[300px] sm:h-[400px] bg-gray-100 dark:bg-gray-800" />
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <Skeleton className="h-7 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+        <div className="flex gap-2">
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-6 w-16 rounded-full" />
+        </div>
+        <div className="space-y-2 pt-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
         </div>
       </div>
     </div>

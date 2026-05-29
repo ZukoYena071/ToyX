@@ -13,6 +13,7 @@ import SectionCard from "@/components/ui/SectionCard";
 import BadgePill from "@/components/ui/BadgePill";
 import EmptyState from "@/components/ui/EmptyState";
 import ToyFeedCard from "@/components/toys/ToyFeedCard";
+import ToyImage from "@/components/ToyImage";
 import { apiRequest } from "@/lib/queryClient";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 
@@ -283,8 +284,8 @@ export default function BrowsePage() {
                   <div className="aspect-square bg-gray-50 dark:bg-gray-800 relative overflow-hidden">
                     {toy.imageUrls && toy.imageUrls[0] ? (
                       <div className="absolute inset-0 w-full h-full">
-                        <img src={toy.imageUrls[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60" />
-                        <img src={toy.imageUrls[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-contain" />
+                        <img src={toy.imageUrls[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60" loading="lazy" />
+                        <ToyImage src={toy.imageUrls[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-contain" />
                       </div>
                     ) : (
                       <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">

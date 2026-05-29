@@ -193,10 +193,15 @@ export async function applyPaidBoost(toyId: number, userId: string, hours: numbe
 }
 
 export async function qualifyReferral(refereeId: string) {
+  console.log(`[referral] qualifyReferral called for refereeId=${refereeId}`);
   const refs = await db.select().from(referrals).where(
     and(eq(referrals.refereeId, refereeId), eq(referrals.status, "pending"))
   ).limit(1);
-  if (!refs.length) return;
+  if (!refs.length) {
+    console.log(`[referral] no pending referral found for refereeId=${refereeId}`);
+    return null;
+  }
+  console.log(`[referral] found pending referral id=${refs[0].id} referrerId=${refs[0].referrerId}`);
   const ref = refs[0];
   await db.update(referrals).set({ status: "qualified", qualifiedAt: new Date() }).where(eq(referrals.id, ref.id));
   if (await checkMonthlyReferralCap(ref.referrerId)) {
@@ -210,9 +215,15 @@ export async function qualifyReferral(refereeId: string) {
   }
   await awardPoints({ userId: refereeId, eventType: "REFERRAL_QUALIFIED_REFEREE", referenceType: "referral", referenceId: `ref_${ref.id}_referee`, points: 100, meta: { referrerId: ref.referrerId } });
   const referee = await db.select().from(users).where(eq(users.id, refereeId)).limit(1);
+  let refereePremiumUnlocked = false;
   if (referee.length) {
     const existingPass = referee[0].premiumPassUntil || new Date();
     const newPass = new Date(Math.max(existingPass.getTime(), Date.now()) + 7 * 24 * 60 * 60 * 1000);
+    const wasFree = !referee[0].premiumPassUntil || referee[0].premiumPassUntil <= new Date();
     await db.update(users).set({ premiumPassUntil: newPass }).where(eq(users.id, refereeId));
+    refereePremiumUnlocked = wasFree;
+    console.log(`[referral] referee ${refereeId} premiumPassUntil set to ${newPass.toISOString()} (wasFree=${wasFree})`);
   }
+  console.log(`[referral] referral ${ref.id} qualified successfully for referee ${refereeId}`);
+  return { userId: refereeId, refereeUnlockedPremium: refereePremiumUnlocked, pointsAwarded: 100 };
 }

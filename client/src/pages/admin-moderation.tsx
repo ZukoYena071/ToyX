@@ -172,7 +172,7 @@ export default function AdminModeration() {
         )}
 
         {loading ? (
-          <div className="text-center py-12 text-sm text-gray-500">Loading...</div>
+          <div className="text-center py-12"><div className="w-5 h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-auto" /></div>
         ) : !error && reports.length === 0 ? (
           <div className="text-center py-12">
             <Flag className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
