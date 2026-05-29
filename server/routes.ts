@@ -708,6 +708,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // One-time migration: convert stored base64 images to R2 URLs
+  app.post('/api/admin/migrate-images', async (req: any, res) => {
+    try {
+      const allToys = await db.select().from(toys);
+      let migrated = 0;
+      let totalBase64 = 0;
+      for (const toy of allToys) {
+        const urls = toy.imageUrls as string[] | null;
+        if (!urls || !urls.some(u => u.startsWith("data:"))) continue;
+        totalBase64++;
+        const processed = await processImages(urls);
+        const hasR2 = processed.some(u => u.startsWith("http") && !u.startsWith("data:"));
+        if (hasR2) {
+          await storage.updateToy(toy.id, { imageUrls: processed as any });
+          migrated++;
+        }
+      }
+      res.json({ totalToysWithBase64: totalBase64, migratedToR2: migrated });
+    } catch (error: any) {
+      console.error("Error migrating images:", error);
+      res.status(500).json({ message: error.message || "Migration failed" });
+    }
+  });
+
   app.get('/api/toys/:id', async (req, res) => {
     try {
       const toyId = parseInt(req.params.id);
