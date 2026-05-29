@@ -19,15 +19,6 @@ export default function ToyImage({ src, alt = "", className = "", fallback = "ðŸ
     }
   }, []);
 
-  // Log failed image URLs for diagnostics (only once per URL)
-  const errLogged = useRef(new Set());
-  useEffect(() => {
-    if (error && src && !errLogged.current.has(src)) {
-      errLogged.current.add(src);
-      console.warn(`[image] failed to load: ${src.substring(0, 120)}`);
-    }
-  }, [error, src]);
-
   if (!src || error) {
     return (
       <div className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${className}`}>
