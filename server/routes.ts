@@ -16,7 +16,7 @@ import { accountBannedTemplate } from "./email/templates/account-banned";
 import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, insertMarketingSubscriberSchema, insertSupportRequestSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, insertMarketingSubscriberSchema, insertSupportRequestSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -631,31 +631,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toys = await storage.getToys(blockedIds);
       }
       
-      // Add favorite status, owner rating, and exchange status
-      for (const toy of toys) {
-        toy.isFavorited = uid ? await storage.isFavorite(uid, toy.id) : false;
-        toy.ownerRating = await storage.getUserAverageRating(toy.ownerId);
-        const activeEx = await db.select({ id: exchanges.id }).from(exchanges).where(
-          and(
-            or(eq(exchanges.toyId, toy.id), eq(exchanges.offeredToyId, toy.id)),
-            inArray(exchanges.status, ["pending", "accepted"])
-          )
-        ).limit(1);
-        toy.inExchange = activeEx.length > 0;
+      if (toys.length === 0) return res.json([]);
+
+      const toyIds = toys.map(t => t.id);
+
+      // ── Batch isFavorited (1 query vs N) ──
+      const favSet = new Set<number>();
+      if (uid) {
+        const favRows = await db.select({ toyId: favorites.toyId }).from(favorites)
+          .where(and(eq(favorites.userId, uid), inArray(favorites.toyId, toyIds)));
+        favRows.forEach(r => favSet.add(r.toyId));
       }
-      
-      // Add isBoosted to each toy
+
+      // ── Batch owner ratings (1 query vs N) ──
+      const ownerIds = Array.from(new Set(toys.map(t => t.ownerId)));
+      const ratingRows = await db.select({ ownerId: reviews.revieweeId, avg: sql<number>`coalesce(avg(${reviews.rating}), 0)` }).from(reviews)
+        .where(inArray(reviews.revieweeId, ownerIds)).groupBy(reviews.revieweeId);
+      const ratingMap = new Map(ratingRows.map(r => [r.ownerId, Number(r.avg)]));
+
+      // ── Batch inExchange status (1 query vs N) ──
+      const exRows = await db.select({ toyId: exchanges.toyId, offeredToyId: exchanges.offeredToyId }).from(exchanges)
+        .where(and(
+          or(inArray(exchanges.toyId, toyIds), inArray(exchanges.offeredToyId, toyIds)),
+          inArray(exchanges.status, ["pending", "accepted"])
+        ));
+      const exchangeSet = new Set<number>();
+      exRows.forEach(r => { exchangeSet.add(r.toyId); if (r.offeredToyId != null) exchangeSet.add(r.offeredToyId); });
+
+      // ── Compute distance if location enabled ──
       const now = new Date();
-      for (const toy of toys) {
-        (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
-      }
-      
-      // Compute distance from viewer if location is enabled
       const viewer = uid ? await storage.getUser(uid) : null;
-      if (viewer?.locationEnabled && viewer.latitude != null && viewer.longitude != null) {
-        for (const toy of toys) {
-          if (toy.latitude != null && toy.longitude != null) {
-            toy.distanceKm = haversineKm(viewer.latitude, viewer.longitude, toy.latitude, toy.longitude);
+      const viewerHasLocation = viewer?.locationEnabled && viewer.latitude != null && viewer.longitude != null;
+
+      // ── Assign computed fields + strip heavy data ──
+      for (const toy of toys) {
+        toy.isFavorited = favSet.has(toy.id);
+        toy.ownerRating = ratingMap.get(toy.ownerId) ?? 0;
+        toy.inExchange = exchangeSet.has(toy.id);
+        (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
+        if (viewerHasLocation && toy.latitude != null && toy.longitude != null) {
+          toy.distanceKm = haversineKm(viewer!.latitude as number, viewer!.longitude as number, toy.latitude as number, toy.longitude as number);
+        }
+        // Remove description (not needed on cards, adds significant weight)
+        delete (toy as any).description;
+        // Keep first image per toy: prefer HTTP, fall back to base64 only if under 300KB
+        if (Array.isArray(toy.imageUrls)) {
+          const httpUrl = toy.imageUrls.find((u: string) => u.startsWith("http"));
+          if (httpUrl) {
+            (toy as any).imageUrls = [httpUrl];
+          } else {
+            const first = toy.imageUrls[0];
+            if (first && first.startsWith("data:")) {
+              const rawLen = first.indexOf(",") >= 0 ? first.length - first.indexOf(",") - 1 : first.length;
+              (toy as any).imageUrls = rawLen * 0.75 < 307200 ? [first] : [];
+            } else {
+              (toy as any).imageUrls = first ? [first] : [];
+            }
           }
         }
       }
