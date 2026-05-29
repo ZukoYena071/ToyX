@@ -21,6 +21,7 @@ export default function ToyDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const { toast } = useToast();
+  const mountTime = useRef(performance.now());
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -32,6 +33,9 @@ export default function ToyDetail() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const heroLoaded = useRef(false);
+  const reportLogged = useRef(false);
+  const [, forceRender] = useState(0);
 
   // Lock body scroll when any modal is open
   const anyModalOpen = showRequestModal || showMessageModal || showToySelectionModal || limitModal;
@@ -48,6 +52,42 @@ export default function ToyDetail() {
     queryKey: ["/api/toys", id],
     enabled: !!id,
   });
+
+  // Toy detail performance instrumentation
+  useEffect(() => {
+    performance.mark("toy-detail-mount");
+    const navFrom = sessionStorage.getItem("toyx_nav_timing");
+    if (navFrom) {
+      try { const d = JSON.parse(navFrom); performance.measure("nav-to-detail", { start: d.cardClick, end: "toy-detail-mount" }); } catch {}
+      sessionStorage.removeItem("toyx_nav_timing");
+    }
+  }, []);
+  useEffect(() => {
+    if (!toy || reportLogged.current) return;
+    const toyFetch = performance.getEntriesByType("resource").find((r: any) => r.name.includes(`/api/toys/${id}`));
+    const navMs = (performance.getEntriesByName("nav-to-detail")[0] as any)?.duration;
+    console.log(`╔══════════════════════════════════════╗`);
+    console.log(`║     TOY DETAIL PERFORMANCE REPORT    ║`);
+    console.log(`╚══════════════════════════════════════╝`);
+    if (navMs != null) console.log(`  Card click→mount:  ${navMs.toFixed(0)}ms`);
+    console.log(`  Query resolve:     ${(performance.now() - mountTime.current).toFixed(0)}ms`);
+    if (toyFetch) {
+      const f = toyFetch as any;
+      console.log(`  API /api/toys/${id}:`);
+      console.log(`    TTFB:            ${(f.responseStart - f.requestStart).toFixed(0)}ms`);
+      console.log(`    Download:        ${(f.responseEnd - f.responseStart).toFixed(0)}ms`);
+      console.log(`    Total:           ${f.duration.toFixed(0)}ms`);
+      console.log(`    Size:            ${(f.transferSize || 0).toFixed(0)}B`);
+    }
+    console.log(`  Hero image: waiting for load…`);
+    reportLogged.current = true;
+  }, [toy]);
+  useEffect(() => {
+    if (!heroLoaded.current) return;
+    console.log(`  Hero image loaded: ${(performance.now() - mountTime.current).toFixed(0)}ms`);
+    console.log(`──`);
+    performance.clearMeasures();
+  }, [heroLoaded.current]);
 
   const { data: favoriteStatus } = useQuery({
     queryKey: ["/api/favorites", id, "status"],
@@ -212,7 +252,7 @@ export default function ToyDetail() {
               {imageUrls.map((url: string, i: number) => (
                 <div key={i} className="min-w-full snap-center h-full relative overflow-hidden">
                   <img src={url} alt={(toy as any)?.name} className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60" loading="lazy" />
-                  <img src={url} alt={(toy as any)?.name} className="absolute inset-0 w-full h-full object-contain" loading="lazy" />
+                  <img src={url} alt={(toy as any)?.name} className="absolute inset-0 w-full h-full object-contain" loading="lazy" onLoad={() => { if (i === 0 && !heroLoaded.current) { heroLoaded.current = true; performance.mark("hero-image-loaded"); forceRender(n => n + 1); } }} />
                 </div>
               ))}
             </div>
