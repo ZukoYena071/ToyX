@@ -7,10 +7,9 @@ const MESSAGES = [
   "Almost there…",
 ];
 
-export default function FullscreenLoader() {
+export default function FullscreenLoader({ fadeOut }: { fadeOut?: boolean }) {
   const [progress, setProgress] = useState(0);
   const [msgIndex, setMsgIndex] = useState(0);
-  const [fadeOut, setFadeOut] = useState(false);
   const startRef = useRef(Date.now());
 
   useEffect(() => {
