@@ -1166,7 +1166,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.logToyInteraction(exchange.requesterId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
         await storage.logToyInteraction(exchange.ownerId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
         // Check for referral qualification
-        const refResult = [await qualifyReferral(exchange.requesterId), await qualifyReferral(exchange.ownerId)].filter(Boolean);
+        const [requesterRef, ownerRef] = [await qualifyReferral(exchange.requesterId), await qualifyReferral(exchange.ownerId)];
+        console.log(`[referral] exchange ${exchange.id} completed: requesterRef=${requesterRef?.userId || 'none'}, ownerRef=${ownerRef?.userId || 'none'}`);
+        const refResult = [requesterRef, ownerRef].filter(Boolean);
         const myRefResult = refResult.find(r => r && (r as any).userId === userId) as { refereeUnlockedPremium: boolean; pointsAwarded: number } | null;
         return res.json({ ...exchange, referralReward: myRefResult || undefined });
       }
