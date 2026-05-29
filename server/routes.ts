@@ -674,10 +674,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Remove description (not needed on cards, adds significant weight)
         delete (toy as any).description;
-        // Keep first image per toy: prefer HTTP, fall back to base64 (first image only)
+        // Keep first image per toy: prefer compressed format (webp > jpg > png) to avoid 10MB+ PNG crashes
         if (Array.isArray(toy.imageUrls)) {
-          const httpUrl = toy.imageUrls.find((u: string) => u.startsWith("http"));
-          (toy as any).imageUrls = httpUrl ? [httpUrl] : [toy.imageUrls[0]].filter(Boolean);
+          const httpUrls = toy.imageUrls.filter((u: string) => u.startsWith("http"));
+          const pick = httpUrls.find((u) => u.includes(".webp")) || httpUrls.find((u) => !u.includes(".png")) || httpUrls[0];
+          (toy as any).imageUrls = pick ? [pick] : [toy.imageUrls[0]].filter(Boolean);
         }
       }
       
