@@ -647,7 +647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerIds = Array.from(new Set(toys.map(t => t.ownerId)));
       const ratingRows = await db.select({ ownerId: reviews.revieweeId, avg: sql<number>`coalesce(avg(${reviews.rating}), 0)` }).from(reviews)
         .where(inArray(reviews.revieweeId, ownerIds)).groupBy(reviews.revieweeId);
-      const ratingMap = new Map(ratingRows.map(r => [r.ownerId, r.avg]));
+      const ratingMap = new Map(ratingRows.map(r => [r.ownerId, Number(r.avg)]));
 
       // ── Batch inExchange status (1 query vs N) ──
       const exRows = await db.select({ toyId: exchanges.toyId, offeredToyId: exchanges.offeredToyId }).from(exchanges)
@@ -666,7 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ── Assign computed fields + strip heavy data ──
       for (const toy of toys) {
         toy.isFavorited = favSet.has(toy.id);
-        toy.ownerRating = ratingMap.get(toy.ownerId) || 0;
+        toy.ownerRating = ratingMap.get(toy.ownerId) ?? 0;
         toy.inExchange = exchangeSet.has(toy.id);
         (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
         if (viewerHasLocation && toy.latitude != null && toy.longitude != null) {
