@@ -674,10 +674,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Remove description (not needed on cards, adds significant weight)
         delete (toy as any).description;
-        // Keep only first image per toy (cards only render one), prefer HTTP but keep base64 if no R2 URL
+        // Keep first image per toy: prefer HTTP, fall back to base64 only if under 100KB
         if (Array.isArray(toy.imageUrls)) {
           const httpUrl = toy.imageUrls.find((u: string) => u.startsWith("http"));
-          (toy as any).imageUrls = httpUrl ? [httpUrl] : [toy.imageUrls[0]].filter(Boolean);
+          if (httpUrl) {
+            (toy as any).imageUrls = [httpUrl];
+          } else {
+            const first = toy.imageUrls[0];
+            if (first && first.startsWith("data:")) {
+              // Only keep base64 if decoded size is under 100KB (rough check: base64 length * 0.75)
+              const rawLen = first.indexOf(",") >= 0 ? first.length - first.indexOf(",") - 1 : first.length;
+              (toy as any).imageUrls = rawLen * 0.75 < 102400 ? [first] : [];
+            } else {
+              (toy as any).imageUrls = first ? [first] : [];
+            }
+          }
         }
       }
       
