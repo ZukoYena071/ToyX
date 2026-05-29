@@ -81,7 +81,7 @@ export default function HomePage() {
   const u = user as any;
   const hasLocation = !!(u?.locationEnabled && u?.latitude != null && u?.longitude != null);
 
-  const { data: toys, isLoading } = useQuery({ queryKey: ["/api/toys"] });
+  const { data: toys, isLoading } = useQuery({ queryKey: ["/api/toys"], placeholderData: (prev) => prev });
   const { data: recs } = useQuery({ queryKey: ["/api/recommendations/home"], enabled: !!user });
   const { data: matches } = useQuery({ queryKey: ["/api/me/matches"], enabled: !!user });
   const { data: wishlist } = useQuery({ queryKey: ["/api/me/wishlist"], enabled: !!user });
