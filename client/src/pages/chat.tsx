@@ -12,6 +12,7 @@ import ChatMessage from "@/components/chat-message";
 import ReviewForm from "@/components/review-form";
 import ReportUserModal from "@/components/toys/ReportUserModal";
 import EmojiPicker from "@/components/emoji-picker";
+import ToyImage from "@/components/ToyImage";
 import BottomNav from "@/components/bottom-nav";
 import SafetyChecklist from "@/components/SafetyChecklist";
 import PageContainer from "@/components/ui/PageContainer";
@@ -133,13 +134,22 @@ export default function Chat() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId, "messages"] });
     },
+    onError: (error: Error) => {
+      toast({ title: "Reaction failed", description: error.message || "Could not save reaction. Please try again.", variant: "destructive" });
+    },
   });
 
   const confirmExchangeMutation = useMutation({
     mutationFn: async (exchangeId: number) => {
       return await apiRequest("POST", `/api/exchanges/${exchangeId}/confirm`, {});
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      if (data?.referralReward?.refereeUnlockedPremium) {
+        toast({ title: "🎉 You unlocked 7 days of Premium!", description: "Complete your first exchange through a referral. Enjoy premium features!", variant: "default" });
+      }
+      if (data?.referralReward?.pointsAwarded) {
+        toast({ title: "🎁 Referral bonus earned!", description: `You earned ${data.referralReward.pointsAwarded} points from your referral.` });
+      }
       toast({ title: "Confirmation Recorded", description: "Your completion confirmation has been saved. Waiting for the other party to confirm." });
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/exchanges", exchangeId] });
@@ -455,6 +465,63 @@ export default function Chat() {
         </div>
       </div>
 
+      {/* Exchange toy comparison cards */}
+      {exchange && (exchange.offeredToyId || exchange.offeredToy) && (() => {
+        const userIsRequester = exchange.requesterId === (user as any)?.id;
+        return (
+        <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+          <div className="max-w-lg mx-auto px-4 py-3">
+            <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2.5 text-center">
+              {userIsRequester ? "Your Exchange Proposal" : "Exchange Request"}
+            </p>
+            <div className="flex items-center gap-3">
+              {/* Requested toy (what they want / you want) */}
+              <button onClick={() => { const url = `/toy/${exchange.toy.id}`; history.pushState(null, "", url); window.location.href = url; }} className="flex-1 min-w-0 text-left cursor-pointer">
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-purple-200 dark:border-purple-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">
+                    {exchange.toy.imageUrls?.[0] ? (
+                      <ToyImage src={exchange.toy.imageUrls[0]} alt={exchange.toy.name} className="w-full h-full" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><span className="text-2xl">🧸</span></div>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs font-medium text-purple-600 dark:text-purple-400 truncate">{userIsRequester ? "You want" : "They want"}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{exchange.toy.name}</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Swap indicator */}
+              <div className="shrink-0 flex flex-col items-center gap-0.5">
+                <div className="w-7 h-7 rounded-full bg-purple-100/60 dark:bg-purple-900/20 flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" /></svg>
+                </div>
+                <span className="text-[9px] text-purple-400/70 font-medium">⇄ Exchange</span>
+              </div>
+
+              {/* Offered toy (what they offer / you offer) */}
+              <button onClick={() => { const url = `/toy/${(exchange.offeredToyId || exchange.offeredToy?.id)}`; history.pushState(null, "", url); window.location.href = url; }} className="flex-1 min-w-0 text-left cursor-pointer">
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-green-200 dark:border-green-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">
+                    {(exchange.offeredToy?.imageUrls?.[0] || exchange.toy.imageUrls?.[0]) ? (
+                      <ToyImage src={exchange.offeredToy?.imageUrls?.[0] || exchange.toy.imageUrls?.[0]} alt={exchange.offeredToy?.name || exchange.toy.name} className="w-full h-full" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><span className="text-2xl">🧸</span></div>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs font-medium text-green-600 dark:text-green-400 truncate">{userIsRequester ? "You offer" : "They offer"}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{exchange.offeredToy?.name || exchange.toy.name}</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-lg mx-auto px-4 py-4 space-y-3">
@@ -510,7 +577,7 @@ export default function Chat() {
 
       {/* Safety checklist */}
       <div className="max-w-lg mx-auto px-4 pt-3 pb-1">
-        <SafetyChecklist compact />
+        <SafetyChecklist compact collapsible />
       </div>
 
       {/* Message Input */}
@@ -542,24 +609,21 @@ export default function Chat() {
                 );
               }
 
-              // ── Accepted state: banner + Mark Complete + Cancel ──
+              // ── Accepted state: single-line action bar ──
               if (exchange?.status === "accepted" && !userConfirmed) {
                 return (
-                  <>
-                    <div className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-2xl border border-green-200 dark:border-green-700 text-center">
-                      ✅ Exchange accepted — coordinate your meetup safely
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending}>
-                        {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Complete"}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => { if (window.confirm("Are you sure you want to cancel this exchange request?")) { cancelExchangeMutation.mutate(exchange.id); } }}
-                        disabled={cancelExchangeMutation.isPending}
-                        className="text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20">
-                        {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel"}
-                      </Button>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700 px-3 py-2 flex-wrap">
+                    <span className="text-sm shrink-0">✅</span>
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-300 flex-1 min-w-0">Exchange accepted</span>
+                    <Button size="sm" onClick={() => confirmExchangeMutation.mutate(exchange.id)} disabled={confirmExchangeMutation.isPending} className="shrink-0">
+                      {confirmExchangeMutation.isPending ? "Confirming..." : "Mark Complete"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { if (window.confirm("Are you sure you want to cancel this exchange request?")) { cancelExchangeMutation.mutate(exchange.id); } }}
+                      disabled={cancelExchangeMutation.isPending}
+                      className="text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0">
+                      {cancelExchangeMutation.isPending ? "Cancelling..." : "Cancel"}
+                    </Button>
+                  </div>
                 );
               }
 

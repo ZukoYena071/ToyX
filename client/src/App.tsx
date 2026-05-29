@@ -61,10 +61,22 @@ function Router() {
   // Keep loader briefly after auth resolves so the simulation completes gracefully
   useEffect(() => {
     if (!isLoading) {
-      const timer = setTimeout(() => setAuthDone(true), 1800);
+      const timer = setTimeout(() => setAuthDone(true), 200);
       return () => clearTimeout(timer);
     }
   }, [isLoading]);
+
+  // Claim pending referral after auth (handles OAuth signup flow)
+  useEffect(() => {
+    if (isAuthenticated) {
+      const ref = localStorage.getItem("pendingReferralRef");
+      if (ref) {
+        fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" })
+          .then((res) => { if (!res.ok) console.warn("[referral] claim failed:", res.status, res.statusText); else localStorage.removeItem("pendingReferralRef"); })
+          .catch((err) => console.warn("[referral] claim network error:", err));
+      }
+    }
+  }, [isAuthenticated]);
 
   // Fullscreen simulated loader during + briefly after auth
   if (isLoading || !authDone) {

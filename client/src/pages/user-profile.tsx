@@ -212,18 +212,20 @@ export default function UserProfile() {
                     {availableToys.map((toy) => (
                       <div
                         key={toy.id}
-                        className={`relative cursor-pointer transition-all rounded-xl border ${
-                          selectedToys.includes(toy.id)
-                            ? 'border-purple-300 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                        onClick={() => handleToySelection(toy.id)}
+                        className="relative cursor-pointer transition-all rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm"
+                        onClick={() => window.location.href = `/toy/${toy.id}`}
                       >
-                        {selectedToys.includes(toy.id) && (
-                          <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center z-10">
-                            <Heart className="w-3 h-3 text-white fill-current" />
-                          </div>
-                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleToySelection(toy.id); }}
+                          className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center z-10 transition-colors ${
+                            selectedToys.includes(toy.id)
+                              ? 'bg-purple-500'
+                              : 'bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-600'
+                          }`}
+                          aria-label={selectedToys.includes(toy.id) ? "Deselect toy" : "Select for exchange"}
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${selectedToys.includes(toy.id) ? 'text-white fill-current' : 'text-gray-400'}`} />
+                        </button>
                         <div className="p-3">
                           <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-xl mb-2 overflow-hidden">
                             {toy.imageUrls?.[0] ? (

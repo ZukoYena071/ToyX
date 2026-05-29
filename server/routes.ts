@@ -1166,8 +1166,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.logToyInteraction(exchange.requesterId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
         await storage.logToyInteraction(exchange.ownerId, exchange.toyId, "EXCHANGE_COMPLETED").catch(() => {});
         // Check for referral qualification
-        await qualifyReferral(exchange.requesterId);
-        await qualifyReferral(exchange.ownerId);
+        const [requesterRef, ownerRef] = [await qualifyReferral(exchange.requesterId), await qualifyReferral(exchange.ownerId)];
+        console.log(`[referral] exchange ${exchange.id} completed: requesterRef=${requesterRef?.userId || 'none'}, ownerRef=${ownerRef?.userId || 'none'}`);
+        const refResult = [requesterRef, ownerRef].filter(Boolean);
+        const myRefResult = refResult.find(r => r && (r as any).userId === userId) as { refereeUnlockedPremium: boolean; pointsAwarded: number } | null;
+        return res.json({ ...exchange, referralReward: myRefResult || undefined });
       }
       res.json(exchange);
     } catch (error: any) {
@@ -1792,8 +1795,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         code = (user?.firstName || user?.email || "user").substring(0, 4).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
         await db.update(users).set({ referralCode: code }).where(eq(users.id, userId));
       }
-      const myRefs = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(referrals.createdAt).limit(20);
-      res.json({ referralCode: code, inviteLink: `/welcome?ref=${code}`, referrals: myRefs });
+      const myRefs = await db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt)).limit(20);
+      const enrichedRefs = await Promise.all(myRefs.map(async (ref) => {
+        if (!ref.refereeId) return { ...ref, refereeName: null, refereeEmail: null };
+        const refUser = await storage.getUser(ref.refereeId);
+        return { ...ref, refereeName: refUser ? `${refUser.firstName || ""} ${refUser.lastName || ""}`.trim() || null : null, refereeEmail: refUser?.email || null };
+      }));
+      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+      const monthlyQualified = enrichedRefs.filter(r => r.status === "qualified" && r.qualifiedAt && new Date(r.qualifiedAt) >= startOfMonth).length;
+      const totalQualified = enrichedRefs.filter(r => r.status === "qualified").length;
+      const totalPending = enrichedRefs.filter(r => r.status === "pending").length;
+      const [pointsResult] = await db.select({ total: sql<number>`coalesce(sum(points), 0)` }).from(rewardLedger).where(
+        and(eq(rewardLedger.userId, userId), inArray(rewardLedger.eventType, ["REFERRAL_QUALIFIED", "REFERRAL_QUALIFIED_REFEREE"]))
+      );
+      const pointsFromReferrals = pointsResult?.total || 0;
+      const premiumDaysFromReferrals = totalQualified * 7;
+      res.json({
+        referralCode: code,
+        inviteLink: `/welcome?ref=${code}`,
+        referrals: enrichedRefs,
+        stats: {
+          monthlyQualified,
+          monthlyLimit: 5,
+          totalQualified,
+          totalPending,
+          pointsFromReferrals,
+          premiumDaysFromReferrals,
+        },
+      });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
     }
@@ -1809,14 +1838,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user && (req.user as any).claims?.sub === referrer.id) {
         return res.status(400).json({ message: "Cannot refer yourself" });
       }
-      if (req.user) {
-        const userId = (req.user as any).claims?.sub;
-        const existing = await db.select().from(referrals).where(
-          and(eq(referrals.referrerId, referrer.id), eq(referrals.refereeId, userId))
-        ).limit(1);
-        if (existing.length) return res.status(400).json({ message: "Already referred" });
-        await db.insert(referrals).values({ referrerId: referrer.id, refereeId: userId, status: "pending" });
+      if (!req.user) return res.status(401).json({ message: "Authentication required" });
+      const userId = (req.user as any).claims?.sub;
+      // Guard A: referee can only be claimed once (prevents multi-referrer abuse)
+      const alreadyReferred = await db.select().from(referrals).where(
+        eq(referrals.refereeId, userId)
+      ).limit(1);
+      if (alreadyReferred.length) return res.status(400).json({ message: "You have already been referred" });
+      // Guard B: referrer cannot accumulate more pending referrals than monthly cap allows
+      if (!(await checkMonthlyReferralCap(referrer.id))) {
+        return res.status(400).json({ message: "Referrer has reached their monthly referral limit" });
       }
+      const existing = await db.select().from(referrals).where(
+        and(eq(referrals.referrerId, referrer.id), eq(referrals.refereeId, userId))
+      ).limit(1);
+      if (existing.length) return res.status(400).json({ message: "Already referred by this user" });
+      await db.insert(referrals).values({ referrerId: referrer.id, refereeId: userId, status: "pending" });
       res.json({ ok: true });
     } catch (e: any) {
       res.status(500).json({ message: e.message });

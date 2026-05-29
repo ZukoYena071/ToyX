@@ -176,7 +176,7 @@ export class DatabaseStorage implements IStorage {
       .from(toys)
       .leftJoin(users, eq(toys.ownerId, users.id))
       .where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)))
-      .orderBy(desc(toys.id));
+      .orderBy(sql`CASE WHEN ${toys.boostedUntil} > NOW() THEN 0 ELSE 1 END`, desc(toys.id));
     
     let results = rows.map(row => ({ ...row.toys, owner: row.users! }));
     if (blockedIds && blockedIds.length > 0) {
@@ -249,7 +249,7 @@ export class DatabaseStorage implements IStorage {
           )
         )
       )
-      .orderBy(desc(toys.id));
+      .orderBy(sql`CASE WHEN ${toys.boostedUntil} > NOW() THEN 0 ELSE 1 END`, desc(toys.id));
     let results = rows.map(row => ({ ...row.toys, owner: row.users! }));
     if (blockedIds && blockedIds.length > 0) {
       results = results.filter(t => !blockedIds.includes(t.ownerId));
@@ -269,7 +269,7 @@ export class DatabaseStorage implements IStorage {
           eq(toys.category, category)
         )
       )
-      .orderBy(desc(toys.id));
+      .orderBy(sql`CASE WHEN ${toys.boostedUntil} > NOW() THEN 0 ELSE 1 END`, desc(toys.id));
     let results = rows.map(row => ({ ...row.toys, owner: row.users! }));
     if (blockedIds && blockedIds.length > 0) {
       results = results.filter(t => !blockedIds.includes(t.ownerId));
@@ -296,12 +296,18 @@ export class DatabaseStorage implements IStorage {
           const requester = await this.getUser(row.exchanges.requesterId);
           const owner = await this.getUser(row.exchanges.ownerId);
           const exchangeMessages = await this.getMessages(row.exchanges.id);
+          // Also fetch the offered toy if present (exchange comparison UX)
+          let offeredToy = null;
+          if (row.exchanges.offeredToyId) {
+            [offeredToy] = await db.select().from(toys).where(eq(toys.id, row.exchanges.offeredToyId)).limit(1);
+          }
           
           return {
             ...row.exchanges,
             requester: requester!,
             owner: owner!,
             toy: row.toys!,
+            offeredToy,
             messages: exchangeMessages
           };
         }));
@@ -322,12 +328,17 @@ export class DatabaseStorage implements IStorage {
     const requester = await this.getUser(result.exchanges.requesterId);
     const owner = await this.getUser(result.exchanges.ownerId);
     const exchangeMessages = await this.getMessages(id);
+    let offeredToy = null;
+    if (result.exchanges.offeredToyId) {
+      [offeredToy] = await db.select().from(toys).where(eq(toys.id, result.exchanges.offeredToyId)).limit(1);
+    }
     
     return {
       ...result.exchanges,
       requester: requester!,
       owner: owner!,
       toy: result.toys!,
+      offeredToy,
       messages: exchangeMessages
     };
   }
