@@ -674,20 +674,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Remove description (not needed on cards, adds significant weight)
         delete (toy as any).description;
-        // Keep first image per toy: prefer HTTP, fall back to base64 only if under 300KB
+        // Keep first image per toy: prefer HTTP, fall back to base64 (first image only)
         if (Array.isArray(toy.imageUrls)) {
           const httpUrl = toy.imageUrls.find((u: string) => u.startsWith("http"));
-          if (httpUrl) {
-            (toy as any).imageUrls = [httpUrl];
-          } else {
-            const first = toy.imageUrls[0];
-            if (first && first.startsWith("data:")) {
-              const rawLen = first.indexOf(",") >= 0 ? first.length - first.indexOf(",") - 1 : first.length;
-              (toy as any).imageUrls = rawLen * 0.75 < 307200 ? [first] : [];
-            } else {
-              (toy as any).imageUrls = first ? [first] : [];
-            }
-          }
+          (toy as any).imageUrls = httpUrl ? [httpUrl] : [toy.imageUrls[0]].filter(Boolean);
         }
       }
       
@@ -705,6 +695,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching toys:", error);
       res.status(500).json({ message: "Failed to fetch toys" });
+    }
+  });
+
+  // Debug: check image data for a specific toy (no auth required)
+  app.get('/api/debug/toy-image/:id', async (req, res) => {
+    try {
+      const toy = await storage.getToy(parseInt(req.params.id));
+      if (!toy) return res.status(404).json({ error: "Toy not found" });
+      const urls = (toy.imageUrls || []) as string[];
+      res.json({
+        id: toy.id,
+        name: toy.name,
+        imageCount: urls.length,
+        images: urls.map((u, i) => ({
+          index: i,
+          type: u.startsWith("http") ? "HTTP" : u.startsWith("data:") ? "BASE64" : "OTHER",
+          sizeKB: Math.round((u.length * 0.75) / 1024),
+          preview: u.substring(0, 100),
+        })),
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 
