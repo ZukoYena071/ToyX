@@ -55,7 +55,7 @@ function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
   const [loadState, setLoadState] = useState<"loading" | "fading" | "ready">("loading");
-  const startRef = useRef(Date.now());
+  const startPerf = useRef(performance.now());
   const prefetched = useRef(false);
 
   console.log("Router render:", { isAuthenticated, isLoading });
@@ -70,11 +70,9 @@ function Router() {
     prefetched.current = true;
     performance.mark("auth-resolved");
 
-    const totalStart = startRef.current;
-    const fade = () => {
+        const fade = () => {
       performance.mark("ready-to-fade");
-      const elapsed = Date.now() - totalStart;
-      const remaining = Math.max(0, 500 - elapsed);
+      const remaining = Math.max(0, 500 - (performance.now() - startPerf.current));
       setTimeout(() => { performance.mark("fade-start"); setLoadState("fading"); }, remaining);
     };
 
@@ -85,23 +83,21 @@ function Router() {
           .then((res) => { if (!res.ok) console.warn("[referral] claim failed:", res.status, res.statusText); else localStorage.removeItem("pendingReferralRef"); })
           .catch((err) => console.warn("[referral] claim network error:", err));
       }
-      const prefetchStart = performance.now();
-      Promise.all([
-        queryClient.prefetchQuery({ queryKey: ["/api/toys"] }),
-        queryClient.prefetchQuery({ queryKey: ["/api/recommendations/home"] }),
-        queryClient.prefetchQuery({ queryKey: ["/api/favorites"] }),
-      ]).then(() => {
+      // Only prefetch the critical toys query — recommendations and favorites
+      // load naturally via useQuery on the Home page (they're secondary content)
+      const pfStart = performance.now();
+      queryClient.prefetchQuery({ queryKey: ["/api/toys"] }).then(() => {
         performance.mark("prefetch-done");
-        performance.measure("prefetch-duration", { start: prefetchStart, end: "prefetch-done" });
+        performance.measure("prefetch-duration", { start: pfStart, end: "prefetch-done" });
         const toysData = queryClient.getQueryData(["/api/toys"]);
         const urls = (Array.isArray(toysData) ? toysData : []).slice(0, 6).map((t: any) => t.imageUrls?.[0]).filter(Boolean);
-        const imageLoadStart = performance.now();
-        const imagesLoaded = urls.length > 0
+        const imgStart = performance.now();
+        (urls.length > 0
           ? Promise.race([Promise.all(urls.map(preloadImage)), new Promise<void>(r => setTimeout(r, 3000))])
-          : Promise.resolve();
-        imagesLoaded.then(() => {
+          : Promise.resolve()
+        ).then(() => {
           performance.mark("images-done");
-          performance.measure("image-preload-duration", { start: imageLoadStart, end: "images-done" });
+          performance.measure("image-preload-duration", { start: imgStart, end: "images-done" });
           fade();
         });
       }).catch(() => fade());
@@ -118,18 +114,17 @@ function Router() {
       const authMs = performance.measure("auth-ms", { start: 0, end: "auth-resolved" }).duration;
       const prefetchMs = (performance.getEntriesByName("prefetch-duration")[0] as any)?.duration;
       const imgMs = (performance.getEntriesByName("image-preload-duration")[0] as any)?.duration;
+      const totalToFade = performance.now() - startPerf.current;
       console.log(`╔══════════════════════════════════════╗`);
       console.log(`║      STARTUP PERFORMANCE REPORT      ║`);
       console.log(`╚══════════════════════════════════════╝`);
-      if (nav) console.log(`  Total page load:    ${(nav.loadEventEnd - nav.startTime).toFixed(0)}ms`);
-      console.log(`  Auth resolve:        ${authMs.toFixed(0)}ms`);
-      if (prefetchMs != null) console.log(`  Prefetch queries:    ${prefetchMs.toFixed(0)}ms`);
-      if (imgMs != null) console.log(`  Image preload:       ${imgMs.toFixed(0)}ms`);
-      const totalToFade = performance.now() - startRef.current;
-      console.log(`  Total→fade:          ${totalToFade.toFixed(0)}ms`);
+      if (nav) console.log(`  Total page load:  ${(nav.loadEventEnd - nav.startTime).toFixed(0)}ms`);
+      console.log(`  Auth resolve:      ${authMs.toFixed(0)}ms`);
+      if (prefetchMs != null) console.log(`  Toys prefetch:     ${prefetchMs.toFixed(0)}ms`);
+      if (imgMs != null) console.log(`  Image preload:     ${imgMs.toFixed(0)}ms`);
+      console.log(`  App mount→fade:    ${totalToFade.toFixed(0)}ms`);
       console.log(`──`);
-      console.log(`To also capture FCP/LCP, open Chrome DevTools → Performance tab`);
-      console.log(`and look for First Contentful Paint / Largest Contentful Paint.`);
+      console.log(`To capture FCP/LCP: Chrome DevTools → Performance → View`);
       performance.clearMeasures();
       performance.clearMarks();
     }, 1500);
