@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -54,21 +54,29 @@ const PUBLIC_ROUTES = new Set([
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
-  const [authDone, setAuthDone] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "fading" | "ready">("loading");
+  const startRef = useRef(Date.now());
+  const prefetched = useRef(false);
 
   console.log("Router render:", { isAuthenticated, isLoading });
 
-  // Keep loader briefly after auth resolves so the simulation completes gracefully
+  // When auth resolves: prefetch home data, enforce min 500ms, then fade out
   useEffect(() => {
-    if (!isLoading) {
-      const timer = setTimeout(() => setAuthDone(true), 400);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading]);
+    if (isLoading || prefetched.current) return;
+    prefetched.current = true;
 
-  // Claim pending referral after auth (handles OAuth signup flow)
-  useEffect(() => {
+    const go = () => {
+      const elapsed = Date.now() - startRef.current;
+      const remaining = Math.max(0, 500 - elapsed);
+      setTimeout(() => setLoadState("fading"), remaining);
+    };
+
     if (isAuthenticated) {
+      // Prefetch critical home page data while loader is visible
+      queryClient.prefetchQuery({ queryKey: ["/api/toys"] });
+      queryClient.prefetchQuery({ queryKey: ["/api/recommendations/home"] });
+      queryClient.prefetchQuery({ queryKey: ["/api/favorites"] });
+      // Claim referral if pending
       const ref = localStorage.getItem("pendingReferralRef");
       if (ref) {
         fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" })
@@ -76,11 +84,20 @@ function Router() {
           .catch((err) => console.warn("[referral] claim network error:", err));
       }
     }
-  }, [isAuthenticated]);
+    go();
+  }, [isLoading, isAuthenticated]);
 
-  // Fullscreen simulated loader during + briefly after auth
-  if (isLoading || !authDone) {
-    return <FullscreenLoader />;
+  // After fade animation, mark ready
+  useEffect(() => {
+    if (loadState === "fading") {
+      const t = setTimeout(() => setLoadState("ready"), 500);
+      return () => clearTimeout(t);
+    }
+  }, [loadState]);
+
+  // Fullscreen loader with fade-out before revealing content
+  if (loadState !== "ready") {
+    return <FullscreenLoader fadeOut={loadState === "fading"} />;
   }
 
   // Save protected route path for redirect after login
