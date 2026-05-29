@@ -72,8 +72,8 @@ function Router() {
       const ref = localStorage.getItem("pendingReferralRef");
       if (ref) {
         fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" })
-          .then(() => localStorage.removeItem("pendingReferralRef"))
-          .catch(() => {});
+          .then((res) => { if (!res.ok) console.warn("[referral] claim failed:", res.status, res.statusText); else localStorage.removeItem("pendingReferralRef"); })
+          .catch((err) => console.warn("[referral] claim network error:", err));
       }
     }
   }, [isAuthenticated]);

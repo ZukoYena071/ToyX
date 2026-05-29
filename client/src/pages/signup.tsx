@@ -44,7 +44,10 @@ export default function Signup() {
       if (res.ok) {
         const ref = localStorage.getItem("pendingReferralRef");
         if (ref) {
-          try { await fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" }); } catch {}
+          try {
+            const claimRes = await fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" });
+            if (!claimRes.ok) console.warn("[referral] claim on signup failed:", claimRes.status);
+          } catch (e) { console.warn("[referral] claim on signup network error:", e); }
           localStorage.removeItem("pendingReferralRef");
         }
         const saved = sessionStorage.getItem("toyx_redirect_after_login");
