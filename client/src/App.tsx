@@ -68,43 +68,81 @@ function Router() {
   useEffect(() => {
     if (isLoading || prefetched.current) return;
     prefetched.current = true;
+    performance.mark("auth-resolved");
 
+    const totalStart = startRef.current;
     const fade = () => {
-      const elapsed = Date.now() - startRef.current;
+      performance.mark("ready-to-fade");
+      const elapsed = Date.now() - totalStart;
       const remaining = Math.max(0, 500 - elapsed);
-      setTimeout(() => setLoadState("fading"), remaining);
+      setTimeout(() => { performance.mark("fade-start"); setLoadState("fading"); }, remaining);
     };
 
     if (isAuthenticated) {
-      // Claim referral if pending (fire-and-forget)
       const ref = localStorage.getItem("pendingReferralRef");
       if (ref) {
         fetch("/api/referrals/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }), credentials: "include" })
           .then((res) => { if (!res.ok) console.warn("[referral] claim failed:", res.status, res.statusText); else localStorage.removeItem("pendingReferralRef"); })
           .catch((err) => console.warn("[referral] claim network error:", err));
       }
-      // Prefetch home data, then preload first visible toy images
+      const prefetchStart = performance.now();
       Promise.all([
         queryClient.prefetchQuery({ queryKey: ["/api/toys"] }),
         queryClient.prefetchQuery({ queryKey: ["/api/recommendations/home"] }),
         queryClient.prefetchQuery({ queryKey: ["/api/favorites"] }),
       ]).then(() => {
+        performance.mark("prefetch-done");
+        performance.measure("prefetch-duration", { start: prefetchStart, end: "prefetch-done" });
         const toysData = queryClient.getQueryData(["/api/toys"]);
         const urls = (Array.isArray(toysData) ? toysData : []).slice(0, 6).map((t: any) => t.imageUrls?.[0]).filter(Boolean);
+        const imageLoadStart = performance.now();
         const imagesLoaded = urls.length > 0
           ? Promise.race([Promise.all(urls.map(preloadImage)), new Promise<void>(r => setTimeout(r, 3000))])
           : Promise.resolve();
-        imagesLoaded.then(fade);
+        imagesLoaded.then(() => {
+          performance.mark("images-done");
+          performance.measure("image-preload-duration", { start: imageLoadStart, end: "images-done" });
+          fade();
+        });
       }).catch(() => fade());
     } else {
       fade();
     }
   }, [isLoading, isAuthenticated]);
 
-  // After fade animation, mark ready
+  // Log performance summary once app is ready
+  useEffect(() => {
+    if (loadState !== "ready") return;
+    setTimeout(() => {
+      const nav = performance.getEntriesByType("navigation")[0] as any;
+      const authMs = performance.measure("auth-ms", { start: 0, end: "auth-resolved" }).duration;
+      const prefetchMs = (performance.getEntriesByName("prefetch-duration")[0] as any)?.duration;
+      const imgMs = (performance.getEntriesByName("image-preload-duration")[0] as any)?.duration;
+      console.log(`╔══════════════════════════════════════╗`);
+      console.log(`║      STARTUP PERFORMANCE REPORT      ║`);
+      console.log(`╚══════════════════════════════════════╝`);
+      if (nav) console.log(`  Total page load:    ${(nav.loadEventEnd - nav.startTime).toFixed(0)}ms`);
+      console.log(`  Auth resolve:        ${authMs.toFixed(0)}ms`);
+      if (prefetchMs != null) console.log(`  Prefetch queries:    ${prefetchMs.toFixed(0)}ms`);
+      if (imgMs != null) console.log(`  Image preload:       ${imgMs.toFixed(0)}ms`);
+      const totalToFade = performance.now() - startRef.current;
+      console.log(`  Total→fade:          ${totalToFade.toFixed(0)}ms`);
+      console.log(`──`);
+      console.log(`To also capture FCP/LCP, open Chrome DevTools → Performance tab`);
+      console.log(`and look for First Contentful Paint / Largest Contentful Paint.`);
+      performance.clearMeasures();
+      performance.clearMarks();
+    }, 1500);
+  }, [loadState]);
+
+  // After fade animation, mark ready and log performance summary
   useEffect(() => {
     if (loadState === "fading") {
-      const t = setTimeout(() => setLoadState("ready"), 500);
+      performance.mark("loader-fade-start");
+      const t = setTimeout(() => {
+        performance.mark("app-ready");
+        setLoadState("ready");
+      }, 500);
       return () => clearTimeout(t);
     }
   }, [loadState]);
