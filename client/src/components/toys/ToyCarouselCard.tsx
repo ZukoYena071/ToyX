@@ -36,10 +36,7 @@ export default function ToyCarouselCard({ toy, onOpen, onToggleFavorite }: ToyCa
       {/* Image area */}
       <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
         {images.length > 0 ? (
-          <div className="absolute inset-0 w-full h-full">
-            <img src={images[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60" loading="lazy" />
-            <ToyImage src={images[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-contain" />
-          </div>
+          <ToyImage src={images[0]} alt={toy.name} className="absolute inset-0 w-full h-full object-contain" />
         ) : (
           <div className="w-full h-full flex items-center justify-center"><span className="text-4xl">🧸</span></div>
         )}

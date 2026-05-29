@@ -250,6 +250,9 @@ function App() {
       console.log("DEBUG: Captured /list-toy intent. Writing storage flag.");
       sessionStorage.setItem("toyx_pending_action", "list");
     }
+    // Remove inline splash once React mounts (eliminates blank screen before loader)
+    const splash = document.getElementById("splash");
+    if (splash) { splash.style.opacity = "0"; setTimeout(() => splash.remove(), 500); }
   }, []);
 
   return (
