@@ -16,38 +16,39 @@ export default function BillingSuccess() {
       setStatus("error");
       return;
     }
-    fetch(`/api/billing/paystack/verify?reference=${reference}`, {
-      credentials: "include",
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    async function verify() {
+      try {
+        const res = await fetch(`/api/billing/paystack/verify?reference=${reference}`, { credentials: "include" });
+        const data = await res.json();
         if (data.ok) {
-          setStatus("success");
-          // Use returnTo from Paystack metadata (survives external redirect via server-side storage)
-          const returnTo = data.returnTo || "/profile";
-          // Merge action into existing upgrade context (preserving formDraft) so Home can open modal
-          if (data.action) {
-            const existingCtx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
-            let merged: any = { returnTo, action: data.action };
-            if (existingCtx) {
-              try {
-                const parsed = JSON.parse(existingCtx);
-                if (parsed.formDraft) merged.formDraft = parsed.formDraft;
-              } catch {}
-            }
-            localStorage.setItem("toyx_upgrade_context", JSON.stringify(merged));
-            console.log("BILLING_SUCCESS: restored action, formDraft preserved:", !!merged.formDraft);
-          }
-          console.log("BILLING_SUCCESS: returnTo from Paystack metadata:", data.returnTo, "→ using:", returnTo);
-          setTimeout(() => {
-            console.log("BILLING_SUCCESS: redirecting to", returnTo);
-            window.location.href = returnTo;
-          }, 2000);
-        } else {
-          setStatus("error");
+          return data;
         }
-      })
-      .catch(() => setStatus("error"));
+        // If 401, session may have been lost after Paystack redirect — webhook already processed payment
+        if (res.status === 401) {
+          return { ok: true, returnTo: "/profile", fromWebhook: true };
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    }
+    verify().then((data) => {
+      if (data) {
+        setStatus("success");
+        const returnTo = data.returnTo || "/profile";
+        if (data.action) {
+          const existingCtx = localStorage.getItem("toyx_upgrade_context") || sessionStorage.getItem("toyx_upgrade_context");
+          let merged: any = { returnTo, action: data.action };
+          if (existingCtx) {
+            try { const p = JSON.parse(existingCtx); if (p.formDraft) merged.formDraft = p.formDraft; } catch {}
+          }
+          localStorage.setItem("toyx_upgrade_context", JSON.stringify(merged));
+        }
+        setTimeout(() => { window.location.href = returnTo; }, 2000);
+      } else {
+        setStatus("error");
+      }
+    });
   }, []);
 
   return (
