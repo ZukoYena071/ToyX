@@ -1847,10 +1847,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Diagnostic: check referral + premium state for a user (call from browser console)
+  // Diagnostic: check referral + premium state — use 'me' for current user
   app.get('/api/admin/referral-debug/:userId', async (req: any, res) => {
     try {
-      const uid = req.params.userId;
+      const uid = req.params.userId === 'me' ? (req as any).user?.claims?.sub : req.params.userId;
+      if (!uid) return res.status(400).json({ error: "User ID required or log in and use 'me'" });
       const user = await storage.getUser(uid);
       if (!user) return res.status(404).json({ error: "User not found" });
       const refsAsReferee = await db.select().from(referrals).where(eq(referrals.refereeId, uid)).limit(5);
