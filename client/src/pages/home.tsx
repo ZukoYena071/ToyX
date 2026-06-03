@@ -148,7 +148,7 @@ export default function HomePage() {
           <ToyCarouselCard
             key={toy.id}
             toy={toy}
-            onOpen={() => window.location.href = `/toy/${toy.id}`}
+            onOpen={() => { performance.mark("toy-card-click"); sessionStorage.setItem("toyx_nav_timing", JSON.stringify({ cardClick: performance.now() })); window.location.href = `/toy/${toy.id}`; }}
             onToggleFavorite={() => favoriteMutation.mutate({ toyId: toy.id, isFavorited: toy.isFavorited || false })}
           />
         ))}

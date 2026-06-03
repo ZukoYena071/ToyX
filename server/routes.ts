@@ -1847,6 +1847,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Diagnostic: check referral + premium state — use 'me' for current user
+  app.get('/api/admin/referral-debug/:userId', async (req: any, res) => {
+    try {
+      const uid = req.params.userId === 'me' ? (req as any).user?.claims?.sub : req.params.userId;
+      if (!uid) return res.status(400).json({ error: "User ID required or log in and use 'me'" });
+      const user = await storage.getUser(uid);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const refsAsReferee = await db.select().from(referrals).where(eq(referrals.refereeId, uid)).limit(5);
+      const refsAsReferrer = await db.select().from(referrals).where(eq(referrals.referrerId, uid)).limit(5);
+      const ledger = await db.select().from(rewardLedger).where(eq(rewardLedger.userId, uid)).orderBy(desc(rewardLedger.createdAt)).limit(10);
+      const entitlements = await computeEntitlements(uid);
+      res.json({
+        user: { id: user.id, email: user.email, premiumPassUntil: user.premiumPassUntil, plan: user.plan, subscriptionStatus: user.subscriptionStatus },
+        referralsAsReferee: refsAsReferee,
+        referralsAsReferrer: refsAsReferrer,
+        recentLedger: ledger,
+        entitlements,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Referral endpoints
   app.get('/api/referrals/me', isAuthenticated, async (req: any, res) => {
     try {
