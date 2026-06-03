@@ -365,11 +365,11 @@ export default function Onboarding() {
           <button className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors min-h-[36px]">
             Terms
           </button>
-          <span className="text-gray-300 dark:text-gray-700">\u00B7</span>
+          <span className="text-gray-300 dark:text-gray-700">·</span>
           <button className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors min-h-[36px]">
             Privacy
           </button>
-          <span className="text-gray-300 dark:text-gray-700">\u00B7</span>
+          <span className="text-gray-300 dark:text-gray-700">·</span>
           <button className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors min-h-[36px]">
             Restore
           </button>
