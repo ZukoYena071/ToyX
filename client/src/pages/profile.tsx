@@ -462,29 +462,52 @@ export default function Profile() {
         <SectionCard>
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">Subscription</h3>
           <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-3">
-            <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-50 capitalize">
-                {(user as any)?.plan || "free"}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                {(user as any)?.subscriptionStatus || "inactive"}
-              </div>
-            </div>
-            {(user as any)?.plan === "free" ? (
-              <a
-                href="/pricing"
-                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] inline-flex items-center"
-              >
-                Upgrade
-              </a>
-            ) : (
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
-              >
-                Cancel
-              </button>
-            )}
+            {(() => {
+              const premiumPassEnd = (user as any)?.premiumPassUntil ? new Date((user as any).premiumPassUntil) : null;
+              const hasPremiumPass = premiumPassEnd && premiumPassEnd > new Date();
+              const isPaidPremium = (user as any)?.plan !== "free";
+
+              if (hasPremiumPass || isPaidPremium) {
+                return (
+                  <>
+                    <div>
+                      <div className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                        {isPaidPremium ? "Premium" : "✨ Premium Pass"}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {isPaidPremium
+                          ? `Valid until ${new Date((user as any).currentPeriodEnd).toLocaleDateString()}`
+                          : `Valid until ${premiumPassEnd!.toLocaleDateString()}`
+                        }
+                      </div>
+                    </div>
+                    {isPaidPremium ? (
+                      <button onClick={() => setShowCancelModal(true)}
+                        className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors min-h-[44px]">
+                        Cancel
+                      </button>
+                    ) : (
+                      <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-4 py-2 rounded-xl text-sm font-medium inline-flex items-center">
+                        Active
+                      </span>
+                    )}
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-50 capitalize">Free</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">No active subscription</div>
+                  </div>
+                  <a href="/pricing"
+                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] inline-flex items-center">
+                    Upgrade
+                  </a>
+                </>
+              );
+            })()}
           </div>
         </SectionCard>
       </div>
