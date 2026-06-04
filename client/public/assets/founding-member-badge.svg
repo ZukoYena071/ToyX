@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="95" fill="url(#bg)" stroke="#fff" stroke-width="4"/>
+  <text x="100" y="70" text-anchor="middle" fill="#fff" font-size="14" font-family="sans-serif" font-weight="600">FOUNDING</text>
+  <text x="100" y="92" text-anchor="middle" fill="#fff" font-size="14" font-family="sans-serif" font-weight="600">MEMBER</text>
+  <text x="100" y="130" text-anchor="middle" fill="#FFD700" font-size="40">&#9733;</text>
+</svg>
