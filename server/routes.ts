@@ -8,6 +8,7 @@ import multer from "multer";
 import { uploadImage, validateImage, isR2Configured, processImages } from "./r2";
 import { sendEmail } from "./email";
 import { welcomeTemplate } from "./email/templates/welcome";
+import { foundingMemberWelcomeTemplate } from "./email/templates/founding-member-welcome";
 import { exchangeRequestTemplate } from "./email/templates/exchange-request";
 import { exchangeAcceptedTemplate } from "./email/templates/exchange-accepted";
 import { moderationMessageTemplate } from "./email/templates/moderation-message";
@@ -84,6 +85,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await db.insert(foundingMembers).values({ firstName, email, city, phone: phone || null });
       console.log(`[founding-member] email=${email} city=${city} joined=${new Date().toISOString()}`);
+
+      // Send welcome email asynchronously — never block registration if email fails
+      sendEmail({ to: email, subject: foundingMemberWelcomeTemplate(firstName).subject, html: foundingMemberWelcomeTemplate(firstName).html, emailType: "founding-member-welcome" })
+        .then(r => { if (!r.sent) console.warn("[founding-member] welcome email failed:", r.error); })
+        .catch(e => console.warn("[founding-member] welcome email error:", e));
 
       const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(foundingMembers);
       res.json({ success: true, message: "Welcome to ToyX Founding Members!", member_count: Number(countResult?.count || 0) });
