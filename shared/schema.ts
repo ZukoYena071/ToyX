@@ -381,6 +381,33 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
   createdAt: true,
 });
 
+// Founding Members
+export const foundingMembers = pgTable("founding_members", {
+  id: serial("id").primaryKey(),
+  firstName: text("first_name").notNull(),
+  email: text("email").notNull().unique(),
+  city: text("city").notNull(),
+  phone: text("phone"),
+  status: text("status").notNull().default("WAITLIST"),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  invitedAt: timestamp("invited_at"),
+  activatedAt: timestamp("activated_at"),
+  bonusPointsAwarded: boolean("bonus_points_awarded").notNull().default(false),
+  badgeAwarded: boolean("badge_awarded").notNull().default(false),
+});
+
+export const insertFoundingMemberSchema = createInsertSchema(foundingMembers).pick({
+  firstName: true,
+  email: true,
+  city: true,
+  phone: true,
+}).extend({
+  firstName: z.string().min(1, "First name is required").trim(),
+  email: z.string().email("Invalid email address").transform((e) => e.toLowerCase().trim()),
+  city: z.string().min(1, "City is required").trim(),
+  phone: z.string().optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;

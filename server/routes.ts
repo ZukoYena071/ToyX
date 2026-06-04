@@ -16,7 +16,7 @@ import { accountBannedTemplate } from "./email/templates/account-banned";
 import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, insertMarketingSubscriberSchema, insertSupportRequestSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
@@ -57,6 +57,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("MARKETING_SUBSCRIPTION_ERROR:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Founding Member routes — CORS open to marketing domain
+  const fmRouter = (req: any, res: any, next: any) => {
+    cors({ origin: ["https://toyxchange.online", "https://app.toyxchange.online", "http://localhost:3001", "http://127.0.0.1:3001"], credentials: true })(req, res, next);
+  };
+
+  app.post("/api/founding-members", fmRouter, async (req: any, res) => {
+    try {
+      const parsed = insertFoundingMemberSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const first = parsed.error.errors[0];
+        return res.status(400).json({ success: false, message: first?.message || "Invalid input" });
+      }
+      const { firstName, email, city, phone } = parsed.data;
+
+      const existing = await db.select({ id: foundingMembers.id }).from(foundingMembers).where(eq(foundingMembers.email, email)).limit(1);
+      if (existing.length) {
+        return res.status(409).json({ success: false, message: "This email is already registered." });
+      }
+
+      await db.insert(foundingMembers).values({ firstName, email, city, phone: phone || null });
+      console.log(`[founding-member] email=${email} city=${city} joined=${new Date().toISOString()}`);
+
+      const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(foundingMembers);
+      res.json({ success: true, message: "Welcome to ToyX Founding Members!", member_count: Number(countResult?.count || 0) });
+    } catch (error: any) {
+      console.error("FOUNDING_MEMBER_ERROR:", error);
+      if (error.code === "23505") {
+        return res.status(409).json({ success: false, message: "This email is already registered." });
+      }
+      res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/founding-members/count", async (_, res) => {
+    try {
+      const [result] = await db.select({ count: sql<number>`count(*)` }).from(foundingMembers);
+      res.json({ count: Number(result?.count || 0) });
+    } catch (error) {
+      console.error("FOUNDING_MEMBER_COUNT_ERROR:", error);
+      res.status(500).json({ count: 0 });
+    }
+  });
+
+  app.get("/api/admin/founding-members", isAuthenticated, async (req: any, res) => {
+    try {
+      const rows = await db.select().from(foundingMembers).orderBy(desc(foundingMembers.joinedAt)).limit(500);
+      res.json(rows);
+    } catch (error) {
+      console.error("ADMIN_FOUNDING_MEMBERS_ERROR:", error);
+      res.status(500).json({ message: "Failed to fetch founding members" });
+    }
+  });
+
+  app.get("/api/admin/founding-members/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const rows = await db.select().from(foundingMembers).orderBy(desc(foundingMembers.joinedAt));
+      const header = "First Name,Email,City,Phone,Status,Joined Date\n";
+      const csv = rows.map(r =>
+        `"${r.firstName}","${r.email}","${r.city}","${r.phone || ""}","${r.status}","${r.joinedAt ? new Date(r.joinedAt).toISOString() : ""}"`
+      ).join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=founding-members.csv");
+      res.send(header + csv);
+    } catch (error) {
+      console.error("FOUNDING_MEMBER_EXPORT_ERROR:", error);
+      res.status(500).json({ message: "Failed to export founding members" });
     }
   });
 
