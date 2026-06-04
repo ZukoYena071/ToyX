@@ -122,6 +122,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint: send founding member welcome email to fixed inbox (no DB write)
+  app.post("/api/admin/test-founding-member-email", isAuthenticated, async (req: any, res) => {
+    try {
+      const sample = "ToyX Founder";
+      const { subject, html } = foundingMemberWelcomeTemplate(sample);
+      html.replace("one of the first {{position}}", "one of the first 3");
+      const result = await sendEmail({ to: "toyxchange2026@gmail.com", subject, html, emailType: "founding-member-welcome-test" });
+      if (!result.sent) {
+        console.warn("[founding-member-test] email failed:", result.error);
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      console.log("[founding-member-test] email sent successfully");
+      res.json({ success: true });
+    } catch (e: any) {
+      console.error("[founding-member-test] error:", e);
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   app.get("/api/admin/founding-members/export", isAuthenticated, async (req: any, res) => {
     try {
       const rows = await db.select().from(foundingMembers).orderBy(desc(foundingMembers.joinedAt));
