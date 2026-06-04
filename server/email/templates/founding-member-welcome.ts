@@ -34,7 +34,7 @@ export function foundingMemberWelcomeTemplate(firstName: string): { subject: str
     <table role="presentation" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border-radius:12px;margin-bottom:20px;width:100%;">
       <tr>
         <td align="center" style="padding:24px;">
-          <img src="${BADGE_URL}" alt="Founding Member Badge" width="120" height="120" style="border-radius:60px;display:block;margin-bottom:12px;" />
+          <img src="${BADGE_URL}" alt="Founding Member Badge" width="180" height="180" style="border-radius:90px;display:block;margin-bottom:12px;" />
           <p style="margin:0;font-size:13px;color:#6b7280;">Your Founding Member badge has been reserved. This badge will be displayed on your ToyX profile when the platform launches.</p>
         </td>
       </tr>
@@ -89,21 +89,21 @@ export function foundingMemberWelcomeTemplate(firstName: string): { subject: str
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;">
 
-          <!-- Logo -->
+          <!-- Logo — 50% larger -->
           <tr>
-            <td align="center" style="padding:32px 24px 8px;">
-              <img src="${LOGO_URL}" alt="ToyX" style="max-height:40px;width:auto;display:block;" />
+            <td align="center" style="padding:32px 24px 4px;">
+              <img src="${LOGO_URL}" alt="ToyX" style="max-height:60px;width:auto;display:block;" />
             </td>
           </tr>
 
-          <!-- Badge -->
+          <!-- Hero Badge — 67% larger, tighter gap -->
           <tr>
-            <td align="center" style="padding:8px 24px 16px;">
-              <img src="${BADGE_URL}" alt="Founding Member" width="72" height="72" style="border-radius:36px;display:block;" />
+            <td align="center" style="padding:2px 24px 10px;">
+              <img src="${BADGE_URL}" alt="Founding Member" width="120" height="120" style="border-radius:60px;display:block;" />
             </td>
           </tr>
 
-          <!-- Headline -->
+          <!-- Headline — tighter gap from badge -->
           <tr>
             <td align="center" style="padding:0 24px 16px;">
               <h1 style="margin:0;font-size:22px;font-weight:700;color:#1f2937;">Welcome to the ToyX Founding Member Program</h1>
