@@ -405,7 +405,7 @@ export const insertFoundingMemberSchema = createInsertSchema(foundingMembers).pi
   firstName: z.string().min(1, "First name is required").trim(),
   email: z.string().email("Invalid email address").transform((e) => e.toLowerCase().trim()),
   city: z.string().min(1, "City is required").trim(),
-  phone: z.string().optional(),
+  phone: z.string().optional().nullable(),
 });
 
 // Types
