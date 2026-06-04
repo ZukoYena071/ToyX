@@ -69,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/founding-members", async (req: any, res) => {
     try {
       // Normalise snake_case from marketing page to camelCase
-      const body = { firstName: req.body.first_name || req.body.firstName, email: req.body.email, city: req.body.city, phone: req.body.phone };
+      const body = { firstName: req.body.first_name || req.body.firstName || '', email: req.body.email || '', city: req.body.city || '', phone: req.body.phone };
       const parsed = insertFoundingMemberSchema.safeParse(body);
       if (!parsed.success) {
         const first = parsed.error.errors[0];
