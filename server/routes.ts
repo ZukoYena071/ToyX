@@ -70,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/founding-members", async (req: any, res) => {
     try {
       // Normalise snake_case from marketing page to camelCase
-      const body = { firstName: req.body.first_name || req.body.firstName || '', email: req.body.email || '', city: req.body.city || '', phone: req.body.phone };
+      const body = { firstName: req.body.first_name || req.body.firstName || '', email: req.body.email || '', city: req.body.city || '', phone: req.body.phone, signupSource: req.body.signup_source || req.body.signupSource || 'unknown' };
       const parsed = insertFoundingMemberSchema.safeParse(body);
       if (!parsed.success) {
         const first = parsed.error.errors[0];
@@ -112,17 +112,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/admin/founding-members/stats", isAuthenticated, async (_, res) => {
+    try {
+      const now = new Date();
+      const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+      const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0, 0, 0, 0);
+      const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30); thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+      const [total] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers);
+      const [today] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers).where(gte(foundingMembers.joinedAt, todayStart));
+      const [thisWeek] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers).where(gte(foundingMembers.joinedAt, weekStart));
+      const [avgDaily] = await db.select({ value: sql<number>`coalesce(round(count(*)::numeric / 30), 0)` }).from(foundingMembers).where(gte(foundingMembers.joinedAt, thirtyDaysAgo));
+
+      const cityBreakdown = await db.select({ city: foundingMembers.city, count: sql<number>`count(*)` }).from(foundingMembers)
+        .groupBy(foundingMembers.city).orderBy(sql`count(*) desc`).limit(10);
+      const topCity = cityBreakdown[0]?.city || "—";
+
+      res.json({
+        total: Number(total?.value || 0),
+        today: Number(today?.value || 0),
+        thisWeek: Number(thisWeek?.value || 0),
+        topCity,
+        avgDaily: Number(avgDaily?.value || 0),
+        cityBreakdown,
+      });
+    } catch (error) {
+      console.error("FOUNDING_MEMBER_STATS_ERROR:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/admin/founding-members/trend", isAuthenticated, async (_, res) => {
+    try {
+      const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30); thirtyDaysAgo.setHours(0, 0, 0, 0);
+      const rows = await db.select({
+        date: sql<string>`${foundingMembers.joinedAt}::date`,
+        count: sql<number>`count(*)`,
+      }).from(foundingMembers).where(gte(foundingMembers.joinedAt, thirtyDaysAgo))
+        .groupBy(sql`1`).orderBy(sql`1`);
+      res.json(rows);
+    } catch (error) {
+      console.error("FOUNDING_MEMBER_TREND_ERROR:", error);
+      res.status(500).json({ message: "Failed to fetch trend" });
+    }
+  });
+
   app.get("/api/admin/founding-members", isAuthenticated, async (req: any, res) => {
     try {
-      const rows = await db.select().from(foundingMembers).orderBy(desc(foundingMembers.joinedAt)).limit(500);
-      res.json(rows);
+      const { search, sort, order, city, page = "1", limit = "50" } = req.query;
+      const pageNum = Math.max(1, parseInt(page));
+      const limitNum = Math.min(500, Math.max(1, parseInt(limit)));
+      const offset = (pageNum - 1) * limitNum;
+
+      const conditions: any[] = [];
+      if (search) {
+        const q = `%${search}%`;
+        conditions.push(or(sql`${foundingMembers.firstName} ILIKE ${q}`, sql`${foundingMembers.email} ILIKE ${q}`, sql`${foundingMembers.city} ILIKE ${q}`));
+      }
+      if (city) conditions.push(eq(foundingMembers.city, city));
+
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+      const orderCol = sort === "member_number" ? foundingMembers.memberNumber : sort === "city" ? foundingMembers.city : foundingMembers.joinedAt;
+      const orderDir = order === "asc" ? orderCol : desc(orderCol);
+
+      const rows = await db.select().from(foundingMembers).where(where).orderBy(orderDir).limit(limitNum).offset(offset);
+      const [countResult] = await db.select({ total: sql<number>`count(*)` }).from(foundingMembers).where(where);
+      const cities = await db.select({ city: foundingMembers.city }).from(foundingMembers).groupBy(foundingMembers.city).orderBy(foundingMembers.city);
+
+      res.json({ members: rows, total: Number(countResult?.total || 0), page: pageNum, cities: cities.map(c => c.city) });
     } catch (error) {
       console.error("ADMIN_FOUNDING_MEMBERS_ERROR:", error);
       res.status(500).json({ message: "Failed to fetch founding members" });
     }
   });
 
-  // Test endpoint: send founding member welcome email to fixed inbox (no DB write)
+  app.get("/api/admin/founding-members/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const { search, city } = req.query;
+      const conditions: any[] = [];
+      if (search) {
+        const q = `%${search}%`;
+        conditions.push(or(sql`${foundingMembers.firstName} ILIKE ${q}`, sql`${foundingMembers.email} ILIKE ${q}`, sql`${foundingMembers.city} ILIKE ${q}`));
+      }
+      if (city) conditions.push(eq(foundingMembers.city, city));
+
+      const rows = await db.select().from(foundingMembers).where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(foundingMembers.memberNumber);
+      const header = "Member #,First Name,Email,City,Phone,Status,Signup Source,Joined Date\n";
+      const csv = rows.map(r =>
+        `"${r.memberNumber || ""}","${r.firstName}","${r.email}","${r.city}","${r.phone || ""}","${r.status}","${r.signupSource || "unknown"}","${r.joinedAt ? new Date(r.joinedAt).toISOString() : ""}"`
+      ).join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=founding-members.csv");
+      res.send(header + csv);
+    } catch (error) {
+      console.error("FOUNDING_MEMBER_EXPORT_ERROR:", error);
+      res.status(500).json({ message: "Failed to export founding members" });
+    }
+  });
+
   app.post("/api/admin/test-founding-member-email", isAuthenticated, async (req: any, res) => {
     try {
       const sample = "ToyX Founder";
@@ -138,22 +225,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (e: any) {
       console.error("[founding-member-test] error:", e);
       res.status(500).json({ success: false, error: e.message });
-    }
-  });
-
-  app.get("/api/admin/founding-members/export", isAuthenticated, async (req: any, res) => {
-    try {
-      const rows = await db.select().from(foundingMembers).orderBy(desc(foundingMembers.joinedAt));
-      const header = "First Name,Email,City,Phone,Status,Joined Date\n";
-      const csv = rows.map(r =>
-        `"${r.firstName}","${r.email}","${r.city}","${r.phone || ""}","${r.status}","${r.joinedAt ? new Date(r.joinedAt).toISOString() : ""}"`
-      ).join("\n");
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", "attachment; filename=founding-members.csv");
-      res.send(header + csv);
-    } catch (error) {
-      console.error("FOUNDING_MEMBER_EXPORT_ERROR:", error);
-      res.status(500).json({ message: "Failed to export founding members" });
     }
   });
 

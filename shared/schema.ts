@@ -389,6 +389,8 @@ export const foundingMembers = pgTable("founding_members", {
   city: text("city").notNull(),
   phone: text("phone"),
   status: text("status").notNull().default("WAITLIST"),
+  signupSource: text("signup_source").default("unknown"),
+  memberNumber: integer("member_number").unique(),
   joinedAt: timestamp("joined_at").defaultNow(),
   invitedAt: timestamp("invited_at"),
   activatedAt: timestamp("activated_at"),
@@ -401,11 +403,13 @@ export const insertFoundingMemberSchema = createInsertSchema(foundingMembers).pi
   email: true,
   city: true,
   phone: true,
+  signupSource: true,
 }).extend({
   firstName: z.string().min(1, "First name is required").trim(),
   email: z.string().email("Invalid email address").transform((e) => e.toLowerCase().trim()),
   city: z.string().min(1, "City is required").trim(),
   phone: z.string().optional().nullable(),
+  signupSource: z.enum(["facebook", "instagram", "linkedin", "direct", "organic", "unknown"]).optional().default("unknown"),
 });
 
 // Types

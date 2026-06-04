@@ -32,6 +32,7 @@ import FullscreenLoader from "@/components/ui/FullscreenLoader";
 import PrivacySafety from "@/pages/privacy-safety";
 import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
+import AdminFoundingMembers from "@/pages/admin-founding-members";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import DataDeletionPage from "@/pages/data-deletion";
@@ -235,6 +236,7 @@ function Router() {
         <Route path="/privacy/messages" component={PrivacyMessages} />
         <Route path="/privacy/messages/:id" component={PrivacyMessages} />
         <Route path="/admin/moderation" component={AdminModeration} />
+        <Route path="/admin/founding-members" component={AdminFoundingMembers} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/data-deletion" component={DataDeletionPage} />
