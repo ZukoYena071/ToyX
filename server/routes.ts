@@ -132,21 +132,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test email endpoint (disabled in production)
-  if (process.env.NODE_ENV !== "production") {
-    app.get("/api/test-email", async (_, res) => {
-      try {
-        const result = await sendEmail({
-          to: "toyxchange2026@gmail.com",
-          subject: "ToyX Email Test",
-          html: "<h1>Test email from ToyX</h1><p>If you receive this, the email system is working.</p>",
-        });
-        res.json(result);
-      } catch (e: any) {
-        res.status(500).json({ sent: false, error: e.message });
-      }
-    });
-  }
+  // Test email endpoint
+  app.get("/api/test-email", async (_, res) => {
+    try {
+      const result = await sendEmail({
+        to: "toyxchange2026@gmail.com",
+        subject: "ToyX Email Test",
+        html: "<h1>Test email from ToyX</h1><p>If you receive this, the email system is working.</p>",
+      });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ sent: false, error: e.message });
+    }
+  });
 
   // Support / appeals request endpoint
   app.post("/api/support", async (req, res) => {
