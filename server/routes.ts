@@ -61,13 +61,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Founding Member routes — CORS open to marketing domain
-  const fmRouter = (req: any, res: any, next: any) => {
-    cors({ origin: ["https://toyxchange.online", "https://app.toyxchange.online", "http://localhost:3001", "http://127.0.0.1:3001"], credentials: true })(req, res, next);
-  };
+  app.use("/api/founding-members", cors({
+    origin: ["https://toyxchange.online", "https://www.toyxchange.online", "https://app.toyxchange.online", "http://localhost:3001", "http://127.0.0.1:3001"],
+    credentials: true,
+  }));
 
-  app.post("/api/founding-members", fmRouter, async (req: any, res) => {
+  app.post("/api/founding-members", async (req: any, res) => {
     try {
-      const parsed = insertFoundingMemberSchema.safeParse(req.body);
+      // Normalise snake_case from marketing page to camelCase
+      const body = { firstName: req.body.first_name || req.body.firstName, email: req.body.email, city: req.body.city, phone: req.body.phone };
+      const parsed = insertFoundingMemberSchema.safeParse(body);
       if (!parsed.success) {
         const first = parsed.error.errors[0];
         return res.status(400).json({ success: false, message: first?.message || "Invalid input" });
