@@ -13,33 +13,64 @@ const LISTINGS_TARGET = 500;
 
 function HeroSection({ data, fm }: { data: any; fm: any }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white p-8 sm:p-10">
-      {/* Decorative shapes */}
-      <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-xl" />
-      <div className="absolute top-20 -left-6 w-24 h-24 bg-white/5 rounded-full blur-lg" />
-      <div className="absolute -bottom-8 right-20 w-32 h-32 bg-white/5 rounded-full blur-lg" />
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 border border-white/50 dark:border-gray-800 shadow-lg p-8 sm:p-10">
+      {/* Decorative sparkles */}
+      <Sparkles className="absolute top-6 right-8 w-5 h-5 text-violet-300/50 dark:text-violet-500/30" />
+      <Sparkles className="absolute bottom-12 left-8 w-4 h-4 text-pink-300/40 dark:text-pink-500/20" />
+      <Star className="absolute top-1/3 right-12 w-3 h-3 text-amber-300/40 dark:text-amber-500/20" />
+      <Star className="absolute bottom-8 right-16 w-3 h-3 text-violet-300/40 dark:text-violet-500/20" />
+      <div className="absolute -top-6 -right-6 w-32 h-32 bg-gradient-to-br from-violet-200/20 to-pink-200/20 dark:from-violet-700/10 dark:to-pink-700/10 rounded-full blur-2xl" />
+      <div className="absolute -bottom-6 -left-6 w-40 h-40 bg-gradient-to-tr from-pink-200/20 to-violet-200/20 dark:from-pink-700/10 dark:to-violet-700/10 rounded-full blur-2xl" />
       
-      <div className="flex flex-col sm:flex-row sm:items-center gap-6 relative z-10">
-        <div className="flex-1 min-w-0">
-          <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3.5 py-1 text-xs font-medium mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 items-center relative z-10">
+        {/* Left column */}
+        <div className="min-w-0 space-y-5">
+          <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-violet-100 to-pink-100 dark:from-violet-900/40 dark:to-pink-900/40 rounded-full px-4 py-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300 w-fit">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Founding Family</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight mb-3">
+          
+          <h1 className="text-4xl sm:text-5xl font-bold leading-tight text-gray-900 dark:text-gray-50">
             Welcome to the<br />ToyX Family 🎉
           </h1>
-          <p className="text-base sm:text-lg opacity-90 leading-relaxed max-w-lg">
+          
+          <p className="text-lg font-bold text-gray-900 dark:text-gray-50 leading-tight max-w-md">
+            You're a{' '}
+            <span className="bg-gradient-to-r from-violet-600 to-pink-500 bg-clip-text text-transparent">
+              Founding Family Member
+            </span>
+            !
+          </p>
+          
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-md">
             You're helping build South Africa's first toy exchange community. Share toys, invite friends and help us launch something special.
           </p>
+
           {fm && (
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-2xl px-5 py-3 mt-5">
-              <span className="text-sm opacity-80">Member Number</span>
-              <span className="text-3xl font-black tracking-tight">#{fm.memberNumber || "—"}</span>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 w-fit hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Star className="w-4 h-4 text-amber-500" />
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Your Member Number</span>
+              </div>
+              <p className="text-4xl font-black bg-gradient-to-r from-violet-600 to-pink-500 bg-clip-text text-transparent">
+                #{fm.memberNumber || "—"}
+              </p>
+            </div>
+          )}
+          {!fm && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 w-fit">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">You're part of something special.</p>
             </div>
           )}
         </div>
-        <div className="shrink-0 hidden sm:flex items-center justify-center w-40 h-40 bg-white/10 rounded-3xl backdrop-blur-sm">
-          <span className="text-7xl">🧸</span>
+
+        {/* Right column — ToyX Box */}
+        <div className="relative flex items-center justify-center">
+          <img
+            src="/assets/toyx-box.png"
+            alt="ToyX Box"
+            className="w-full max-w-[320px] sm:max-w-[380px] object-contain drop-shadow-xl"
+          />
         </div>
       </div>
     </div>
