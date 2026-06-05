@@ -62,45 +62,9 @@ jobs:
 
       - run: npm ci
 
-      - name: Push database schema
-        run: npx drizzle-kit push
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-
-      - name: Seed test data
-        run: npm run db:seed:test
-
-      - name: Check database state
-        run: |
-          echo "=== Testing dev login ==="
-          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/dev/login/seed_user_1
-          echo "=== Testing toys API ==="
-          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/toys | tail -5
-        # Will fail on first run (server not started yet), but that's expected
-        continue-on-error: true
-
-      - name: Start test server
-        run: |
-          npm run dev:test &
-          npx wait-on http://localhost:3001/api/toys --timeout 30000
-
-      - name: Verify server is running with dev endpoints
-        run: |
-          echo "=== Dev login (expect 200 with 'User not found' or success) ==="
-          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/dev/login/seed_user_1
-          echo "=== Toys endpoint (expect 200 with JSON array) ==="
-          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/toys | tail -3
-
-      - name: Run API tests
-        run: npm run test:api 2>&1 | tee /tmp/api-test-output.txt
-
-      - name: Upload API test output
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-test-output
-          path: /tmp/api-test-output.txt
-          retention-days: 7
+      - name: Run CI test suite
+        run: bash scripts/ci-test.sh
+        timeout-minutes: 5
 
   e2e-tests:
     name: E2E + Visual Tests
