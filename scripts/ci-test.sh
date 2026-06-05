@@ -16,9 +16,14 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-# Push schema
+# Push base schema (safe on empty/CI databases)
 echo "--- Pushing schema ---"
-npx drizzle-kit push 2>&1
+npx drizzle-kit push --force 2>&1 || npx drizzle-kit push 2>&1
+
+# Run migrations for new columns (safe with IF NOT EXISTS)
+echo "--- Running migrations ---"
+npx tsx server/migrate-access-status.ts 2>&1
+npx tsx server/migrate-founding-members.ts 2>&1 || true
 
 # Seed test data
 echo "--- Seeding test data ---"

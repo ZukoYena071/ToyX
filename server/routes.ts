@@ -1039,6 +1039,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch { next(); }
   };
 
+  // Access control middleware: gates routes behind a minimum access level
+  // Levels: waitlist < beta < live (string comparison allows future levels)
+  function requireAccess(minLevel: "beta" | "live") {
+    return async (req: any, res: any, next: any) => {
+      try {
+        const user = await storage.getUser(req.user?.claims?.sub);
+        const level = (user as any)?.accessStatus || "waitlist";
+        const levels = ["waitlist", "beta", "live"];
+        if (levels.indexOf(level) < levels.indexOf(minLevel)) {
+          return res.status(403).json({ code: "ACCESS_DENIED", message: "Full access not yet available", status: level, required: minLevel });
+        }
+        next();
+      } catch { next(); }
+    };
+  }
+
   app.post('/api/toys', isAuthenticated, checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1203,7 +1219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Exchange routes
-  app.get('/api/exchanges', isAuthenticated, async (req: any, res) => {
+  app.get('/api/exchanges', isAuthenticated, requireAccess("beta"), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const exchanges = await storage.getExchanges(userId);
@@ -1221,7 +1237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/exchanges/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/exchanges/:id', isAuthenticated, requireAccess("beta"), async (req, res) => {
     try {
       const exchangeId = parseInt(req.params.id);
       const exchange = await storage.getExchange(exchangeId);
@@ -1237,7 +1253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/exchanges', isAuthenticated, checkNotRestricted, async (req: any, res) => {
+  app.post('/api/exchanges', isAuthenticated, requireAccess("beta"), checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1344,7 +1360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/exchanges/:id/status', isAuthenticated, async (req, res) => {
+  app.patch('/api/exchanges/:id/status', isAuthenticated, requireAccess("beta"), async (req, res) => {
     try {
       const exchangeId = parseInt(req.params.id);
       const actor = req as any;
@@ -1403,7 +1419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/exchanges/:id/confirm', isAuthenticated, async (req: any, res) => {
+  app.post('/api/exchanges/:id/confirm', isAuthenticated, requireAccess("beta"), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);
@@ -1433,7 +1449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Message routes
-  app.get('/api/exchanges/:id/messages', isAuthenticated, async (req, res) => {
+  app.get('/api/exchanges/:id/messages', isAuthenticated, requireAccess("beta"), async (req, res) => {
     try {
       const exchangeId = parseInt(req.params.id);
       const messages = await storage.getMessages(exchangeId);
@@ -1445,7 +1461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark exchange as read
-  app.post('/api/exchanges/:id/read', isAuthenticated, async (req: any, res) => {
+  app.post('/api/exchanges/:id/read', isAuthenticated, requireAccess("beta"), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);
@@ -1458,7 +1474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reaction toggle
-  app.post('/api/exchanges/:id/messages/:messageId/react', isAuthenticated, async (req: any, res) => {
+  app.post('/api/exchanges/:id/messages/:messageId/react', isAuthenticated, requireAccess("beta"), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const messageId = parseInt(req.params.messageId);
@@ -1558,7 +1574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/reviews', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reviews', isAuthenticated, requireAccess("beta"), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const reviewData = insertReviewSchema.parse({
@@ -1588,7 +1604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/exchanges/:exchangeId/can-review', isAuthenticated, async (req: any, res) => {
+  app.get('/api/exchanges/:exchangeId/can-review', isAuthenticated, requireAccess("beta"), async (req: any, res) => {
     try {
       const { exchangeId } = req.params;
       const userId = req.user.claims.sub;
@@ -1627,7 +1643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/exchanges/:id/block-status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/exchanges/:id/block-status', isAuthenticated, requireAccess("beta"), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);
@@ -1863,7 +1879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Block enforcement on message sending
-  app.post('/api/exchanges/:id/messages', isAuthenticated, checkNotRestricted, async (req: any, res) => {
+  app.post('/api/exchanges/:id/messages', isAuthenticated, requireAccess("beta"), checkNotRestricted, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const exchangeId = parseInt(req.params.id);

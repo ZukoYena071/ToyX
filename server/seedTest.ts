@@ -7,9 +7,9 @@ async function seedTest() {
   console.log("Seeding test users…");
 
   const testUsers = [
-    { id: "seed_user_1", email: "seed1@toyx.test", firstName: "Test", lastName: "One", plan: "free", subscriptionStatus: "inactive" },
-    { id: "seed_user_2", email: "seed2@toyx.test", firstName: "Test", lastName: "Two", plan: "free", subscriptionStatus: "inactive" },
-    { id: "seed_user_3", email: "seed3@toyx.test", firstName: "Test", lastName: "Three", plan: "free", subscriptionStatus: "inactive" },
+    { id: "seed_user_1", email: "seed1@toyx.test", firstName: "Test", lastName: "One", plan: "free", subscriptionStatus: "inactive", accessStatus: "live" },
+    { id: "seed_user_2", email: "seed2@toyx.test", firstName: "Test", lastName: "Two", plan: "free", subscriptionStatus: "inactive", accessStatus: "live" },
+    { id: "seed_user_3", email: "seed3@toyx.test", firstName: "Test", lastName: "Three", plan: "free", subscriptionStatus: "inactive", accessStatus: "live" },
   ];
 
   const ids = testUsers.map(u => u.id);

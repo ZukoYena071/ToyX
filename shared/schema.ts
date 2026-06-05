@@ -55,6 +55,7 @@ export const users = pgTable("users", {
   longitude: real("longitude"),
   locationEnabled: boolean("location_enabled").default(false),
   locationUpdatedAt: timestamp("location_updated_at"),
+  accessStatus: varchar("access_status", { length: 32 }).notNull().default("waitlist"),
   isAdmin: boolean("is_admin").default(false),
   suspendedUntil: timestamp("suspended_until"),
   suspensionReason: text("suspension_reason"),

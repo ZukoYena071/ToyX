@@ -19,6 +19,7 @@
     "test:visual:update": "playwright test tests/visual/ --update-snapshots",
     "db:migrate:providers": "NODE_ENV=development tsx server/migrate-providers.ts",
     "db:migrate:founding": "NODE_ENV=development tsx server/migrate-founding-members.ts",
+    "db:migrate:access-status": "NODE_ENV=development tsx server/migrate-access-status.ts",
     "qa": "npm run db:push && npm run db:seed:test && start-server-and-test \"npm run dev:test\" http://localhost:3001 \"npm run test:visual:update && npm run test:api && npm run test:e2e && npm run test:visual\""
   },
   "dependencies": {
