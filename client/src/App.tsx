@@ -207,6 +207,11 @@ function Router() {
     );
   }
 
+  // Waitlist users see the Founding Family Hub instead of the marketplace home
+  // (user is cast because useAuth returns untyped API response — see useAuth.ts)
+  const u = user as any;
+  const HomeComponent = u?.accessStatus === "waitlist" ? FoundingFamilyHub : Home;
+
   if (!hasCompletedOnboarding) {
     return (
       <Switch>
@@ -220,7 +225,7 @@ function Router() {
   return (
     <>
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={HomeComponent} />
       <Route path="/list-toy" component={ListToyRoute} />
       <Route path="/search" component={Search} />
       <Route path="/toy/:id" component={ToyDetail} />
