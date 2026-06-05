@@ -74,8 +74,13 @@ jobs:
 
       - name: Start test server
         run: |
-          npx tsx --import ./server/instrument.ts server/index.ts &
+          npm run dev:test &
           npx wait-on http://localhost:3001/ --timeout 30000
+
+      - name: Verify dev endpoints
+        run: |
+          curl -s http://localhost:3001/api/dev/login/seed_user_1 | head -100
+          curl -s http://localhost:3001/api/toys | head -100
 
       - name: Run API tests
         run: npm run test:api
@@ -123,8 +128,13 @@ jobs:
 
       - name: Start test server
         run: |
-          npx tsx --import ./server/instrument.ts server/index.ts &
+          npm run dev:test &
           npx wait-on http://localhost:3001/ --timeout 30000
+
+      - name: Verify dev endpoints
+        run: |
+          curl -s http://localhost:3001/api/dev/login/seed_user_1 | head -100
+          curl -s http://localhost:3001/api/toys | head -100
 
       - name: Run E2E tests
         run: npx playwright test tests/e2e/
