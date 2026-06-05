@@ -17,7 +17,7 @@ import { accountBannedTemplate } from "./email/templates/account-banned";
 import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost, awardFoundingMemberBadge } from "./rewards";
@@ -1001,6 +1001,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Backfill Founding Member badges for existing user accounts (admin only)
+  // Check a user's founding member badge status (admin only)
+  app.get('/api/admin/check-founding-badge/:userId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.params.userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const fm = await db.select().from(foundingMembers).where(eq(foundingMembers.email, user.email || "")).limit(1);
+      const rewards = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, user.id)).limit(1);
+      const hasBadge = Array.isArray(rewards[0]?.badges) && (rewards[0].badges as any[]).some((b: any) => b.type === "founding_member");
+      res.json({
+        userEmail: user.email,
+        foundInFoundingMembers: fm.length > 0,
+        foundingMemberRecord: fm.length > 0 ? { memberNumber: fm[0].memberNumber, badgeAwarded: fm[0].badgeAwarded, status: fm[0].status } : null,
+        hasBadgeInRewards: hasBadge,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post('/api/admin/backfill-founding-badges', isAuthenticated, isAdmin, async (_, res) => {
     try {
       const fms = await db.select({ email: foundingMembers.email }).from(foundingMembers).where(eq(foundingMembers.badgeAwarded, false));
