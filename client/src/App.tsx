@@ -208,9 +208,11 @@ function Router() {
   }
 
   // Waitlist users see the Founding Family Hub instead of the marketplace home
+  // but listing a toy temporarily shows the home page with the upload modal
   // (user is cast because useAuth returns untyped API response — see useAuth.ts)
   const u = user as any;
-  const HomeComponent = u?.accessStatus === "waitlist" ? FoundingFamilyHub : Home;
+  const listingMode = sessionStorage.getItem("toyx_pending_action") === "list" || new URLSearchParams(location.split("?")[1]).has("list-toy");
+  const HomeComponent = listingMode || u?.accessStatus !== "waitlist" ? Home : FoundingFamilyHub;
 
   if (!hasCompletedOnboarding) {
     return (

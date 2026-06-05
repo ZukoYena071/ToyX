@@ -312,18 +312,16 @@ export default function FoundingFamilyHub() {
 
         {/* CTA Cards */}
         <div className="grid gap-4">
-          <Link href="/list-toy">
-            <button className="w-full rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white p-6 text-left hover:shadow-lg transition-all active:scale-[0.99] group">
-              <div className="flex items-center gap-4">
-                <span className="text-4xl">🧸</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xl font-bold">List a Toy</p>
-                  <p className="text-sm opacity-80">Help build the marketplace before launch</p>
-                </div>
-                <TrendingUp className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform" />
+          <button onClick={() => window.location.href = "/list-toy"} className="w-full rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white p-6 text-left hover:shadow-lg transition-all active:scale-[0.99] group cursor-pointer">
+            <div className="flex items-center gap-4">
+              <span className="text-4xl">🧸</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xl font-bold">List a Toy</p>
+                <p className="text-sm opacity-80">Help build the marketplace before launch</p>
               </div>
-            </button>
-          </Link>
+              <TrendingUp className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
           <Link href="/invite">
             <button className="w-full rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 text-left hover:shadow-md transition-all active:scale-[0.99] group">
               <div className="flex items-center gap-4">
