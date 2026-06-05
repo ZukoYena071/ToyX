@@ -61,6 +61,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin authorization middleware (must be defined before routes that use it)
+  const isAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const user = await storage.getUser(req.user?.claims?.sub);
+      if (!user || !(user as any).isAdmin) return res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" });
+      next();
+    } catch { res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" }); }
+  };
+
   // Founding Member routes — CORS open to marketing domain
   app.use("/api/founding-members", cors({
     origin: ["https://toyxchange.online", "https://www.toyxchange.online", "https://app.toyxchange.online", "http://localhost:3001", "http://127.0.0.1:3001"],
@@ -112,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/founding-members/stats", isAuthenticated, async (_, res) => {
+  app.get("/api/admin/founding-members/stats", isAuthenticated, isAdmin, async (_, res) => {
     try {
       const now = new Date();
       const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
@@ -142,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/founding-members/trend", isAuthenticated, async (_, res) => {
+  app.get("/api/admin/founding-members/trend", isAuthenticated, isAdmin, async (_, res) => {
     try {
       const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30); thirtyDaysAgo.setHours(0, 0, 0, 0);
       const rows = await db.select({
@@ -157,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/founding-members", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/founding-members", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { search, sort, order, city, page = "1", limit = "50" } = req.query;
       const pageNum = Math.max(1, parseInt(page));
@@ -186,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/founding-members/export", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/founding-members/export", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { search, city } = req.query;
       const conditions: any[] = [];
@@ -210,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/test-founding-member-email", isAuthenticated, async (req: any, res) => {
+  app.post("/api/admin/test-founding-member-email", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const sample = "ToyX Founder";
       const { subject, html } = foundingMemberWelcomeTemplate(sample);
@@ -898,7 +907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // One-time migration: convert stored base64 images to R2 URLs
-  app.post('/api/admin/migrate-images', async (req: any, res) => {
+  app.post('/api/admin/migrate-images', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const allToys = await db.select().from(toys);
       let migrated = 0;
@@ -1705,15 +1714,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin middleware
-  const isAdmin = async (req: any, res: any, next: any) => {
-    try {
-      const user = await storage.getUser(req.user?.claims?.sub);
-      if (!user || !(user as any).isAdmin) return res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" });
-      next();
-    } catch { res.status(403).json({ code: "FORBIDDEN", message: "Admin access required" }); }
-  };
-
   // Admin: list reports
   app.get('/api/admin/reports', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
@@ -2030,7 +2030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Diagnostic: check referral + premium state — use 'me' for current user
-  app.get('/api/admin/referral-debug/:userId', async (req: any, res) => {
+  app.get('/api/admin/referral-debug/:userId', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const uid = req.params.userId === 'me' ? (req as any).user?.claims?.sub : req.params.userId;
       if (!uid) return res.status(400).json({ error: "User ID required or log in and use 'me'" });
