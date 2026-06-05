@@ -68,19 +68,28 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Seed test data
-        run: npx tsx server/seedTest.ts
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: npm run db:seed:test
+
+      - name: Check database state
+        run: |
+          echo "=== Testing dev login ==="
+          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/dev/login/seed_user_1
+          echo "=== Testing toys API ==="
+          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/toys | tail -5
+        # Will fail on first run (server not started yet), but that's expected
+        continue-on-error: true
 
       - name: Start test server
         run: |
           npm run dev:test &
-          npx wait-on http://localhost:3001/ --timeout 30000
+          npx wait-on http://localhost:3001/api/toys --timeout 30000
 
-      - name: Verify dev endpoints
+      - name: Verify server is running with dev endpoints
         run: |
-          curl -s http://localhost:3001/api/dev/login/seed_user_1 | head -100
-          curl -s http://localhost:3001/api/toys | head -100
+          echo "=== Dev login (expect 200 with 'User not found' or success) ==="
+          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/dev/login/seed_user_1
+          echo "=== Toys endpoint (expect 200 with JSON array) ==="
+          curl -s -w "\nHTTP %{http_code}\n" http://localhost:3001/api/toys | tail -3
 
       - name: Run API tests
         run: npm run test:api
