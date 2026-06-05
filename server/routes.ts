@@ -20,7 +20,7 @@ import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
-import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost } from "./rewards";
+import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost, awardFoundingMemberBadge } from "./rewards";
 import { haversineKm } from "./utils/distance";
 
 async function getPremiumStatus(userId: string) {
@@ -498,6 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileImageUrl: null,
         hasPassword: true,
       });
+      awardFoundingMemberBadge(userId).catch(() => {});
       req.logIn({ id: userId, sub: userId, claims: { sub: userId } }, (err: any) => {
         if (err) return next(err);
         res.json({ message: "Account created", user: { id: userId, email, firstName: firstName || email.split('@')[0] } });
@@ -996,6 +997,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error migrating images:", error);
       res.status(500).json({ message: error.message || "Migration failed" });
+    }
+  });
+
+  // Backfill Founding Member badges for existing user accounts (admin only)
+  app.post('/api/admin/backfill-founding-badges', isAuthenticated, isAdmin, async (_, res) => {
+    try {
+      const fms = await db.select({ email: foundingMembers.email }).from(foundingMembers).where(eq(foundingMembers.badgeAwarded, false));
+      let awarded = 0;
+      for (const fm of fms) {
+        const usersWithEmail = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+        if (usersWithEmail.length) {
+          const ok = await awardFoundingMemberBadge(usersWithEmail[0].id);
+          if (ok) awarded++;
+        }
+      }
+      res.json({ totalFoundingMembersWithoutBadge: fms.length, awarded });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 

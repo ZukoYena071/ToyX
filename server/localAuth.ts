@@ -6,6 +6,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memorystore from "memorystore";
 import { storage } from "./storage";
+import { awardFoundingMemberBadge } from "./rewards";
 
 const MemoryStore = memorystore(session);
 
@@ -117,6 +118,7 @@ export async function setupAuth(app: Express) {
             googleConnected: true,
           });
           user = (await storage.getUser(userId))!;
+          awardFoundingMemberBadge(userId).catch(() => {});
         } else {
           await storage.updateUser(user.id, { googleConnected: true });
         }
@@ -174,6 +176,7 @@ export async function setupAuth(app: Express) {
             facebookConnected: true,
           });
           user = (await storage.getUser(userId))!;
+          awardFoundingMemberBadge(userId).catch(() => {});
         } else {
           await storage.updateUser(user.id, { facebookConnected: true });
         }

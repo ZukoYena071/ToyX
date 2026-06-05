@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { userRewards, rewardLedger, rewardRedemptions, referrals, users, toys } from "@shared/schema";
+import { userRewards, rewardLedger, rewardRedemptions, referrals, users, toys, foundingMembers } from "@shared/schema";
 import { eq, and, sql, gte, lte, inArray, desc, gt, count } from "drizzle-orm";
 
 const BASE_FREE_LISTINGS = 5;
@@ -226,4 +226,26 @@ export async function qualifyReferral(refereeId: string) {
   }
   console.log(`[referral] referral ${ref.id} qualified successfully for referee ${refereeId}`);
   return { userId: refereeId, refereeUnlockedPremium: refereePremiumUnlocked, pointsAwarded: 100 };
+}
+
+// Award Founding Member badge if user's email matches a founding member record
+export async function awardFoundingMemberBadge(userId: string): Promise<boolean> {
+  const user = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!user.length || !user[0].email) return false;
+
+  const fm = await db.select({ id: foundingMembers.id }).from(foundingMembers)
+    .where(and(eq(foundingMembers.email, user[0].email), eq(foundingMembers.badgeAwarded, false))).limit(1);
+  if (!fm.length) return false;
+
+  await ensureUserRewards(userId);
+  const existing = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, userId)).limit(1);
+  const badges = Array.isArray(existing[0]?.badges) ? existing[0].badges as any[] : [];
+  if (badges.some((b: any) => b.type === "founding_member")) return false;
+
+  badges.push({ type: "founding_member", awardedAt: new Date().toISOString() });
+  await db.update(userRewards).set({ badges, updatedAt: new Date() }).where(eq(userRewards.userId, userId));
+  await db.update(foundingMembers).set({ badgeAwarded: true }).where(eq(foundingMembers.id, fm[0].id));
+
+  console.log(`[badge] founding_member awarded to user ${userId}`);
+  return true;
 }
