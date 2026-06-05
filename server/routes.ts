@@ -930,6 +930,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Temporary: run access_status migration from browser (admin only)
+  app.post('/api/admin/run-access-migration', isAuthenticated, isAdmin, async (_, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS access_status TEXT NOT NULL DEFAULT 'waitlist'`);
+      await db.execute(sql`UPDATE users SET access_status = 'live' WHERE access_status = 'waitlist'`);
+      res.json({ ok: true, message: "access_status migration complete" });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   app.get('/api/toys/:id', async (req, res) => {
     try {
       const toyId = parseInt(req.params.id);
