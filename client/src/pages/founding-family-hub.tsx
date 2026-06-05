@@ -14,7 +14,6 @@ const LISTINGS_TARGET = 500;
 function HeroSection({ data, fm }: { data: any; fm: any }) {
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 border border-white/50 dark:border-gray-800 shadow-lg p-8 sm:p-10">
-      {/* Decorative sparkles */}
       <Sparkles className="absolute top-6 right-8 w-5 h-5 text-violet-300/50 dark:text-violet-500/30" />
       <Sparkles className="absolute bottom-12 left-8 w-4 h-4 text-pink-300/40 dark:text-pink-500/20" />
       <Star className="absolute top-1/3 right-12 w-3 h-3 text-amber-300/40 dark:text-amber-500/20" />
@@ -43,7 +42,7 @@ function HeroSection({ data, fm }: { data: any; fm: any }) {
           </p>
           
           <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-md">
-            You're helping build South Africa's first toy exchange community. Share toys, invite friends and help us launch something special.
+            Thank you for joining ToyX from the very beginning. As a Founding Family member you've earned an exclusive Founding Member Badge that will always appear on your ToyX profile.
           </p>
 
           {fm && (
@@ -64,18 +63,27 @@ function HeroSection({ data, fm }: { data: any; fm: any }) {
           )}
         </div>
 
-        {/* Right column — ToyX Box */}
+        {/* Right column — Founding Member Badge */}
         <div className="relative flex items-center justify-center">
           <img
-            src="/assets/toyx-box.png"
-            alt="ToyX Box"
-            className="w-full max-w-[320px] sm:max-w-[380px] object-contain drop-shadow-xl"
+            src="/assets/founding-member-badge.png"
+            alt="Founding Member Badge"
+            className="w-full max-w-[220px] sm:max-w-[260px] object-contain drop-shadow-xl"
           />
         </div>
       </div>
     </div>
   );
 }
+
+/* TODO — Sprint X: Profile Badge System
+   When profile pages are updated:
+   - Founding members automatically display badge
+   - Badge visible on: user profile, exchange requests, messaging header, reviews
+   - Store badge via existing userRewards.badges[] (JSONB) architecture
+   - Badge key: 'founding_member'
+   - Award on founding member account creation via awardPoints({ eventType: "FOUNDING_MEMBER_BADGE", ... })
+*/
 
 function StatCard({ icon, value, label, sub }: { icon: string; value: number | string; label: string; sub?: string }) {
   return (
@@ -182,6 +190,31 @@ export default function FoundingFamilyHub() {
 
         {/* Hero */}
         <HeroSection data={data} fm={fm} />
+
+        {/* Badge Recognition Card */}
+        <div className="rounded-3xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 p-6 space-y-4">
+          <div className="flex items-center gap-4">
+            <img src="/assets/founding-member-badge.png" alt="Founding Member Badge" className="w-16 h-16 rounded-full object-contain shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">🏅 Founding Member Badge</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                You've earned a permanent Founding Member Badge. This badge will appear on your ToyX profile and lets the community know you helped build ToyX from the very beginning.
+              </p>
+              <span className="inline-block mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 px-3 py-1 rounded-full">Exclusive to early members</span>
+            </div>
+          </div>
+          {/* Profile preview mockup */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              {(fm?.memberNumber ? `#${fm.memberNumber}` : "FM").substring(0, 2)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-50">Your Profile</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Founding Member <span className="text-amber-500">●</span></p>
+            </div>
+            <img src="/assets/founding-member-badge.png" alt="Badge" className="w-8 h-8 rounded-full object-contain shrink-0 opacity-80" />
+          </div>
+        </div>
 
         {/* Community Growth */}
         <SectionCard className="rounded-3xl p-6">
