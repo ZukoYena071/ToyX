@@ -9,10 +9,9 @@ import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../.env") });
 
-const { db } = await import("./db");
-const { sql } = await import("drizzle-orm");
-
 async function main() {
+  const { db } = await import("./db");
+  const { sql } = await import("drizzle-orm");
   console.log("[migrate-founding] Creating table if not exists...");
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS founding_members (
@@ -46,7 +45,7 @@ async function main() {
   await db.execute(sql`UPDATE founding_members SET signup_source = 'unknown' WHERE signup_source IS NULL`);
 
   const r = await db.execute(sql`SELECT count(*) as total, (SELECT count(*) FROM founding_members WHERE member_number IS NOT NULL) as numbered FROM founding_members`);
-  const row = r.rows?.[0] || r[0];
+  const row = (r as any).rows?.[0] || (r as any)[0];
   console.log("[migrate-founding] Complete:", row);
 }
 
