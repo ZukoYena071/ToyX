@@ -29,6 +29,7 @@ import {
   Loader2,
   MoreHorizontal
 } from "lucide-react";
+import ProfileBadges from "@/components/profile/ProfileBadges";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,6 +140,11 @@ export default function Profile() {
 
   const { data: userReviews } = useQuery({
     queryKey: ["/api/users", (user as any)?.id, "reviews"],
+    enabled: !!user,
+  });
+
+  const { data: rewardsData } = useQuery({
+    queryKey: ["/api/rewards/me"],
     enabled: !!user,
   });
 
@@ -415,6 +421,7 @@ export default function Profile() {
                 }
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
+              {rewardsData && (rewardsData as any).badges && <ProfileBadges badges={(rewardsData as any).badges} />}
               <div className="flex items-center gap-1 mt-1">
                 <MapPin className="text-purple-500 w-3 h-3" />
                 <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{(user as any)?.location || 'Location not set'}</span>
