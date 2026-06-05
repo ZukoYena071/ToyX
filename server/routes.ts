@@ -121,6 +121,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Community stats for the Founding Family Hub (non-admin)
+  app.get("/api/founding-members/community-stats", async (_, res) => {
+    try {
+      const [families] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers);
+      const [toysResult] = await db.select({ value: sql<number>`count(*)` }).from(toys).where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+      const cities = await db.select({ city: foundingMembers.city, count: sql<number>`count(*)` }).from(foundingMembers)
+        .groupBy(foundingMembers.city).orderBy(sql`count(*) desc`);
+      res.json({
+        totalFamilies: Number(families?.value || 0),
+        totalListings: Number(toysResult?.value || 0),
+        citiesRepresented: cities.length,
+        topCities: cities.slice(0, 3),
+      });
+    } catch (error) {
+      console.error("COMMUNITY_STATS_ERROR:", error);
+      res.status(500).json({ totalFamilies: 0, totalListings: 0, citiesRepresented: 0, topCities: [] });
+    }
+  });
+
+  // Aggregated hub data for the current user
+  app.get("/api/me/hub", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      // Founding member info (match by email)
+      const fmRows = await db.select().from(foundingMembers).where(eq(foundingMembers.email, user.email || "")).limit(1);
+      const foundingMember = fmRows.length > 0 ? {
+        memberNumber: fmRows[0].memberNumber,
+        status: fmRows[0].status,
+        joinedAt: fmRows[0].joinedAt,
+      } : null;
+
+      // User's toy count
+      const userToys = await db.select({ id: toys.id }).from(toys).where(and(eq(toys.ownerId, userId), eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+
+      // Profile completion
+      const totalFields = 5; const filled = [user.firstName, user.lastName, user.profileImageUrl, user.bio, user.location].filter(Boolean).length;
+      const profileCompletion = Math.round((filled / totalFields) * 100);
+
+      // Community stats
+      const [families] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers);
+      const [listings] = await db.select({ value: sql<number>`count(*)` }).from(toys).where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+      const cities = await db.select({ city: foundingMembers.city }).from(foundingMembers).groupBy(foundingMembers.city);
+
+      // Referral stats
+      const refs = await db.select().from(referrals).where(eq(referrals.refereeId, userId));
+      const referralCount = refs.length;
+
+      res.json({
+        accessStatus: user.accessStatus || "waitlist",
+        foundingMember,
+        toyCount: userToys.length,
+        emailVerified: !!user.email,
+        profileCompletion,
+        referralCount,
+        community: {
+          totalFamilies: Number(families?.value || 0),
+          totalListings: Number(listings?.value || 0),
+          citiesRepresented: cities.length,
+        },
+      });
+    } catch (error) {
+      console.error("HUB_DATA_ERROR:", error);
+      res.status(500).json({ message: "Failed to load hub data" });
+    }
+  });
+
   app.get("/api/admin/founding-members/stats", isAuthenticated, isAdmin, async (_, res) => {
     try {
       const now = new Date();

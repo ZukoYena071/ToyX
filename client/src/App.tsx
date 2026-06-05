@@ -33,6 +33,7 @@ import PrivacySafety from "@/pages/privacy-safety";
 import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
 import AdminFoundingMembers from "@/pages/admin-founding-members";
+import FoundingFamilyHub from "@/pages/founding-family-hub";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import DataDeletionPage from "@/pages/data-deletion";
@@ -235,6 +236,7 @@ function Router() {
         <Route path="/privacy-safety" component={PrivacySafety} />
         <Route path="/privacy/messages" component={PrivacyMessages} />
         <Route path="/privacy/messages/:id" component={PrivacyMessages} />
+        <Route path="/hub" component={FoundingFamilyHub} />
         <Route path="/admin/moderation" component={AdminModeration} />
         <Route path="/admin/founding-members" component={AdminFoundingMembers} />
         <Route path="/terms" component={TermsPage} />
