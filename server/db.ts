@@ -9,7 +9,12 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes("sslmode=require") || process.env.NODE_ENV === "production"
+    ? { rejectUnauthorized: false }
+    : false,
+});
 pool.on('connect', (client) => {
   client.query("SET TIMEZONE TO 'UTC'");
 });
