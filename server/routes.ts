@@ -1120,6 +1120,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
+  // Launch Control: promote user to next access level
+  app.post('/api/admin/launch-control/users/:userId/promote', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const targetId = req.params.userId;
+      const user = await storage.getUser(targetId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const current = user.accessStatus || "waitlist";
+      const nextLevel = current === "waitlist" ? "beta" : current === "beta" ? "live" : null;
+      if (!nextLevel) return res.status(400).json({ error: "User is already at the highest level" });
+      await storage.updateUser(targetId, { accessStatus: nextLevel });
+      console.log(`[launch-control] ${req.user.claims.sub} promoted ${targetId} from ${current} to ${nextLevel}`);
+      res.json({ ok: true, userId: targetId, from: current, to: nextLevel });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   // Temporary: run access_status migration from browser (admin only)
   app.post('/api/admin/run-access-migration', isAuthenticated, isAdmin, async (_, res) => {
     try {
