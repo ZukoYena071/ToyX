@@ -17,7 +17,7 @@ import { accountBannedTemplate } from "./email/templates/account-banned";
 import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, launchSettings, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost, awardFoundingMemberBadge } from "./rewards";
@@ -1035,6 +1035,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // Launch settings CRUD (single-row table)
+  app.get('/api/admin/launch-settings', isAuthenticated, isAdmin, async (_, res) => {
+    try {
+      const [settings] = await db.select().from(launchSettings).limit(1);
+      res.json(settings || null);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.patch('/api/admin/launch-settings', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const allowed = ["launchDate", "familiesTarget", "listingsTarget", "betaTarget", "betaThreshold", "liveThreshold"];
+      const update: any = { updatedBy: userId, updatedAt: new Date() };
+      for (const key of allowed) {
+        if (req.body[key] !== undefined) update[key] = req.body[key];
+      }
+      const [updated] = await db.update(launchSettings).set(update).where(eq(launchSettings.id, 1)).returning();
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
   // Temporary: run access_status migration from browser (admin only)

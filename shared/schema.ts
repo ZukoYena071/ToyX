@@ -413,6 +413,19 @@ export const insertFoundingMemberSchema = createInsertSchema(foundingMembers).pi
   signupSource: z.enum(["facebook", "instagram", "linkedin", "direct", "organic", "unknown"]).optional().default("unknown"),
 });
 
+// Launch settings (single-row table for launch control configuration)
+export const launchSettings = pgTable("launch_settings", {
+  id: integer("id").primaryKey().default(1),
+  launchDate: timestamp("launch_date", { withTimezone: true }).notNull(),
+  familiesTarget: integer("families_target").notNull().default(100),
+  listingsTarget: integer("listings_target").notNull().default(500),
+  betaTarget: integer("beta_target").notNull().default(50),
+  betaThreshold: integer("beta_threshold").notNull().default(4),
+  liveThreshold: integer("live_threshold").notNull().default(7),
+  updatedBy: varchar("updated_by").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
