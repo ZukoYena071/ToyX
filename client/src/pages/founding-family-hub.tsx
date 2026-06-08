@@ -56,11 +56,24 @@ function HeroSection({ data, fm }: { data: any; fm: any }) {
               </p>
             </div>
           )}
-          {!fm && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 w-fit">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">You're part of something special.</p>
+          {!fm && (() => {
+            const host = window.location.hostname;
+            const marketingUrl = host === "app.toyxchange.online"
+              ? "https://toyxchange.online"
+              : host === "staging.toyxchange.online" || host === "localhost" || host === "127.0.0.1"
+              ? "https://staging-marketing.toyxchange.online"
+              : "https://toyxchange.online";
+            return (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 w-64">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-1">You're not yet a Founding Family Member</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3">Become a Founding Family Member to earn a permanent badge, exclusive rewards, and help shape ToyX before launch.</p>
+              <a href={marketingUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-block bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors text-center w-full min-h-[44px] flex items-center justify-center">
+                Join the Founding Member Program
+              </a>
             </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Right column — Founding Member Badge */}
