@@ -237,6 +237,7 @@ function Router() {
         <Route path="/profile" component={Profile} />
         <Route path="/favorites" component={Favorites} />
         <Route path="/pricing" component={Pricing} />
+        <Route path="/welcome" component={Welcome} />
         <Route path="/billing-success" component={BillingSuccess} />
         <Route path="/billing-cancel" component={BillingCancel} />
         <Route path="/rewards" component={Rewards} />

@@ -109,7 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ success: false, message: "This email is already registered." });
       }
 
-      await db.insert(foundingMembers).values({ firstName, email, city, phone: phone || null });
+      await db.insert(foundingMembers).values({ firstName, email, city, phone: phone || null, memberNumber: sql`nextval('founding_member_number_seq')` });
       console.log(`[founding-member] email=${email} city=${city} joined=${new Date().toISOString()}`);
 
       // Send welcome email asynchronously — never block registration if email fails
