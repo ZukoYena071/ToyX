@@ -37,13 +37,21 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || [
   'http://127.0.0.1:3001',
 ].join(',')).split(',').map(s => s.trim()).filter(Boolean);
 
+const corsOriginFn = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  if (!origin) return callback(null, true);
+  if (allowedOrigins.includes(origin) || origin.endsWith('.pages.dev')) {
+    return callback(null, true);
+  }
+  return callback(new Error('Not allowed by CORS'));
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
   // CORS for the marketing landing page
   app.use("/api/marketing", cors({
-    origin: allowedOrigins,
+    origin: corsOriginFn,
     credentials: true,
   }));
 
@@ -81,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Founding Member routes — CORS open to marketing domain
   app.use("/api/founding-members", cors({
-    origin: allowedOrigins,
+    origin: corsOriginFn,
     credentials: true,
   }));
 
