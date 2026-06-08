@@ -1022,16 +1022,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/backfill-founding-badges', isAuthenticated, isAdmin, async (_, res) => {
     try {
-      const fms = await db.select({ email: foundingMembers.email }).from(foundingMembers).where(eq(foundingMembers.badgeAwarded, false));
+      const [settings] = await db.select({ launchDate: launchSettings.launchDate }).from(launchSettings).limit(1);
+      const cutoff = settings?.launchDate;
+      if (!cutoff) return res.status(400).json({ error: "Launch date not set. Configure it first via PATCH /api/admin/launch-settings." });
+
+      // Scan all pre-launch users without badges
+      const preLaunchUsers = await db.select({ id: users.id }).from(users)
+        .where(and(sql`${users.createdAt} < ${cutoff}`, sql`${users.id} NOT IN (SELECT user_id FROM user_rewards WHERE badges @> '[{\"type\": \"founding_member\"}]'::jsonb)`));
       let awarded = 0;
-      for (const fm of fms) {
-        const usersWithEmail = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
-        if (usersWithEmail.length) {
-          const ok = await awardFoundingMemberBadge(usersWithEmail[0].id);
-          if (ok) awarded++;
-        }
+      for (const u of preLaunchUsers) {
+        const ok = await awardFoundingMemberBadge(u.id);
+        if (ok) awarded++;
       }
-      res.json({ totalFoundingMembersWithoutBadge: fms.length, awarded });
+      res.json({ totalPreLaunch: preLaunchUsers.length, awarded });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
