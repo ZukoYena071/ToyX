@@ -28,13 +28,22 @@ async function getPremiumStatus(userId: string) {
   return e.isPremium;
 }
 
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || [
+  'https://toyxchange.online',
+  'https://www.toyxchange.online',
+  'https://app.toyxchange.online',
+  'https://staging.toyxchange.online',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+].join(',')).split(',').map(s => s.trim()).filter(Boolean);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
   // CORS for the marketing landing page
   app.use("/api/marketing", cors({
-    origin: ["https://toyxchange.online", "http://localhost:3001", "http://127.0.0.1:3001"],
+    origin: allowedOrigins,
     credentials: true,
   }));
 
@@ -72,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Founding Member routes — CORS open to marketing domain
   app.use("/api/founding-members", cors({
-    origin: ["https://toyxchange.online", "https://www.toyxchange.online", "https://app.toyxchange.online", "http://localhost:3001", "http://127.0.0.1:3001"],
+    origin: allowedOrigins,
     credentials: true,
   }));
 
