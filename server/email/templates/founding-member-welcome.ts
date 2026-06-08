@@ -35,25 +35,72 @@ export function foundingMemberWelcomeTemplate(firstName: string): { subject: str
       <tr>
         <td align="center" style="padding:24px;">
           <img src="${BADGE_URL}" alt="Founding Member Badge" width="180" height="180" style="border-radius:90px;display:block;margin-bottom:12px;" />
-          <p style="margin:0;font-size:13px;color:#6b7280;">Your Founding Member badge has been reserved. This badge will be displayed on your ToyX profile when the platform launches.</p>
+          <p style="margin:0;font-size:13px;color:#6b7280;">Your Founding Member Badge has been reserved and will appear on your ToyX profile as you help build the ToyX community before launch.</p>
+          <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">This permanent badge recognises families who joined ToyX early and helped shape the marketplace from the very beginning.</p>
         </td>
       </tr>
     </table>
 
-    <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">What Happens Next?</h2>
+    <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">🚀 What Happens Next?</h2>
     <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#6b7280;">
-      Over the coming weeks we'll keep you updated as ToyX moves toward launch. You'll receive:
+      As a Founding Family Member, you're now part of the ToyX pre-launch community.
     </p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:20px;width:100%;">
-      <tr><td style="padding:4px 0;font-size:14px;color:#374151;">• Product updates</td></tr>
-      <tr><td style="padding:4px 0;font-size:14px;color:#374151;">• Early access invitations</td></tr>
-      <tr><td style="padding:4px 0;font-size:14px;color:#374151;">• Founding Member announcements</td></tr>
-      <tr><td style="padding:4px 0 0;font-size:14px;color:#374151;">• Exclusive rewards and opportunities</td></tr>
+    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#6b7280;">
+      Over the coming weeks we'll continue growing the marketplace and preparing for public launch.
+    </p>
+    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#6b7280;">
+      Families who actively participate in the community will be prioritised for ToyX Beta access.
+    </p>
+    <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#6b7280;">
+      To improve your Beta qualification progress:
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:16px;width:100%;">
+      <tr><td style="padding:4px 0;font-size:14px;color:#374151;">✅ Verify your email address</td></tr>
+      <tr><td style="padding:4px 0;font-size:14px;color:#374151;">✅ Complete your profile</td></tr>
+      <tr><td style="padding:4px 0;font-size:14px;color:#374151;">✅ List your first toys</td></tr>
+      <tr><td style="padding:4px 0 0;font-size:14px;color:#374151;">✅ Invite another family</td></tr>
+    </table>
+    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#6b7280;">
+      These actions help us build a healthy marketplace and ensure ToyX launches with a vibrant, active community.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border-radius:12px;padding:14px 32px;">
+          <a href="https://app.toyxchange.online/hub" target="_blank" style="display:inline-block;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">Go To My Founding Family Hub</a>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#F5F3FF,#E0E7FF);border-radius:12px;margin-bottom:20px;width:100%;">
+      <tr>
+        <td style="padding:20px 24px;">
+          <h2 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#4338ca;">🌟 ToyX Beta Access</h2>
+          <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#3730a3;">
+            Before ToyX opens publicly, a limited number of families will receive Beta access.
+          </p>
+          <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#3730a3;">
+            Beta families will be the first to:
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:0;width:100%;">
+            <tr><td style="padding:3px 0;font-size:13px;color:#4338ca;">• Browse the marketplace</td></tr>
+            <tr><td style="padding:3px 0;font-size:13px;color:#4338ca;">• Exchange toys</td></tr>
+            <tr><td style="padding:3px 0;font-size:13px;color:#4338ca;">• Send messages</td></tr>
+            <tr><td style="padding:3px 0;font-size:13px;color:#4338ca;">• Leave reviews</td></tr>
+            <tr><td style="padding:3px 0 0;font-size:13px;color:#4338ca;">• Help shape the future of ToyX</td></tr>
+          </table>
+          <p style="margin:8px 0 0;font-size:13px;line-height:1.5;color:#4338ca;">
+            Participation inside the Founding Family Hub helps prepare your account for future Beta invitations.
+          </p>
+        </td>
+      </tr>
     </table>
 
     <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">Help Grow The Community</h2>
     <p style="margin:0 0 4px;font-size:14px;line-height:1.6;color:#6b7280;">
-      Know another family who would love ToyX? Invite them to join the Founding Member Program:
+      Know another family who would love ToyX? Invite them to join as a Founding Family Member before launch.
+    </p>
+    <p style="margin:0 0 4px;font-size:14px;line-height:1.6;color:#6b7280;">
+      Every new family helps us build a stronger ToyX community and moves us closer to launch day.
     </p>
     <p style="margin:0 0 20px;font-size:14px;line-height:1.6;">
       <a href="https://toyxchange.online" style="color:#7c3aed;font-weight:600;text-decoration:none;">toyxchange.online</a>
