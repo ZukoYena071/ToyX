@@ -682,7 +682,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/users/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const updateData = req.body;
+      // Whitelist allowed profile fields — NEVER allow self-promotion to admin
+      const ALLOWED = ["firstName", "lastName", "bio", "location", "phone", "profileImageUrl",
+        "showLocation", "showEmail", "showPhone", "messagePrivacy", "onboardingVersion",
+        "latitude", "longitude", "locationEnabled", "accessStatus"];
+      const updateData: any = {};
+      for (const key of ALLOWED) {
+        if (req.body[key] !== undefined) updateData[key] = req.body[key];
+      }
       if (updateData.profileImageUrl) {
         updateData.profileImageUrl = updateData.profileImageUrl.replace(/^http:/, "https:");
       }
