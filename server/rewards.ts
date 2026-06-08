@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { userRewards, rewardLedger, rewardRedemptions, referrals, users, toys, foundingMembers } from "@shared/schema";
-import { eq, and, sql, gte, lte, inArray, desc, gt, count } from "drizzle-orm";
+import { eq, and, sql, gte, lte, inArray, desc, gt, count, isNull } from "drizzle-orm";
 
 const BASE_FREE_LISTINGS = 5;
 const BASE_FREE_REQUESTS = 3;
@@ -248,4 +248,52 @@ export async function awardFoundingMemberBadge(userId: string): Promise<boolean>
 
   console.log(`[badge] founding_member awarded to user ${userId}`);
   return true;
+}
+
+// Calculate contribution score for a user (used by Launch Control)
+export async function computeContributionScore(userId: string): Promise<{
+  score: number;
+  breakdown: { label: string; points: number }[];
+  toyCount: number;
+  referralCount: number;
+  foundingMember: boolean;
+  daysSinceJoin: number;
+  lastActive: Date | null;
+}> {
+  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user.length) return { score: 0, breakdown: [], toyCount: 0, referralCount: 0, foundingMember: false, daysSinceJoin: 0, lastActive: null };
+
+  const u = user[0];
+  const daysSinceJoin = u.createdAt ? Math.floor((Date.now() - new Date(u.createdAt).getTime()) / 86400000) : 0;
+
+  const [toyResult] = await db.select({ count: sql<number>`count(*)` }).from(toys).where(and(eq(toys.ownerId, userId), isNull(toys.deletedAt)));
+  const toyCount = Number(toyResult?.count || 0);
+
+  const [refResult] = await db.select({ count: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, userId), eq(referrals.status, "qualified")));
+  const referralCount = Number(refResult?.count || 0);
+
+  const fm = await db.select({ id: foundingMembers.id }).from(foundingMembers).where(eq(foundingMembers.email, u.email || "")).limit(1);
+  const foundingMember = fm.length > 0;
+
+  const breakdown: { label: string; points: number }[] = [];
+  let score = 0;
+
+  const toyPts = toyCount * 2;
+  if (toyPts > 0) { breakdown.push({ label: "Toys Listed", points: toyPts }); score += toyPts; }
+
+  const refPts = referralCount * 3;
+  if (refPts > 0) { breakdown.push({ label: "Qualified Referrals", points: refPts }); score += refPts; }
+
+  if (foundingMember) { breakdown.push({ label: "Founding Member", points: 1 }); score += 1; }
+
+  const tenurePts = Math.min(daysSinceJoin, 30) * 0.1;
+  if (tenurePts > 0) { breakdown.push({ label: "Days Active", points: Math.round(tenurePts * 10) / 10 }); score += tenurePts; }
+
+  // Last active: most recent of createdAt, toy creation, referral, exchange
+  const [lastToy] = await db.select({ created: toys.createdAt }).from(toys).where(eq(toys.ownerId, userId)).orderBy(desc(toys.createdAt)).limit(1);
+  const [lastRef] = await db.select({ created: referrals.createdAt }).from(referrals).where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt)).limit(1);
+  const timestamps = [u.createdAt, lastToy?.created, lastRef?.created].filter(Boolean) as Date[];
+  const lastActive = timestamps.length ? new Date(Math.max(...timestamps.map(d => d.getTime()))) : u.createdAt;
+
+  return { score: Math.min(Math.round(score * 10) / 10, 10), breakdown, toyCount, referralCount, foundingMember, daysSinceJoin, lastActive };
 }

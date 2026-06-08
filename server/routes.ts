@@ -20,7 +20,7 @@ import { db } from "./db";
 import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, launchSettings, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
-import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost, awardFoundingMemberBadge } from "./rewards";
+import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost, awardFoundingMemberBadge, computeContributionScore } from "./rewards";
 import { haversineKm } from "./utils/distance";
 
 async function getPremiumStatus(userId: string) {
@@ -1055,6 +1055,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const [updated] = await db.update(launchSettings).set(update).where(eq(launchSettings.id, 1)).returning();
       res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Launch Control: dashboard stats
+  app.get('/api/admin/launch-control/stats', isAuthenticated, isAdmin, async (_, res) => {
+    try {
+      const [total] = await db.select({ value: sql<number>`count(*)` }).from(users);
+      const [waitlist] = await db.select({ value: sql<number>`count(*)` }).from(users).where(eq(users.accessStatus, "waitlist"));
+      const [beta] = await db.select({ value: sql<number>`count(*)` }).from(users).where(eq(users.accessStatus, "beta"));
+      const [live] = await db.select({ value: sql<number>`count(*)` }).from(users).where(eq(users.accessStatus, "live"));
+      const [families] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers);
+      const [listings] = await db.select({ value: sql<number>`count(*)` }).from(toys).where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)));
+      const [qualifiedRefs] = await db.select({ value: sql<number>`count(*)` }).from(referrals).where(eq(referrals.status, "qualified"));
+      const [badged] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers).where(eq(foundingMembers.badgeAwarded, true));
+      const settings = await db.select().from(launchSettings).limit(1);
+      res.json({
+        total: Number(total?.value || 0), waitlist: Number(waitlist?.value || 0), beta: Number(beta?.value || 0), live: Number(live?.value || 0),
+        foundingFamilies: Number(families?.value || 0), totalListings: Number(listings?.value || 0), qualifiedReferrals: Number(qualifiedRefs?.value || 0),
+        badgesAwarded: Number(badged?.value || 0),
+        settings: settings[0] || null,
+      });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Launch Control: user list with contribution scores
+  app.get('/api/admin/launch-control/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { search, status, page = "1", limit = "25" } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string));
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
+      const offset = (pageNum - 1) * limitNum;
+
+      const conditions: any[] = [];
+      if (status && status !== "all") conditions.push(eq(users.accessStatus, status as string));
+      if (search) {
+        const q = `%${search}%`;
+        conditions.push(or(sql`${users.firstName} ILIKE ${q}`, sql`${users.email} ILIKE ${q}`, sql`${users.id} ILIKE ${q}`));
+      }
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const rows = await db.select({ id: users.id, email: users.email, firstName: users.firstName, accessStatus: users.accessStatus, createdAt: users.createdAt })
+        .from(users).where(where).orderBy(desc(users.createdAt)).limit(limitNum).offset(offset);
+      const [totalResult] = await db.select({ value: sql<number>`count(*)` }).from(users).where(where);
+
+      const scored = await Promise.all(rows.map(async (u) => {
+        const cs = await computeContributionScore(u.id);
+        return { id: u.id, email: u.email, firstName: u.firstName, accessStatus: u.accessStatus, createdAt: u.createdAt, ...cs };
+      }));
+
+      res.json({ users: scored, total: Number(totalResult?.value || 0), page: pageNum });
+    } catch (e: any) { console.error("LAUNCH_CONTROL_USERS_ERROR:", e); res.status(500).json({ error: e.message }); }
+  });
+
+  // Launch Control: user detail with score breakdown
+  app.get('/api/admin/launch-control/users/:userId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.params.userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const score = await computeContributionScore(user.id);
+      const fm = await db.select().from(foundingMembers).where(eq(foundingMembers.email, user.email || "")).limit(1);
+      const badges = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, user.id)).limit(1);
+      res.json({ user, contributionScore: score, foundingMember: fm[0] || null, badges: badges[0]?.badges || [] });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
