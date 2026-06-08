@@ -185,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cities = await db.select({ city: foundingMembers.city }).from(foundingMembers).groupBy(foundingMembers.city);
 
       // Referral stats
-      const refs = await db.select().from(referrals).where(eq(referrals.refereeId, userId));
+      const refs = await db.select().from(referrals).where(eq(referrals.referrerId, userId));
       const referralCount = refs.length;
 
       res.json({
