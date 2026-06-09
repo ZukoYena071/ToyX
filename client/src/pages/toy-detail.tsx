@@ -241,7 +241,7 @@ export default function ToyDetail() {
   );
 
   return (
-    <PageContainer className="pb-40">
+    <PageContainer className="pb-48 sm:pb-40">
       {/* Hero image carousel */}
       <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800">
         {/* Hero scrims */}
