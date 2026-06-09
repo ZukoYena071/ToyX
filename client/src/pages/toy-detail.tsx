@@ -311,7 +311,7 @@ export default function ToyDetail() {
           </span>
         )}
         {shortLocation && (
-          <div className="absolute bottom-3 left-3 max-w-[40%] flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 truncate whitespace-nowrap">
+          <div className="absolute bottom-12 left-3 max-w-[40%] flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 truncate whitespace-nowrap">
             <MapPin className="w-3 h-3 shrink-0" />
             <span className="truncate">{shortLocation}</span>
           </div>
