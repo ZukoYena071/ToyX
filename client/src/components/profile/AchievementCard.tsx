@@ -9,21 +9,28 @@ interface AchievementCardProps {
   memberNumber?: number | null;
 }
 
-function OfficialBadgeIcon() {
-  return (
-    <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-    </svg>
-  );
-}
+import { useEffect, useState } from "react";
+
+const OFFICIAL_LIGHT = "/assets/badges/toyx-official-light.png";
+const OFFICIAL_DARK = "/assets/badges/toyx-official-dark.png";
 
 export default function AchievementCard({ badge, memberNumber }: AchievementCardProps) {
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    document.documentElement.classList.contains("dark") ? "dark" : "light"
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   if (badge.type === "toyx_official") {
+    const badgeSrc = theme === "dark" ? OFFICIAL_DARK : OFFICIAL_LIGHT;
     return (
       <div className="flex items-center gap-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl border border-blue-200 dark:border-blue-700">
-        <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-          <OfficialBadgeIcon />
-        </div>
+        <img src={badgeSrc} alt="ToyX Official" className="w-16 h-16 rounded-full object-contain shrink-0" />
         <div className="min-w-0">
           <p className="text-base font-bold text-gray-900 dark:text-gray-50">ToyX Official</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
