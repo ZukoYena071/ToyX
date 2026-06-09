@@ -258,7 +258,7 @@ export default function ToyDetail() {
               ))}
             </div>
             {imageUrls.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/25 px-2 py-1 rounded-full backdrop-blur-sm">
+              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/25 px-2 py-1 rounded-full backdrop-blur-sm">
                 {imageUrls.map((_: any, i: number) => (
                   <span key={i} className={`block rounded-full transition-all duration-200 shadow-sm ${
                     i === currentImageIndex
@@ -310,9 +310,9 @@ export default function ToyDetail() {
           </span>
         )}
         {(toy as any)?.location && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 max-w-[55%] truncate whitespace-nowrap">
-            <MapPin className="w-3 h-3" />
-            <span className="truncate max-w-[160px]">{(toy as any)?.location}</span>
+          <div className="absolute bottom-3 left-3 right-16 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 truncate whitespace-nowrap">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{(toy as any)?.location}</span>
           </div>
         )}
       </div>
@@ -415,7 +415,7 @@ export default function ToyDetail() {
       {/* Sticky action bar */}
         <div className="fixed bottom-16 left-0 right-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-2.5 z-40 rounded-t-2xl">
           <div className="max-w-lg mx-auto flex gap-2">
-            {/* Share — available to everyone */}
+            {/* Share — secondary */}
             <button onClick={() => {
               const shareUrl = `https://app.toyxchange.online/toy/${id}`;
               if (typeof navigator !== "undefined" && navigator.share) {
@@ -424,8 +424,8 @@ export default function ToyDetail() {
                 navigator.clipboard.writeText(shareUrl).catch(() => {});
               }
             }}
-              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
-              <Share2 className="w-3.5 h-3.5" />
+              className="flex-[0.9] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[40px]">
+              <Share2 className="w-3.5 h-3.5 shrink-0" />
               <span>Share</span>
             </button>
             {/* Post to Social — owner only */}
@@ -440,23 +440,23 @@ export default function ToyDetail() {
             {!isOwner && (
               <>
                 <button onClick={() => setShowMessageModal(true)}
-                  className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
-                  <MessageCircle className="w-3.5 h-3.5" />
+                  className="flex-[0.9] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[40px]">
+                  <MessageCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>Message</span>
                 </button>
                 {(toy as any)?.isAvailable === false ? (
-                  <div className="flex-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                  <div className="flex-[1.2] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <span>In Progress</span>
                   </div>
                 ) : hasExistingRequest ? (
-                  <div className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                  <div className="flex-[1.2] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
                     <Check className="w-3.5 h-3.5" />
                     <span>Requested</span>
                   </div>
                 ) : (
                   <button onClick={() => setShowToySelectionModal(true)}
-                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors min-h-[40px]">
+                    className="flex-[1.2] bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors min-h-[40px]">
                     <User className="w-3.5 h-3.5" />
                     <span>Request Exchange</span>
                   </button>
