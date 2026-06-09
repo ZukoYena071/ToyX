@@ -72,11 +72,15 @@ export default function AdminFoundingConsole() {
 
   const doBulk = async (action: "promote" | "revoke") => {
     if (selected.size === 0 || busy) return;
+    const ids = [...selected];
     setBusy(true);
     try {
-      const r = await fetch(`/api/admin/founding/bulk/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ ids: [...selected] }) });
+      const r = await fetch(`/api/admin/founding/bulk/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ ids }) });
       const d = await r.json();
-      if (d.ok) { setSelected(new Set()); setFilter("all"); setPage(1); refresh(); }
+      if (d.ok) {
+        setAllMembers(prev => prev.map(m => ids.includes(m.id) ? { ...m, status: action === "promote" ? "INVITED" : "WAITLIST", accessStatus: action === "promote" ? "beta" : "waitlist" } : m));
+        setSelected(new Set()); setFilter("all"); setPage(1); refresh();
+      }
     } catch {} finally { setBusy(false); }
   };
 
@@ -89,7 +93,18 @@ export default function AdminFoundingConsole() {
 
   const doAction = async (id: number, action: string) => {
     const r = await fetch(`/api/admin/founding/members/${id}/${action}`, { method: "POST", credentials: "include" });
-    if (r.ok) { setFilter("all"); setPage(1); setSelected(new Set()); refresh(); if (selectedId === id) setSelectedId(null); }
+    if (r.ok) {
+      // Optimistic update: immediately reflect the change in the table
+      setAllMembers(prev => prev.map(m => {
+        if (m.id !== id) return m;
+        if (action === "promote") return { ...m, status: "INVITED", accessStatus: "beta" };
+        if (action === "revoke") return { ...m, status: "WAITLIST", accessStatus: "waitlist" };
+        if (action === "award-badge") return { ...m, badgeAwarded: true };
+        return m;
+      }));
+      setFilter("all"); setPage(1); setSelected(new Set()); refresh();
+      if (selectedId === id) setSelectedId(null);
+    }
   };
 
   const fullyQualified = allMembers.filter(m => m.qualCount === 4).length;
