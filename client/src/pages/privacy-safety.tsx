@@ -149,13 +149,13 @@ export default function PrivacySafety() {
               subtitle="Controls your public profile city"
               right={
                 <div className="flex items-center gap-1">
-                  <Tooltip>
+                  <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>
-                      <button className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                      <button onClick={(e) => e.stopPropagation()} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
                         <HelpCircle className="w-4 h-4" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-[220px] text-xs">
+                    <TooltipContent side="left" className="max-w-[220px] text-xs pointer-events-auto" onPointerDownOutside={(e) => e.preventDefault()}>
                       Hide your city from your public profile page. Toy locations on listings are always shown so other parents can find toys near them.
                     </TooltipContent>
                   </Tooltip>

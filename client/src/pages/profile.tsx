@@ -58,6 +58,16 @@ export default function Profile() {
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Lock body scroll when edit modal is open
+  useEffect(() => {
+    if (showEditModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [showEditModal]);
   const [showEditToy, setShowEditToy] = useState<any>(null);
   const [confirmDeleteToyId, setConfirmDeleteToyId] = useState<number | null>(null);
   const [showToyMenu, setShowToyMenu] = useState<number | null>(null);
@@ -853,8 +863,8 @@ export default function Profile() {
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex flex-col items-center justify-end sm:justify-center">
+          <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-lg w-full max-w-md max-h-[90dvh] sm:max-h-[85vh] overflow-y-auto mt-auto sm:mt-0">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Edit Profile</h2>
               <button
