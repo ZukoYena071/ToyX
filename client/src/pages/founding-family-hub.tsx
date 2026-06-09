@@ -289,7 +289,7 @@ export default function FoundingFamilyHub() {
                 const fields = (data as any).profileFields || [];
                 const filled = fields.filter((f: any) => f.done).length;
                 return (
-                  <MilestoneCard key={i} done={c.done} label={c.label} expanded>
+                  <MilestoneCard key={i} done={c.done} label={c.label}>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Complete at least 4 of 5 profile fields to qualify.</p>
                     <div className="space-y-1">
                       {fields.map((f: any) => (
