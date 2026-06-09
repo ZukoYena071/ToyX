@@ -64,7 +64,7 @@ export default function AdminFoundingConsole() {
         {stats.total > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard icon={<Users className="w-4 h-4 text-violet-500" />} label="Total Members" value={stats.foundingFamilies || 0} />
-            <StatCard icon={<UserCheck className="w-4 h-4 text-green-500" />} label="Registered" value={stats.total || 0} />
+            <StatCard icon={<UserCheck className="w-4 h-4 text-green-500" />} label="Registered" value={stats.registeredMembers || 0} />
             <StatCard icon={<Award className="w-4 h-4 text-amber-500" />} label="Badges Awarded" value={stats.badgesAwarded || 0} />
             <StatCard icon={<Star className="w-4 h-4 text-purple-500" />} label="Beta" value={stats.beta || 0} />
             <StatCard icon={<UserCheck className="w-4 h-4 text-blue-500" />} label="Live" value={stats.live || 0} />
