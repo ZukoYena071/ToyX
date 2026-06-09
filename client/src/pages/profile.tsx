@@ -59,14 +59,39 @@ export default function Profile() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Lock body scroll when edit modal is open
+  // Lock scroll when edit modal is open — works on iOS Safari
   useEffect(() => {
     if (showEditModal) {
+      const scrollY = window.scrollY;
+      document.documentElement.style.overflow = "hidden";
       document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.width = "100%";
     } else {
+      const scrollY = parseInt(document.body.style.top || "0", 10) * -1 || 0;
+      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      const scrollY = parseInt(document.body.style.top || "0", 10) * -1 || 0;
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
+    };
   }, [showEditModal]);
   const [showEditToy, setShowEditToy] = useState<any>(null);
   const [confirmDeleteToyId, setConfirmDeleteToyId] = useState<number | null>(null);
