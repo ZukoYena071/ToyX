@@ -34,6 +34,7 @@ export default function AdminFoundingConsole() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const perPage = 50;
 
   const fetchAll = useCallback(async () => {
@@ -43,9 +44,11 @@ export default function AdminFoundingConsole() {
       const r = await fetch(`/api/admin/founding/members?limit=200&filter=${filter}${search ? `&search=${search}` : ""}`, { credentials: "include" });
       if (r.ok) { const d = await r.json(); setAllMembers(d.members || []); }
     } catch {} finally { setLoading(false); }
-  }, [search, filter]);
+  }, [search, filter, refreshKey]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
@@ -73,7 +76,7 @@ export default function AdminFoundingConsole() {
     try {
       const r = await fetch(`/api/admin/founding/bulk/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ ids: [...selected] }) });
       const d = await r.json();
-      if (d.ok) { setSelected(new Set()); setFilter("all"); setPage(1); }
+      if (d.ok) { setSelected(new Set()); setFilter("all"); setPage(1); refresh(); }
     } catch {} finally { setBusy(false); }
   };
 
@@ -86,7 +89,7 @@ export default function AdminFoundingConsole() {
 
   const doAction = async (id: number, action: string) => {
     const r = await fetch(`/api/admin/founding/members/${id}/${action}`, { method: "POST", credentials: "include" });
-    if (r.ok) { setFilter("all"); setPage(1); if (selectedId === id) setSelectedId(null); }
+    if (r.ok) { setFilter("all"); setPage(1); setSelected(new Set()); refresh(); if (selectedId === id) setSelectedId(null); }
   };
 
   const fullyQualified = allMembers.filter(m => m.qualCount === 4).length;
