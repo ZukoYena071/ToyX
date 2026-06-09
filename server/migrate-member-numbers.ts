@@ -35,9 +35,6 @@ async function main() {
   // Step 3: Set column default to auto-assign from sequence for future inserts
   await db.execute(sql`ALTER TABLE founding_members ALTER COLUMN member_number SET DEFAULT nextval('founding_member_number_seq')`);
 
-  // Step 4: Add UNIQUE constraint if not present (sequence guarantees uniqueness; constraint is protective)
-  await db.execute(sql`ALTER TABLE founding_members ADD CONSTRAINT IF NOT EXISTS founding_members_member_number_key UNIQUE (member_number)`);
-
   const r = await db.execute(sql`SELECT count(*) as total, count(member_number) as numbered FROM founding_members`);
   console.log("[migrate-member-numbers] Complete:", (r as any).rows?.[0] || r);
 }
