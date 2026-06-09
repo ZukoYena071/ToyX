@@ -14,18 +14,37 @@ function InfoPopover({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
   }, [open]);
   return (
     <div className="relative inline-flex" ref={ref}>
-      <button onClick={(e) => { e.stopPropagation(); setOpen(!open); }} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+        aria-label="More information"
+      >
         <HelpCircle className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 w-56 text-xs text-gray-600 dark:text-gray-400 leading-relaxed" onClick={(e) => e.stopPropagation()}>
-          {children}
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 w-56 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+          <div className="flex items-start justify-between gap-2">
+            <p>{children}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+              className="shrink-0 min-h-[28px] min-w-[28px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors -mr-1 -mt-1"
+              aria-label="Close"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
     </div>
