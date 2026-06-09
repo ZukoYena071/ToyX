@@ -321,6 +321,15 @@ export default function ToyDetail() {
       {/* Info content - floating sheet */}
       <div className="px-4 -mt-4 relative z-10">
         <div className="rounded-2xl border bg-white/80 backdrop-blur-xl border-gray-200 dark:bg-gray-900/70 dark:border-white/10 shadow-sm p-5 space-y-3">
+          {(toy as any)?.isExample && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl px-4 py-3">
+              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                Example Listing from ToyX
+              </p>
+              <p className="text-[11px] text-blue-500/70 dark:text-blue-400/70 mt-0.5">These listings demonstrate best practices for creating great exchanges.</p>
+            </div>
+          )}
           <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
             {(toy as any)?.name}
           </h1>
@@ -398,6 +407,8 @@ export default function ToyDetail() {
                       <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                       {rating.toFixed(1)} ({reviewCount} {reviewCount === 1 ? "review" : "reviews"})
                     </span>
+                  ) : (toy as any)?.owner?.featuredBadge === "toyx_official" ? (
+                    <span className="text-blue-600 font-medium">ToyX Official</span>
                   ) : (toy as any)?.owner?.featuredBadge ? (
                     <span className="text-amber-600 font-medium">Founding Member</span>
                   ) : (

@@ -123,6 +123,14 @@ export default function ToyFeedCard({ toy, onOpen, onToggleFavorite }: ToyFeedCa
 
       {/* Info area */}
       <div className="p-3">
+        {(toy as any).isExample && (
+          <div className="flex items-center gap-1 mb-1.5">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[10px] font-semibold">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              Example
+            </span>
+          </div>
+        )}
         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 line-clamp-1">
           {toy.name}
         </h3>

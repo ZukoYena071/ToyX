@@ -766,10 +766,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.profileImageUrl) {
         user.profileImageUrl = user.profileImageUrl.replace(/^http:/, "https:");
       }
-      // Include featured badge and founding member info
-      const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, user.id)).limit(1);
-      const badges = (rewardsRow[0]?.badges || []) as any[];
-      const featuredBadge = badges.length > 0 ? badges[0].type : null;
+      // Include featured badge, founding member info, and official account check
+      let featuredBadge: string | null = null;
+      if ((user as any).accountType === "official") {
+        featuredBadge = "toyx_official";
+      } else {
+        const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, user.id)).limit(1);
+        const badges = (rewardsRow[0]?.badges || []) as any[];
+        featuredBadge = badges.length > 0 ? badges[0].type : null;
+      }
       let memberNumber: number | null = null;
       if (user.email) {
         const fm = await db.select({ memberNumber: foundingMembers.memberNumber }).from(foundingMembers).where(eq(foundingMembers.email, user.email)).limit(1);
@@ -886,6 +891,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nearYou = recentlyAdded;
       }
 
+      // Filter out official account's toys from recommendations
+      forYou = forYou.filter((t: any) => t.ownerId !== "official_toyx");
+      nearYou = nearYou.filter((t: any) => t.ownerId !== "official_toyx");
+      recentlyAdded = recentlyAdded.filter((t: any) => t.ownerId !== "official_toyx");
+
       // Add isFavorited + isBoosted for each toy
       const now = new Date();
       const addFav = async (toy: any) => { 
@@ -968,6 +978,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return [r.userId, arr.length > 0 ? arr[0].type : null];
       }));
 
+      // ── Batch account types for owners (official account detection) ──
+      const ownerTypeRows = await db.select({ id: users.id, accountType: users.accountType }).from(users)
+        .where(inArray(users.id, ownerIds));
+      const officialSet = new Set(ownerTypeRows.filter(r => r.accountType === "official").map(r => r.id));
+
       // ── Compute distance if location enabled ──
       const now = new Date();
       const viewer = uid ? await storage.getUser(uid) : null;
@@ -978,7 +993,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toy.isFavorited = favSet.has(toy.id);
         toy.ownerRating = ratingMap.get(toy.ownerId) ?? 0;
         toy.inExchange = exchangeSet.has(toy.id);
-        if (toy.owner) (toy.owner as any).featuredBadge = badgeMap.get(toy.ownerId) || null;
+        if (toy.owner) {
+          (toy.owner as any).featuredBadge = officialSet.has(toy.ownerId) ? "toyx_official" : (badgeMap.get(toy.ownerId) || null);
+        }
+        (toy as any).isExample = officialSet.has(toy.ownerId);
         (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
         if (viewerHasLocation && toy.latitude != null && toy.longitude != null) {
           toy.distanceKm = haversineKm(viewer!.latitude as number, viewer!.longitude as number, toy.latitude as number, toy.longitude as number);
@@ -1425,11 +1443,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Add featured badge to owner
+      // Add featured badge to owner + isExample for official account
       if (toy.owner) {
-        const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, toy.ownerId)).limit(1);
-        const badgeArr = (rewardsRow[0]?.badges as any[]) || [];
-        (toy.owner as any).featuredBadge = badgeArr.length > 0 ? badgeArr[0].type : null;
+        const [ownerUser] = await db.select({ accountType: users.accountType }).from(users).where(eq(users.id, toy.ownerId)).limit(1);
+        if (ownerUser?.accountType === "official") {
+          (toy.owner as any).featuredBadge = "toyx_official";
+          (toy as any).isExample = true;
+        } else {
+          const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, toy.ownerId)).limit(1);
+          const badgeArr = (rewardsRow[0]?.badges as any[]) || [];
+          (toy.owner as any).featuredBadge = badgeArr.length > 0 ? badgeArr[0].type : null;
+        }
       }
       res.json(toy);
     } catch (error) {
@@ -1771,6 +1795,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!toy) {
         return res.status(404).json({ message: "Toy not found" });
       }
+
+      // Block exchange requests to official account listings
+      if (toy.ownerId === "official_toyx") {
+        return res.status(403).json({ message: "ToyX Official listings are example listings and are not available for exchange." });
+      }
       
       const exchangeData = insertExchangeSchema.parse({ 
         ...req.body, 
@@ -2073,6 +2102,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         reviewerId: userId
       });
+
+      // Block reviews for the official account
+      if (reviewData.revieweeId === "official_toyx") {
+        return res.status(400).json({ message: "ToyX Official cannot be reviewed." });
+      }
       
       // Check if user can review this exchange
       const canReview = await storage.canUserReview(reviewData.exchangeId, userId);
@@ -2377,6 +2411,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exchangeId = parseInt(req.params.id);
       const exchange = await storage.getExchange(exchangeId);
       if (!exchange) return res.status(404).json({ message: "Exchange not found" });
+      // Block messaging involving the official account
+      if (exchange.requesterId === "official_toyx" || exchange.ownerId === "official_toyx") {
+        return res.status(403).json({ message: "ToyX Official is not available for messaging." });
+      }
       const otherUserId = exchange.requesterId === userId ? exchange.ownerId : exchange.requesterId;
       // Check if either user has blocked the other
       const [blockedByOther, blockedOther] = await Promise.all([
