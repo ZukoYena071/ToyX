@@ -10,6 +10,7 @@ interface ProfileBadgesProps {
 
 const BADGE_CONFIG: Record<string, { label: string; icon: string }> = {
   founding_member: { label: "Founding Member", icon: "🛡️" },
+  toyx_official: { label: "ToyX Official", icon: "✅" },
 };
 
 export default function ProfileBadges({ badges }: ProfileBadgesProps) {

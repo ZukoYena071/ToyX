@@ -57,6 +57,7 @@ export const users = pgTable("users", {
   locationUpdatedAt: timestamp("location_updated_at"),
   accessStatus: varchar("access_status", { length: 32 }).notNull().default("waitlist"),
   isAdmin: boolean("is_admin").default(false),
+  accountType: varchar("account_type", { length: 32 }).notNull().default("standard"),
   suspendedUntil: timestamp("suspended_until"),
   suspensionReason: text("suspension_reason"),
   bannedAt: timestamp("banned_at"),
