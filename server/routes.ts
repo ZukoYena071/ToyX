@@ -1254,11 +1254,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [listings] = await db.select({ value: sql<number>`count(*)` }).from(toys).where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)));
       const [qualifiedRefs] = await db.select({ value: sql<number>`count(*)` }).from(referrals).where(eq(referrals.status, "qualified"));
       const [badged] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers).where(eq(foundingMembers.badgeAwarded, true));
+      const [registered] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers).where(sql`email IN (SELECT email FROM users)`);
       const settings = await db.select().from(launchSettings).limit(1);
       res.json({
         total: Number(total?.value || 0), waitlist: Number(waitlist?.value || 0), beta: Number(beta?.value || 0), live: Number(live?.value || 0),
         foundingFamilies: Number(families?.value || 0), totalListings: Number(listings?.value || 0), qualifiedReferrals: Number(qualifiedRefs?.value || 0),
-        badgesAwarded: Number(badged?.value || 0),
+        badgesAwarded: Number(badged?.value || 0), registeredMembers: Number(registered?.value || 0),
         settings: settings[0] || null,
       });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
