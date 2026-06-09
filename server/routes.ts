@@ -1131,6 +1131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const hasAccount = userRows.length > 0;
         const user = userRows[0];
         let qualification = 0;
+        let qualCount = 0;
         const qualChecks: Record<string, boolean> = { profileComplete: false, emailVerified: false, toysListed: false, referralComplete: false };
         if (hasAccount && user) {
           const u = await storage.getUser(user.id);
@@ -1143,14 +1144,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const [refC] = await db.select({ c: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, user.id), eq(referrals.status, "qualified")));
             qualChecks.referralComplete = Number(refC?.c || 0) >= 1;
           }
-          qualification = Math.round((Object.values(qualChecks).filter(Boolean).length / 4) * 100);
+          qualCount = Object.values(qualChecks).filter(Boolean).length;
+          qualification = Math.round((qualCount / 4) * 100);
         }
         return {
           id: fm.id, memberNumber: fm.memberNumber, firstName: fm.firstName, email: fm.email, city: fm.city,
           joinedAt: fm.joinedAt, status: fm.status, badgeAwarded: fm.badgeAwarded,
           signupSource: fm.signupSource,
           registered: hasAccount, accessStatus: user?.accessStatus || null,
-          qualification, qualChecks,
+          qualification, qualCount, qualChecks,
         };
       }));
 
@@ -1166,8 +1168,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRows = fm.email ? await db.select().from(users).where(eq(users.email, fm.email)).limit(1) : [];
       const hasAccount = userRows.length > 0;
       const user = userRows[0] || null;
+      let qualChecks: Record<string, boolean> | null = null;
+      if (hasAccount && user) {
+        const u = await storage.getUser(user.id);
+        if (u) {
+          const filled = [u.firstName, u.lastName, u.profileImageUrl, u.bio, u.location].filter(Boolean).length;
+          const [toyC] = await db.select({ c: sql<number>`count(*)` }).from(toys).where(and(eq(toys.ownerId, user.id), isNull(toys.deletedAt)));
+          const [refC] = await db.select({ c: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, user.id), eq(referrals.status, "qualified")));
+          qualChecks = {
+            profileComplete: filled >= 4,
+            emailVerified: !!u.email,
+            toysListed: Number(toyC?.c || 0) >= 3,
+            referralComplete: Number(refC?.c || 0) >= 1,
+          };
+        }
+      }
       const actions = await db.select().from(foundingConsoleActions).where(eq(foundingConsoleActions.targetMemberId, fmId)).orderBy(desc(foundingConsoleActions.createdAt)).limit(50);
-      res.json({ foundingMember: fm, user, hasAccount, recentActions: actions });
+      res.json({ foundingMember: fm, user, hasAccount, qualChecks, recentActions: actions });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
