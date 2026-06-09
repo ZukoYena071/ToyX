@@ -34,6 +34,7 @@ import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
 import AdminFoundingMembers from "@/pages/admin-founding-members";
 import AdminLaunchControl from "@/pages/admin-launch-control";
+import AdminFoundingConsole from "@/pages/admin-founding-console";
 import FoundingFamilyHub from "@/pages/founding-family-hub";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
@@ -249,6 +250,7 @@ function Router() {
         <Route path="/admin/moderation" component={AdminModeration} />
         <Route path="/admin/founding-members" component={AdminFoundingMembers} />
         <Route path="/admin/launch-control" component={AdminLaunchControl} />
+        <Route path="/admin/founding" component={AdminFoundingConsole} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/data-deletion" component={DataDeletionPage} />

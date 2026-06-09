@@ -17,7 +17,7 @@ import { accountBannedTemplate } from "./email/templates/account-banned";
 import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, launchSettings, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, launchSettings, foundingConsoleActions, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost, awardFoundingMemberBadge, computeContributionScore } from "./rewards";
@@ -1088,6 +1088,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // Helper: log founding console action
+  async function logFmAction(adminId: string, actionType: string, targetEmail?: string, targetMemberId?: number, metadata?: any) {
+    await db.insert(foundingConsoleActions).values({ adminId, actionType, targetEmail, targetMemberId: targetMemberId || null, metadata: metadata || null }).catch(() => {});
+  }
+
+  // Founding Member Management Console APIs
+  app.get('/api/admin/founding/members', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { search, filter, page = "1", limit = "50" } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string));
+      const limitNum = Math.min(200, Math.max(1, parseInt(limit as string)));
+      const offset = (pageNum - 1) * limitNum;
+
+      let query = db.select().from(foundingMembers);
+      let countQuery = db.select({ total: sql<number>`count(*)` }).from(foundingMembers);
+
+      if (filter && filter !== "all") {
+        if (filter === "registered") { query = query.where(sql`email IN (SELECT email FROM users)`) as any; countQuery = countQuery.where(sql`email IN (SELECT email FROM users)`) as any; }
+        else if (filter === "not_registered") { query = query.where(sql`email NOT IN (SELECT email FROM users)`) as any; countQuery = countQuery.where(sql`email NOT IN (SELECT email FROM users)`) as any; }
+        else if (filter === "badge_awarded") { query = query.where(eq(foundingMembers.badgeAwarded, true)) as any; countQuery = countQuery.where(eq(foundingMembers.badgeAwarded, true)) as any; }
+        else if (filter === "badge_missing") { query = query.where(eq(foundingMembers.badgeAwarded, false)) as any; countQuery = countQuery.where(eq(foundingMembers.badgeAwarded, false)) as any; }
+        else if (filter === "beta_invited") { query = query.where(eq(foundingMembers.status, "INVITED")) as any; countQuery = countQuery.where(eq(foundingMembers.status, "INVITED")) as any; }
+        else if (filter === "beta_activated") { query = query.where(eq(foundingMembers.status, "ACTIVATED")) as any; countQuery = countQuery.where(eq(foundingMembers.status, "ACTIVATED")) as any; }
+      }
+
+      if (search) {
+        const q = `%${search}%`;
+        const searchCond = or(sql`${foundingMembers.firstName} ILIKE ${q}`, sql`${foundingMembers.email} ILIKE ${q}`, sql`CAST(${foundingMembers.memberNumber} AS TEXT) ILIKE ${q}`);
+        query = query.where(searchCond) as any;
+        countQuery = countQuery.where(searchCond) as any;
+      }
+
+      const rows = await query.orderBy(foundingMembers.memberNumber).limit(limitNum).offset(offset);
+      const [totalResult] = await countQuery;
+
+      // Enrich with user account data and qualification
+      const enriched = await Promise.all(rows.map(async (fm) => {
+        const userRows = fm.email ? await db.select({ id: users.id, accessStatus: users.accessStatus }).from(users).where(eq(users.email, fm.email)).limit(1) : [];
+        const hasAccount = userRows.length > 0;
+        const user = userRows[0];
+        let qualification = 0;
+        const qualChecks: Record<string, boolean> = { profileComplete: false, emailVerified: false, toysListed: false, referralComplete: false };
+        if (hasAccount && user) {
+          const u = await storage.getUser(user.id);
+          if (u) {
+            const filled = [u.firstName, u.lastName, u.profileImageUrl, u.bio, u.location].filter(Boolean).length;
+            qualChecks.profileComplete = filled >= 4;
+            qualChecks.emailVerified = !!u.email;
+            const [toyC] = await db.select({ c: sql<number>`count(*)` }).from(toys).where(and(eq(toys.ownerId, user.id), isNull(toys.deletedAt)));
+            qualChecks.toysListed = Number(toyC?.c || 0) >= 3;
+            const [refC] = await db.select({ c: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, user.id), eq(referrals.status, "qualified")));
+            qualChecks.referralComplete = Number(refC?.c || 0) >= 1;
+          }
+          qualification = Math.round((Object.values(qualChecks).filter(Boolean).length / 4) * 100);
+        }
+        return {
+          id: fm.id, memberNumber: fm.memberNumber, firstName: fm.firstName, email: fm.email, city: fm.city,
+          joinedAt: fm.joinedAt, status: fm.status, badgeAwarded: fm.badgeAwarded,
+          signupSource: fm.signupSource,
+          registered: hasAccount, accessStatus: user?.accessStatus || null,
+          qualification, qualChecks,
+        };
+      }));
+
+      res.json({ members: enriched, total: Number(totalResult?.total || 0), page: pageNum });
+    } catch (e: any) { console.error("FOUNDING_CONSOLE_LIST_ERROR:", e); res.status(500).json({ error: e.message }); }
+  });
+
+  app.get('/api/admin/founding/members/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      const userRows = fm.email ? await db.select().from(users).where(eq(users.email, fm.email)).limit(1) : [];
+      const hasAccount = userRows.length > 0;
+      const user = userRows[0] || null;
+      const actions = await db.select().from(foundingConsoleActions).where(eq(foundingConsoleActions.targetMemberId, fmId)).orderBy(desc(foundingConsoleActions.createdAt)).limit(50);
+      res.json({ foundingMember: fm, user, hasAccount, recentActions: actions });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/admin/founding/members/:id/promote', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      await db.update(foundingMembers).set({ status: "INVITED" }).where(eq(foundingMembers.id, fmId));
+      // Also promote matching user account if exists
+      if (fm.email) {
+        const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+        if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "beta" });
+      }
+      await logFmAction(adminId, "promoted_to_beta", fm.email, fmId);
+      res.json({ ok: true, status: "INVITED" });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/admin/founding/members/:id/revoke', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      await db.update(foundingMembers).set({ status: "WAITLIST" }).where(eq(foundingMembers.id, fmId));
+      if (fm.email) {
+        const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+        if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "waitlist" });
+      }
+      await logFmAction(adminId, "beta_revoked", fm.email, fmId);
+      res.json({ ok: true, status: "WAITLIST" });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/admin/founding/members/:id/award-badge', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      if (fm.email) {
+        const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+        if (uRows.length) {
+          const ok = await awardFoundingMemberBadge(uRows[0].id);
+          if (ok) await logFmAction(adminId, "badge_awarded", fm.email, fmId);
+          return res.json({ ok, badgeAwarded: ok });
+        }
+      }
+      res.json({ ok: false, error: "No matching user account found" });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
   // Launch settings CRUD (single-row table)
