@@ -1239,6 +1239,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
+  // Bulk promote to beta
+  app.post('/api/admin/founding/bulk/promote', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: "ids array required" });
+      let promoted = 0; let errors = 0;
+      for (const id of ids) {
+        try {
+          const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, id)).limit(1);
+          if (!fm) { errors++; continue; }
+          await db.update(foundingMembers).set({ status: "INVITED" }).where(eq(foundingMembers.id, id));
+          if (fm.email) {
+            const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+            if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "beta" });
+          }
+          await logFmAction(adminId, "promoted_to_beta", fm.email, id, { bulk: true, bulkAction: "promote" });
+          promoted++;
+        } catch { errors++; }
+      }
+      res.json({ ok: true, promoted, errors });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Bulk revoke beta
+  app.post('/api/admin/founding/bulk/revoke', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: "ids array required" });
+      let revoked = 0; let errors = 0;
+      for (const id of ids) {
+        try {
+          const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, id)).limit(1);
+          if (!fm) { errors++; continue; }
+          await db.update(foundingMembers).set({ status: "WAITLIST" }).where(eq(foundingMembers.id, id));
+          if (fm.email) {
+            const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+            if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "waitlist" });
+          }
+          await logFmAction(adminId, "beta_revoked", fm.email, id, { bulk: true, bulkAction: "revoke" });
+          revoked++;
+        } catch { errors++; }
+      }
+      res.json({ ok: true, revoked, errors });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   // Launch settings CRUD (single-row table)
   app.get('/api/admin/launch-settings', isAuthenticated, isAdmin, async (_, res) => {
     try {
