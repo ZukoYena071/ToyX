@@ -73,7 +73,7 @@ export default function AdminFoundingConsole() {
     try {
       const r = await fetch(`/api/admin/founding/bulk/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ ids: [...selected] }) });
       const d = await r.json();
-      if (d.ok) { setSelected(new Set()); setFilter("all"); setPage(1); fetchAll(); }
+      if (d.ok) { setSelected(new Set()); setFilter("all"); setPage(1); }
     } catch {} finally { setBusy(false); }
   };
 
@@ -86,7 +86,7 @@ export default function AdminFoundingConsole() {
 
   const doAction = async (id: number, action: string) => {
     const r = await fetch(`/api/admin/founding/members/${id}/${action}`, { method: "POST", credentials: "include" });
-    if (r.ok) { setFilter("all"); setPage(1); fetchAll(); if (selectedId === id) setSelectedId(null); }
+    if (r.ok) { setFilter("all"); setPage(1); if (selectedId === id) setSelectedId(null); }
   };
 
   const fullyQualified = allMembers.filter(m => m.qualCount === 4).length;
