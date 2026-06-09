@@ -952,6 +952,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exchangeSet = new Set<number>();
       exRows.forEach(r => { exchangeSet.add(r.toyId); if (r.offeredToyId != null) exchangeSet.add(r.offeredToyId); });
 
+      // ── Batch featured badge for owners (1 query) ──
+      const badgeRows = await db.select({ userId: userRewards.userId, badges: userRewards.badges }).from(userRewards)
+        .where(inArray(userRewards.userId, ownerIds));
+      const badgeMap = new Map(badgeRows.map(r => {
+        const arr = (r.badges as any[]) || [];
+        return [r.userId, arr.length > 0 ? arr[0].type : null];
+      }));
+
       // ── Compute distance if location enabled ──
       const now = new Date();
       const viewer = uid ? await storage.getUser(uid) : null;
@@ -962,6 +970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toy.isFavorited = favSet.has(toy.id);
         toy.ownerRating = ratingMap.get(toy.ownerId) ?? 0;
         toy.inExchange = exchangeSet.has(toy.id);
+        if (toy.owner) (toy.owner as any).featuredBadge = badgeMap.get(toy.ownerId) || null;
         (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
         if (viewerHasLocation && toy.latitude != null && toy.longitude != null) {
           toy.distanceKm = haversineKm(viewer!.latitude as number, viewer!.longitude as number, toy.latitude as number, toy.longitude as number);
@@ -1210,6 +1219,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Add featured badge to owner
+      if (toy.owner) {
+        const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, toy.ownerId)).limit(1);
+        const badgeArr = (rewardsRow[0]?.badges as any[]) || [];
+        (toy.owner as any).featuredBadge = badgeArr.length > 0 ? badgeArr[0].type : null;
+      }
       res.json(toy);
     } catch (error) {
       console.error("Error fetching toy:", error);
@@ -1477,6 +1492,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const exchanges = await storage.getExchanges(userId);
+      // Add featured badges to exchange participants
+      const participantIds = [...new Set(exchanges.flatMap((ex: any) => [ex.requester?.id, ex.owner?.id]).filter(Boolean))];
+      if (participantIds.length > 0) {
+        const bRows = await db.select({ userId: userRewards.userId, badges: userRewards.badges }).from(userRewards).where(inArray(userRewards.userId, participantIds));
+        const bMap = new Map(bRows.map(r => { const a = (r.badges as any[]) || []; return [r.userId, a.length > 0 ? a[0].type : null]; }));
+        for (const ex of exchanges) {
+          if (ex.requester) (ex.requester as any).featuredBadge = bMap.get(ex.requester.id) || null;
+          if (ex.owner) (ex.owner as any).featuredBadge = bMap.get(ex.owner.id) || null;
+        }
+      }
       // Add hasUnread for each exchange
       const withUnread = exchanges.map((ex: any) => {
         const lastRead = ex.requesterId === userId ? ex.requesterLastReadAt : ex.ownerLastReadAt;
@@ -1707,6 +1732,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const exchangeId = parseInt(req.params.id);
       const messages = await storage.getMessages(exchangeId);
+      // Add featured badges to message senders
+      const senderIds = [...new Set(messages.map(m => m.sender.id))];
+      if (senderIds.length > 0) {
+        const bRows = await db.select({ userId: userRewards.userId, badges: userRewards.badges }).from(userRewards).where(inArray(userRewards.userId, senderIds));
+        const bMap = new Map(bRows.map(r => { const a = (r.badges as any[]) || []; return [r.userId, a.length > 0 ? a[0].type : null]; }));
+        for (const msg of messages) { (msg.sender as any).featuredBadge = bMap.get(msg.sender.id) || null; }
+      }
       res.json(messages);
     } catch (error) {
       console.error("Error fetching messages:", error);

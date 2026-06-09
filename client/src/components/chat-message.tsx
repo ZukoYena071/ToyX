@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Smile } from "lucide-react";
 import type { MessageWithSender } from "@shared/schema";
+import FeaturedBadge from "@/components/profile/FeaturedBadge";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
@@ -109,8 +110,9 @@ export default function ChatMessage({ message, isOwn, onReact }: ChatMessageProp
           }`}>
             <p className={`text-xs mb-1 font-medium ${
               isOwn ? 'text-purple-100' : 'text-gray-500 dark:text-gray-400'
-            }`}>
+            } flex items-center gap-1`}>
               {message.sender.firstName || message.sender.email}
+              {(message.sender as any).featuredBadge && <FeaturedBadge type={(message.sender as any).featuredBadge} />}
             </p>
             <p className="text-sm">{message.content}</p>
             <p className={`text-xs mt-1 ${

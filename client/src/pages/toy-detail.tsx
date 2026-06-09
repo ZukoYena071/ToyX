@@ -16,6 +16,7 @@ import { ToyDetailSkeleton } from "@/components/loading-skeletons";
 import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import { normalizeList, ChipRow } from "@/components/toys/MetaChip";
+import FeaturedBadge from "@/components/profile/FeaturedBadge";
 
 export default function ToyDetail() {
   const { id } = useParams();
@@ -385,6 +386,9 @@ export default function ToyDetail() {
                       ? `${(toy as any).owner.firstName} ${(toy as any).owner.lastName}`
                       : (toy as any)?.owner?.email}
                   </h4>
+                  {(toy as any)?.owner?.featuredBadge && (
+                    <FeaturedBadge type={(toy as any).owner.featuredBadge} />
+                  )}
                   <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -393,6 +397,8 @@ export default function ToyDetail() {
                       <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                       {rating.toFixed(1)} ({reviewCount} {reviewCount === 1 ? "review" : "reviews"})
                     </span>
+                  ) : (toy as any)?.owner?.featuredBadge ? (
+                    <span className="text-amber-600 font-medium">Founding Member</span>
                   ) : (
                     <span>New member</span>
                   )}
