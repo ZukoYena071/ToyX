@@ -426,6 +426,17 @@ export const launchSettings = pgTable("launch_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+// Audit log for admin actions on founding members
+export const foundingConsoleActions = pgTable("founding_console_actions", {
+  id: serial("id").primaryKey(),
+  adminId: varchar("admin_id").notNull().references(() => users.id),
+  actionType: varchar("action_type", { length: 32 }).notNull(),
+  targetEmail: varchar("target_email"),
+  targetMemberId: integer("target_member_id").references(() => foundingMembers.id),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
