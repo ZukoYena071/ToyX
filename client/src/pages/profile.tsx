@@ -30,6 +30,8 @@ import {
   MoreHorizontal
 } from "lucide-react";
 import ProfileBadges from "@/components/profile/ProfileBadges";
+import FeaturedBadge from "@/components/profile/FeaturedBadge";
+import AchievementCard from "@/components/profile/AchievementCard";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -414,14 +416,20 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 truncate">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 truncate flex items-center gap-0.5">
                 {(user as any)?.firstName || (user as any)?.lastName
                   ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim()
                   : (user as any)?.email || 'User'
                 }
+                {rewardsData && (rewardsData as any).badges?.length > 0 && (
+                  <FeaturedBadge
+                    type={(rewardsData as any).badges[0].type}
+                    memberNumber={(rewardsData as any).foundingMember?.memberNumber}
+                    awardedAt={(rewardsData as any).badges[0].awardedAt}
+                  />
+                )}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
-              {rewardsData && (rewardsData as any).badges && <ProfileBadges badges={(rewardsData as any).badges} />}
               <div className="flex items-center gap-1 mt-1">
                 <MapPin className="text-purple-500 w-3 h-3" />
                 <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{(user as any)?.location || 'Location not set'}</span>
@@ -463,6 +471,20 @@ export default function Profile() {
           </div>
         </SectionCard>
       </div>
+
+      {/* Achievements Section */}
+      {rewardsData && (rewardsData as any).badges?.length > 0 && (
+        <div className="px-4 mt-4">
+          <SectionCard>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">🏅 Achievements</h3>
+            <div className="grid gap-3">
+              {(rewardsData as any).badges.map((badge: any) => (
+                <AchievementCard key={badge.type} badge={badge} memberNumber={(rewardsData as any).foundingMember?.memberNumber} />
+              ))}
+            </div>
+          </SectionCard>
+        </div>
+      )}
 
       {/* Subscription Section */}
       <div className="px-4 mt-4">

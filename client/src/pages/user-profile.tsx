@@ -11,6 +11,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ReportUserModal from "@/components/toys/ReportUserModal";
+import FeaturedBadge from "@/components/profile/FeaturedBadge";
 
 export default function UserProfile() {
   const { userId } = useParams();
@@ -118,8 +119,11 @@ export default function UserProfile() {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-0.5">
                 {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split('@')[0] || 'User'}
+                {(user as any).featuredBadge && (
+                  <FeaturedBadge type={(user as any).featuredBadge} memberNumber={(user as any).memberNumber} />
+                )}
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex">

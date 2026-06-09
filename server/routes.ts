@@ -758,7 +758,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.profileImageUrl) {
         user.profileImageUrl = user.profileImageUrl.replace(/^http:/, "https:");
       }
-      res.json(user);
+      // Include featured badge and founding member info
+      const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, user.id)).limit(1);
+      const badges = (rewardsRow[0]?.badges || []) as any[];
+      const featuredBadge = badges.length > 0 ? badges[0].type : null;
+      let memberNumber: number | null = null;
+      if (user.email) {
+        const fm = await db.select({ memberNumber: foundingMembers.memberNumber }).from(foundingMembers).where(eq(foundingMembers.email, user.email)).limit(1);
+        if (fm.length) memberNumber = fm[0].memberNumber;
+      }
+      res.json({ ...user, featuredBadge, memberNumber });
     } catch (error) {
       console.error("Error fetching user profile:", error);
       res.status(500).json({ message: "Failed to fetch user profile" });
