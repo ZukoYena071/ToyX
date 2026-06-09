@@ -176,8 +176,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userToys = await db.select({ id: toys.id }).from(toys).where(and(eq(toys.ownerId, userId), eq(toys.isAvailable, true), isNull(toys.deletedAt)));
 
       // Profile completion
-      const totalFields = 5; const filled = [user.firstName, user.lastName, user.profileImageUrl, user.bio, user.location].filter(Boolean).length;
-      const profileCompletion = Math.round((filled / totalFields) * 100);
+      const profileFields = [
+        { key: "firstName", label: "First Name", done: !!user.firstName },
+        { key: "lastName", label: "Last Name", done: !!user.lastName },
+        { key: "profileImageUrl", label: "Profile Photo", done: !!user.profileImageUrl },
+        { key: "bio", label: "Bio", done: !!user.bio },
+        { key: "location", label: "Location", done: !!user.location },
+      ];
+      const filled = profileFields.filter(f => f.done).length;
+      const profileCompletion = Math.round((filled / profileFields.length) * 100);
 
       // Community stats
       const [families] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers);
@@ -194,6 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toyCount: userToys.length,
         emailVerified: !!user.email,
         profileCompletion,
+        profileFields,
         referralCount,
         community: {
           totalFamilies: Number(families?.value || 0),
