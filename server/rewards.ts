@@ -122,6 +122,18 @@ export async function getRewardsProfile(userId: string) {
   const redemptions = await db.select().from(rewardRedemptions).where(eq(rewardRedemptions.userId, userId)).orderBy(desc(rewardRedemptions.createdAt)).limit(10);
   const activeBoostedToys = await db.select({ id: toys.id, name: toys.name, boostedUntil: toys.boostedUntil })
     .from(toys).where(and(eq(toys.ownerId, userId), gt(toys.boostedUntil, new Date())));
+  // Look up founding member info for badge display
+  let foundingMember: { memberNumber: number | null; awardedAt: string | null } | null = null;
+  const user = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  if (user.length && user[0].email) {
+    const fm = await db.select({ memberNumber: foundingMembers.memberNumber, badgeAwarded: foundingMembers.badgeAwarded })
+      .from(foundingMembers).where(eq(foundingMembers.email, user[0].email)).limit(1);
+    if (fm.length) {
+      const badgeData = (reward[0]?.badges as any[] || []).find((b: any) => b.type === "founding_member");
+      foundingMember = { memberNumber: fm[0].memberNumber, awardedAt: badgeData?.awardedAt || null };
+    }
+  }
+
   return {
     pointsBalance: reward[0]?.pointsBalance || 0,
     pointsLifetime: reward[0]?.pointsLifetime || 0,
@@ -132,6 +144,7 @@ export async function getRewardsProfile(userId: string) {
     entitlements,
     activeBoostedToys,
     isPremium: entitlements.isPremium,
+    foundingMember,
   };
 }
 
