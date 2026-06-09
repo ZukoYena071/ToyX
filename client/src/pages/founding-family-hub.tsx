@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Users, Gift, MapPin, CheckCircle, Target, Share2, Sparkles, TrendingUp, Star, Copy, Check } from "lucide-react";
+import { Users, Gift, MapPin, CheckCircle, Target, Share2, Sparkles, TrendingUp, Star, Copy, Check, ChevronDown } from "lucide-react";
 import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import { Progress } from "@/components/ui/progress";
@@ -115,13 +115,19 @@ function StatCard({ icon, value, label, sub }: { icon: string; value: number | s
   );
 }
 
-function MilestoneCard({ done, label }: { done: boolean; label: string }) {
+function MilestoneCard({ done, label, expanded, children }: { done: boolean; label: string; expanded?: boolean; children?: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const isExpanded = expanded !== undefined ? expanded : open;
   return (
-    <div className="flex items-center gap-3 py-3">
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-        {done ? <CheckCircle className="w-5 h-5" /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600" />}
-      </div>
-      <span className={`text-sm font-medium ${done ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}`}>{label}</span>
+    <div>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 py-3 text-left cursor-pointer group">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+          {done ? <CheckCircle className="w-5 h-5" /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600" />}
+        </div>
+        <span className={`text-sm font-medium flex-1 ${done ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}`}>{label}</span>
+        {children && <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />}
+      </button>
+      {isExpanded && children && <div className="pl-11 pb-3 space-y-1.5">{children}</div>}
     </div>
   );
 }
@@ -278,8 +284,33 @@ export default function FoundingFamilyHub() {
           </div>
           <Progress value={(profileDone / profileChecks.length) * 100} className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 [&>div]:bg-gradient-to-r [&>div]:from-violet-500 [&>div]:to-fuchsia-500 [&>div]:rounded-full [&>div]:transition-all [&>div]:duration-700" />
           <div className="mt-4 divide-y divide-gray-100 dark:divide-gray-800">
-            {profileChecks.map((c, i) => <MilestoneCard key={i} done={c.done} label={c.label} />)}
+            {profileChecks.map((c, i) => {
+              if (c.label === "Complete your profile") {
+                const fields = (data as any).profileFields || [];
+                const filled = fields.filter((f: any) => f.done).length;
+                return (
+                  <MilestoneCard key={i} done={c.done} label={c.label} expanded>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Complete at least 4 of 5 profile fields to qualify.</p>
+                    <div className="space-y-1">
+                      {fields.map((f: any) => (
+                        <div key={f.key} className="flex items-center gap-2 text-xs">
+                          <span className={f.done ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'}>{f.done ? '✓' : '○'}</span>
+                          <span className={f.done ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}>{f.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">{filled} of {fields.length} fields completed</p>
+                  </MilestoneCard>
+                );
+              }
+              return <MilestoneCard key={i} done={c.done} label={c.label} />;
+            })}
           </div>
+          <Link href="/profile">
+            <button className="w-full mt-4 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl text-sm font-medium transition-colors min-h-[44px] active:scale-[0.99]">
+              {data.profileCompletion >= 80 ? "View Profile" : "Complete Your Profile"}
+            </button>
+          </Link>
         </SectionCard>
 
         {/* Referral Card */}
