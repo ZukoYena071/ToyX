@@ -37,7 +37,7 @@ export default function FeaturedBadge({ type, memberNumber, awardedAt }: Feature
         className="inline-flex items-center focus:outline-none min-w-[22px] min-h-[22px]"
         aria-label={BADGE_LABELS[type] || type}
       >
-        <img src={src} alt={BADGE_LABELS[type] || type} className="w-5 h-5 rounded-full object-contain inline-block align-middle" />
+        <img src={src} alt={BADGE_LABELS[type] || type} className="w-7 h-7 rounded-full object-contain inline-block align-middle" />
       </button>
       {show && (
         <div className="absolute z-50 left-0 top-full mt-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg p-4 w-64">
