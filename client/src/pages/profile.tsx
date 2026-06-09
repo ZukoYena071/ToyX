@@ -438,41 +438,43 @@ export default function Profile() {
       {/* Profile Card */}
       <div className="px-4 mt-4">
         <SectionCard className="p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative">
-              <Avatar className="w-20 h-20">
-                <AvatarImage src={(user as any)?.profileImageUrl || undefined} />
-                <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
-                  {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
-                <Check className="text-white w-3 h-3" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="w-20 h-20 shrink-0">
+                  <AvatarImage src={(user as any)?.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
+                    {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
+                  <Check className="text-white w-3 h-3" />
+                </div>
               </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 truncate flex items-center gap-0.5">
-                {(user as any)?.firstName || (user as any)?.lastName
-                  ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim()
-                  : (user as any)?.email || 'User'
-                }
-                {rewardsData && (rewardsData as any).badges?.length > 0 && (
-                  <FeaturedBadge
-                    type={(rewardsData as any).badges[0].type}
-                    memberNumber={(rewardsData as any).foundingMember?.memberNumber}
-                    awardedAt={(rewardsData as any).badges[0].awardedAt}
-                  />
-                )}
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
-              <div className="flex items-center gap-1 mt-1">
-                <MapPin className="text-purple-500 w-3 h-3" />
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{(user as any)?.location || 'Location not set'}</span>
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 truncate flex items-center gap-0.5">
+                  {(user as any)?.firstName || (user as any)?.lastName
+                    ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim()
+                    : (user as any)?.email || 'User'
+                  }
+                  {rewardsData && (rewardsData as any).badges?.length > 0 && (
+                    <FeaturedBadge
+                      type={(rewardsData as any).badges[0].type}
+                      memberNumber={(rewardsData as any).foundingMember?.memberNumber}
+                      awardedAt={(rewardsData as any).badges[0].awardedAt}
+                    />
+                  )}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <MapPin className="text-purple-500 w-3 h-3 shrink-0" />
+                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{(user as any)?.location || 'Location not set'}</span>
+                </div>
               </div>
             </div>
             <button
               onClick={() => setShowEditModal(true)}
-              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px]"
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] sm:w-auto w-full"
             >
               Edit Profile
             </button>
