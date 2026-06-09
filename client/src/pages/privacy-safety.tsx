@@ -7,8 +7,30 @@ import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import ListItemRow from "@/components/ui/ListItemRow";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ReportUserModal from "@/components/toys/ReportUserModal";
+
+function InfoPopover({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+  return (
+    <div className="relative inline-flex" ref={ref}>
+      <button onClick={(e) => { e.stopPropagation(); setOpen(!open); }} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 w-56 text-xs text-gray-600 dark:text-gray-400 leading-relaxed" onClick={(e) => e.stopPropagation()}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
   <button
@@ -149,16 +171,9 @@ export default function PrivacySafety() {
               subtitle="Controls your public profile city"
               right={
                 <div className="flex items-center gap-1">
-                  <Tooltip delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      <button onClick={(e) => e.stopPropagation()} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
-                        <HelpCircle className="w-4 h-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-[220px] text-xs pointer-events-auto" onPointerDownOutside={(e) => e.preventDefault()}>
-                      Hide your city from your public profile page. Toy locations on listings are always shown so other parents can find toys near them.
-                    </TooltipContent>
-                  </Tooltip>
+                  <InfoPopover>
+                    Hide your city from your public profile page. Toy locations on listings are always shown so other parents can find toys near them.
+                  </InfoPopover>
                   <ToggleSwitch enabled={settings.showLocation} onToggle={() => updateSetting("showLocation", !settings.showLocation)} />
                 </div>
               }

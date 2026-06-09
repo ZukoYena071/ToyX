@@ -875,7 +875,7 @@ export default function Profile() {
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="p-4 space-y-4">
+            <form id="edit-profile-form" onSubmit={handleEditSubmit} className="p-4 space-y-4">
               <div className="text-center">
                 <div className="relative inline-block">
                   <Avatar className="w-20 h-20 mx-auto">
@@ -961,9 +961,11 @@ export default function Profile() {
                 <Input type="tel" value={editForm.phone} onChange={(e) => handleEditChange('phone', e.target.value)} placeholder="Enter phone number (optional)" />
               </div>
 
-              <div className="flex gap-3 pt-4">
+            </form>
+            <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-4">
+              <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">Cancel</Button>
-                <Button type="submit" disabled={updateProfileMutation.isPending} className="flex-1">
+                <Button type="submit" disabled={updateProfileMutation.isPending} className="flex-1" form="edit-profile-form">
                   {updateProfileMutation.isPending ? (
                     <span className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -974,7 +976,7 @@ export default function Profile() {
                   )}
                 </Button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
