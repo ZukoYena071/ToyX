@@ -613,19 +613,21 @@ export default function Profile() {
                             {Array.isArray(userToys) && userToys.length > 0 ? (
                               <div className="space-y-2">
                                 {userToys.map((toy: any) => (
-                                  <div key={toy.id} className={'flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl' + (toy.isAvailable === false ? ' opacity-60' : '')}>
-                                    <div className={'w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0' + (toy.isAvailable === false ? ' grayscale' : '')}>
-                                      {toy.imageUrls && toy.imageUrls[0] ? (
-                                        <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center">🧸</div>
-                                      )}
+                                  <div key={toy.id} className={'sm:flex sm:items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl' + (toy.isAvailable === false ? ' opacity-60' : '')}>
+                                    <div className="flex items-start gap-3 sm:flex-1 sm:min-w-0 mb-3 sm:mb-0">
+                                      <div className={'w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0' + (toy.isAvailable === false ? ' grayscale' : '')}>
+                                        {toy.imageUrls && toy.imageUrls[0] ? (
+                                          <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center">🧸</div>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50 line-clamp-2 sm:line-clamp-none sm:truncate">{toy.name}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
+                                      </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">{toy.name}</h4>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex items-center gap-1 justify-end sm:shrink-0">
                                       <BoostButton toyId={toy.id} isBoosted={toy.isBoosted} boostedUntil={toy.boostedUntil} disabled={toy.isAvailable === false} onSuccess={() => { queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); queryClient.invalidateQueries({ queryKey: ["/api/toys"] }); }} />
                                       <div className="relative">
                                         <button onClick={() => setShowToyMenu(showToyMenu === toy.id ? null : toy.id)} className="min-w-[44px] min-h-[44px] bg-gray-50 dark:bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
