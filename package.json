@@ -22,6 +22,7 @@
     "db:migrate:access-status": "NODE_ENV=development tsx server/migrate-access-status.ts",
     "db:migrate:launch-settings": "NODE_ENV=development tsx server/migrate-launch-settings.ts",
     "db:migrate:member-numbers": "NODE_ENV=development tsx server/migrate-member-numbers.ts",
+    "db:backfill:badges": "NODE_ENV=development tsx server/migrate-backfill-badges.ts",
     "qa": "npm run db:push && npm run db:seed:test && start-server-and-test \"npm run dev:test\" http://localhost:3001 \"npm run test:visual:update && npm run test:api && npm run test:e2e && npm run test:visual\""
   },
   "dependencies": {
