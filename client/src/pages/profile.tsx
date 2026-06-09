@@ -888,9 +888,9 @@ export default function Profile() {
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex flex-col items-center justify-end sm:justify-center">
-          <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-lg w-full max-w-md max-h-[90dvh] sm:max-h-[85vh] overflow-y-auto mt-auto sm:mt-0">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex flex-col items-center justify-end sm:justify-center">
+          <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-lg w-full max-w-md max-h-[90dvh] sm:max-h-[85vh] flex flex-col mt-auto sm:mt-0">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Edit Profile</h2>
               <button
                 onClick={() => setShowEditModal(false)}
@@ -900,94 +900,97 @@ export default function Profile() {
               </button>
             </div>
 
-            <form id="edit-profile-form" onSubmit={handleEditSubmit} className="p-4 space-y-4">
-              <div className="text-center">
-                <div className="relative inline-block">
-                  <Avatar className="w-20 h-20 mx-auto">
-                    <AvatarImage src={imagePreview || (user as any)?.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
-                      {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <label
-                    htmlFor="profile-image-input"
-                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer"
-                  >
-                    <Camera className="w-3 h-3" />
-                  </label>
-                  <input id="profile-image-input" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  {selectedImage ? `Selected: ${selectedImage.name}` : 'Click camera to upload photo'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
-                  <Input type="text" value={editForm.firstName} onChange={(e) => handleEditChange('firstName', e.target.value)} placeholder="Enter first name" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
-                  <Input type="text" value={editForm.lastName} onChange={(e) => handleEditChange('lastName', e.target.value)} placeholder="Enter last name" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
-                <Textarea value={editForm.bio} onChange={(e) => handleEditChange('bio', e.target.value)} placeholder="Tell other parents about yourself..." rows={3} />
-              </div>
-
-              <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type="text"
-                      value={editForm.location}
-                      onChange={(e) => handleLocationChange(e.target.value)}
-                      onFocus={() => editForm.location.length > 1 && setShowLocationSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
-                      className="pr-10"
-                      placeholder="Enter your city, state or address"
-                    />
-                    <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    {showLocationSuggestions && (
-                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm max-h-48 overflow-y-auto">
-                        {searchingLocation ? (
-                          <div className="flex items-center justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-purple-500" /></div>
-                        ) : locationSuggestions.length === 0 ? (
-                          <div className="px-3 py-2 text-sm text-gray-500">No locations found</div>
-                        ) : (
-                          locationSuggestions.map((result, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onMouseDown={(e) => { e.preventDefault(); selectLocation(result); }}
-                              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2"
-                            >
-                              <MapPin className="w-3 h-3 text-gray-400" />
-                              <span>{result.displayName}</span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
+            <div className="flex-1 overflow-y-auto">
+              <form id="edit-profile-form" onSubmit={handleEditSubmit} className="p-4 space-y-4">
+                <div className="text-center">
+                  <div className="relative inline-block">
+                    <Avatar className="w-20 h-20 mx-auto">
+                      <AvatarImage src={imagePreview || (user as any)?.profileImageUrl || undefined} />
+                      <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
+                        {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label
+                      htmlFor="profile-image-input"
+                      className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer"
+                    >
+                      <Camera className="w-3 h-3" />
+                    </label>
+                    <input id="profile-image-input" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={getCurrentLocation} className="px-3">
-                    <Navigation className="w-4 h-4" />
-                  </Button>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {selectedImage ? `Selected: ${selectedImage.name}` : 'Click camera to upload photo'}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Type your location or use current location for better toy matching</p>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
-                <Input type="tel" value={editForm.phone} onChange={(e) => handleEditChange('phone', e.target.value)} placeholder="Enter phone number (optional)" />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
+                    <Input type="text" value={editForm.firstName} onChange={(e) => handleEditChange('firstName', e.target.value)} placeholder="Enter first name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
+                    <Input type="text" value={editForm.lastName} onChange={(e) => handleEditChange('lastName', e.target.value)} placeholder="Enter last name" />
+                  </div>
+                </div>
 
-            </form>
-            <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
+                  <Textarea value={editForm.bio} onChange={(e) => handleEditChange('bio', e.target.value)} placeholder="Tell other parents about yourself..." rows={3} />
+                </div>
+
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        value={editForm.location}
+                        onChange={(e) => handleLocationChange(e.target.value)}
+                        onFocus={() => editForm.location.length > 1 && setShowLocationSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
+                        className="pr-10"
+                        placeholder="Enter your city, state or address"
+                      />
+                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      {showLocationSuggestions && (
+                        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm max-h-48 overflow-y-auto">
+                          {searchingLocation ? (
+                            <div className="flex items-center justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-purple-500" /></div>
+                          ) : locationSuggestions.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-gray-500">No locations found</div>
+                          ) : (
+                            locationSuggestions.map((result, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); selectLocation(result); }}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2"
+                              >
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span>{result.displayName}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={getCurrentLocation} className="px-3">
+                      <Navigation className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Type your location or use current location for better toy matching</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
+                  <Input type="tel" value={editForm.phone} onChange={(e) => handleEditChange('phone', e.target.value)} placeholder="Enter phone number (optional)" />
+                </div>
+
+              </form>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-800 p-4 shrink-0 bg-white dark:bg-gray-900">
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">Cancel</Button>
                 <Button type="submit" disabled={updateProfileMutation.isPending} className="flex-1" form="edit-profile-form">
