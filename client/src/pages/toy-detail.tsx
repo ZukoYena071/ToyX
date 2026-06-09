@@ -324,10 +324,10 @@ export default function ToyDetail() {
           {(toy as any)?.isExample && (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl px-4 py-3">
               <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                Example Listing from ToyX
+                <span>⭐</span>
+                ToyX Example Listing
               </p>
-              <p className="text-[11px] text-blue-500/70 dark:text-blue-400/70 mt-0.5">These listings demonstrate best practices for creating great exchanges.</p>
+              <p className="text-[11px] text-blue-500/70 dark:text-blue-400/70 mt-0.5">This listing demonstrates best practices for creating a great ToyX listing and is not available for exchange.</p>
             </div>
           )}
           <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
