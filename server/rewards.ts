@@ -235,9 +235,12 @@ export async function awardFoundingMemberBadge(userId: string): Promise<boolean>
   if (!user.length || !user[0].email) return false;
   const u = user[0];
 
-  const [settings] = await db.select({ launchDate: launchSettings.launchDate }).from(launchSettings).limit(1);
-  const cutoff = settings?.launchDate || new Date(Date.now() + 30 * 86400000); // fallback: 30 days from now
-  if (u.createdAt && new Date(u.createdAt) >= new Date(cutoff)) return false; // joined after launch
+  let cutoff = new Date(Date.now() + 30 * 86400000); // fallback: 30 days from now
+  try {
+    const [settings] = await db.select({ launchDate: launchSettings.launchDate }).from(launchSettings).limit(1);
+    if (settings?.launchDate) cutoff = new Date(settings.launchDate);
+  } catch { /* launch_settings table may not exist yet — use fallback */ }
+  if (u.createdAt && new Date(u.createdAt) >= cutoff) return false; // joined after launch
 
   // 2. Check qualifying contributions
   const [toyResult] = await db.select({ count: sql<number>`count(*)` }).from(toys).where(and(eq(toys.ownerId, userId), isNull(toys.deletedAt)));
