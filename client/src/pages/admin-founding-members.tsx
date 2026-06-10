@@ -5,7 +5,13 @@ import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 
 function TrendChart({ data }: { data: { date: string; count: number }[] }) {
-  if (!data || data.length === 0) return <p className="text-xs text-gray-400 text-center py-6">No signup data yet</p>;
+  if (!data || data.length === 0) return (
+    <div className="text-center py-8">
+      <TrendingUp className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+      <p className="text-sm text-gray-500 dark:text-gray-400">No signup trend available yet.</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">More data will appear as new founding members join.</p>
+    </div>
+  );
   const max = Math.max(...data.map(d => d.count), 1);
   return (
     <div className="flex items-end gap-[2px] h-24 mt-2">
@@ -64,23 +70,24 @@ export default function AdminFoundingMembers() {
   return (
     <PageContainer>
       <PageHeader
-        title="Founding Members"
+        title="Founding Analytics"
         rightAction={
           <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" />
           </button>
         }
       />
+      <p className="px-4 text-xs text-gray-500 dark:text-gray-400 -mt-2">Track growth, member activity and founding family trends.</p>
 
       <div className="px-4 pt-4 space-y-4 pb-24">
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {[
-              { label: "Total Members", value: stats.total, icon: <Users className="w-4 h-4 text-purple-500" />, bg: "bg-purple-50 dark:bg-purple-900/20" },
-              { label: "Joined Today", value: stats.today, icon: <TrendingUp className="w-4 h-4 text-green-500" />, bg: "bg-green-50 dark:bg-green-900/20" },
+              { label: "Founders", value: stats.total, icon: <Users className="w-4 h-4 text-purple-500" />, bg: "bg-purple-50 dark:bg-purple-900/20" },
+              { label: "Today", value: stats.today, icon: <TrendingUp className="w-4 h-4 text-green-500" />, bg: "bg-green-50 dark:bg-green-900/20" },
               { label: "This Week", value: stats.thisWeek, icon: <TrendingUp className="w-4 h-4 text-blue-500" />, bg: "bg-blue-50 dark:bg-blue-900/20" },
               { label: "Top City", value: stats.topCity, icon: <MapPin className="w-4 h-4 text-amber-500" />, bg: "bg-amber-50 dark:bg-amber-900/20", isText: true },
-              { label: "Avg Daily (30d)", value: stats.avgDaily, icon: <TrendingUp className="w-4 h-4 text-pink-500" />, bg: "bg-pink-50 dark:bg-pink-900/20" },
+              { label: "Daily Avg", value: stats.avgDaily, icon: <TrendingUp className="w-4 h-4 text-pink-500" />, bg: "bg-pink-50 dark:bg-pink-900/20" },
             ].map((card, i) => (
               <div key={i} className={`${card.bg} rounded-xl p-4`}>
                 <div className="flex items-center gap-2 mb-1">{card.icon}<span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">{card.label}</span></div>
@@ -149,7 +156,6 @@ export default function AdminFoundingMembers() {
                       {[
                         { key: "member_number", label: "#" },
                         { key: "firstName", label: "Name" },
-                        { key: "", label: "Email" },
                         { key: "city", label: "City" },
                         { key: "", label: "Joined" },
                         { key: "", label: "Status" },
@@ -166,8 +172,7 @@ export default function AdminFoundingMembers() {
                     {members.map((m: any) => (
                       <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <td className="py-2.5 px-2 text-gray-900 dark:text-gray-50 font-mono text-xs">{m.memberNumber || "—"}</td>
-                        <td className="py-2.5 px-2 font-medium text-gray-900 dark:text-gray-50">{m.firstName}</td>
-                        <td className="py-2.5 px-2 text-gray-500 dark:text-gray-400 text-xs">{m.email}</td>
+                        <td className="py-2.5 px-2"><p className="font-medium text-gray-900 dark:text-gray-50">{m.firstName}</p><p className="text-[11px] text-gray-400 dark:text-gray-500 truncate max-w-[140px]">{m.email}</p></td>
                         <td className="py-2.5 px-2 text-gray-700 dark:text-gray-300">{m.city}</td>
                         <td className="py-2.5 px-2 text-gray-500 dark:text-gray-400 text-xs">{m.joinedAt ? new Date(m.joinedAt).toLocaleDateString() : "—"}</td>
                         <td className="py-2.5 px-2"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.status === "ACTIVATED" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" : m.status === "INVITED" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"}`}>{m.status}</span></td>

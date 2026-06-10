@@ -140,7 +140,7 @@ export default function AdminModeration() {
   return (
     <PageContainer className="pb-24">
       <PageHeader
-        title="Admin Moderation"
+        title="Moderation"
         rightAction={
           <div className="flex items-center gap-2">
             <button onClick={() => fetchReports(statusFilter)} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Refresh">
@@ -150,7 +150,8 @@ export default function AdminModeration() {
           </div>
         }
       />
-      <div className="px-4 pt-4">
+      <p className="px-4 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-4">Review reports and help keep the community safe.</p>
+      <div className="px-4">
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4 overflow-x-auto">
           {STATUS_TABS.map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium capitalize transition-all min-h-[36px] whitespace-nowrap ${statusFilter === s ? 'bg-white dark:bg-gray-900 shadow-sm text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'}`}>
