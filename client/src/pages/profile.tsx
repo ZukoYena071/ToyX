@@ -753,11 +753,11 @@ export default function Profile() {
               />
             </Link>
             {(user as any)?.isAdmin && (
-              <Link href="/admin/moderation">
+              <Link href="/admin/founding-members">
                 <ListItemRow
                   icon={<div className="w-10 h-10 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center"><Shield className="text-red-500 w-5 h-5" /></div>}
-                  title="Admin Moderation"
-                  subtitle="Manage user reports"
+                  title="Admin Console"
+                  subtitle="Manage founding members, moderation tools and platform administration"
                 />
               </Link>
             )}
