@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
 import { ArrowLeft, Flag, CheckCircle, XCircle, Clock, Search, RefreshCw, AlertTriangle } from "lucide-react";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
@@ -147,7 +146,7 @@ export default function AdminModeration() {
             <button onClick={() => fetchReports(statusFilter)} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Refresh">
               <RefreshCw className={`w-4 h-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <Link href="/profile"><button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"><ArrowLeft className="w-4 h-4 text-gray-600" /></button></Link>
+            <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"><ArrowLeft className="w-4 h-4 text-gray-600" /></button>
           </div>
         }
       />

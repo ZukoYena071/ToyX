@@ -753,7 +753,7 @@ export default function Profile() {
               />
             </Link>
             {(user as any)?.isAdmin && (
-              <Link href="/admin/founding">
+              <Link href="/admin">
                 <ListItemRow
                   icon={<div className="w-10 h-10 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center"><Shield className="text-red-500 w-5 h-5" /></div>}
                   title="Admin Console"

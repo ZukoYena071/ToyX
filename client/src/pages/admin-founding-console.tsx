@@ -119,7 +119,7 @@ export default function AdminFoundingConsole() {
       <PageHeader title="Founding Family Management" rightAction={
         <div className="flex items-center gap-2">
           <Link href="/admin/founding-members"><button className="text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors min-h-[36px]">View Analytics</button></Link>
-          <Link href="/admin/launch-control"><button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button></Link>
+          <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button>
         </div>
       } />
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "wouter";
 import { ArrowLeft, Users, TrendingUp, MapPin, Download, Search, Loader2 } from "lucide-react";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
@@ -67,11 +66,9 @@ export default function AdminFoundingMembers() {
       <PageHeader
         title="Founding Members"
         rightAction={
-          <Link href="/admin/moderation">
-            <button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-              <ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" />
-            </button>
-          </Link>
+          <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            <ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" />
+          </button>
         }
       />
 
