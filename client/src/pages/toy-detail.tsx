@@ -399,7 +399,9 @@ export default function ToyDetail() {
                   {(toy as any)?.owner?.featuredBadge && (
                     <FeaturedBadge type={(toy as any).owner.featuredBadge} />
                   )}
-                  <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  {(!(toy as any)?.owner?.featuredBadge || (toy as any).owner.featuredBadge !== "toyx_official") && (
+                    <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                   {rating > 0 ? (
