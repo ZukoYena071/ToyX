@@ -29,9 +29,9 @@ export default function Signup() {
         <div className="flex items-center justify-center mb-4">
           <img src={toyxLogo} alt="ToyX Logo" className="h-48 w-auto" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">Create Account</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">Join ToyX</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-8">
-          Sign in securely with Google or Facebook to access ToyX.
+          Sign in securely with Google or Facebook to start swapping toys.
         </p>
       </div>
 
