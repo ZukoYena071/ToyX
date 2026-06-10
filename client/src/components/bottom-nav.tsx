@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import UploadOverlay from "./upload-overlay";
+import { useUpload } from "@/hooks/useUpload";
 
 const navItems = [
   { path: "/", icon: Home, label: "Home", onboarding: "" },
@@ -14,8 +14,8 @@ const navItems = [
 
 export default function BottomNav() {
   const [location, setLocation] = useLocation();
-  const [showUpload, setShowUpload] = useState(false);
   const { user } = useAuth();
+  const { openUpload } = useUpload();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function BottomNav() {
 
   const handleNavClick = (item: typeof navItems[0]) => {
     if (item.action === "upload") {
-      setShowUpload(true);
+      openUpload();
     } else {
       setLocation(item.path);
     }
@@ -94,9 +94,6 @@ export default function BottomNav() {
         </div>
       </nav>
 
-      {showUpload && (
-        <UploadOverlay onClose={() => setShowUpload(false)} />
-      )}
     </>
   );
 }

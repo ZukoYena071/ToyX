@@ -4,11 +4,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { Search, MapPin } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import UploadOverlay from "@/components/upload-overlay";
 import BottomNav from "@/components/bottom-nav";
 import PageContainer from "@/components/ui/PageContainer";
 import ToyCarouselCard from "@/components/toys/ToyCarouselCard";
 import { apiRequest } from "@/lib/queryClient";
+import { useUpload } from "@/hooks/useUpload";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 import { useState, useCallback, useEffect } from "react";
 
@@ -16,8 +16,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showUpload, setShowUpload] = useState(false);
-  const [restoreDraft, setRestoreDraft] = useState<any>(null);
+  const { openUpload } = useUpload();
   const [enablingLoc, setEnablingLoc] = useState(false);
   const [dismissedCta, setDismissedCta] = useState(false);
   // Save scroll position before navigating away (restore on return)
@@ -52,14 +51,11 @@ export default function HomePage() {
       sessionStorage.removeItem("toyx_upgrade_context");
       try {
         const ctx = JSON.parse(upgradeCtx);
-        if (ctx.formDraft) {
-          setRestoreDraft(ctx.formDraft);
-        }
         if (ctx.action === "open-upload-modal") {
           console.log("RESTORE: upgrade context found, opening upload modal");
           setTimeout(() => {
             console.log("RESTORE: modal trigger executed");
-            setShowUpload(true);
+            openUpload({ restoreDraft: ctx.formDraft });
           }, 1000);
           return;
         }
@@ -73,7 +69,7 @@ export default function HomePage() {
       setTimeout(() => {
         sessionStorage.removeItem("toyx_pending_action");
         console.log("RESTORE: pending action triggered");
-        setShowUpload(true);
+        openUpload();
       }, 1000);
     }
   }, []);
@@ -267,8 +263,6 @@ export default function HomePage() {
       </div>
 
       <BottomNav />
-
-      {showUpload && <UploadOverlay onClose={() => { setShowUpload(false); setRestoreDraft(null); }} restoreDraft={restoreDraft} />}
     </PageContainer>
   );
 }

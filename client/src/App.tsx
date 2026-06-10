@@ -41,6 +41,7 @@ import PrivacyPolicyPage from "@/pages/privacy-policy";
 import DataDeletionPage from "@/pages/data-deletion";
 import SupportPage from "@/pages/support";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
+import { UploadProvider } from "@/hooks/useUpload";
 function ListToyRoute() {
   const [, setLocation] = useLocation();
   useEffect(() => {
@@ -280,8 +281,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="toyx-ui-theme">
         <TooltipProvider>
-          <Router />
-          <Toaster />
+          <UploadProvider>
+            <Router />
+            <Toaster />
+          </UploadProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
