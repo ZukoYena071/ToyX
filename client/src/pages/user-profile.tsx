@@ -120,7 +120,7 @@ export default function UserProfile() {
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-0.5">
-                {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split('@')[0] || 'User'}
+                {user.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : user.email?.split('@')[0] || 'User'}
                 {(user as any).featuredBadge && (
                   <FeaturedBadge type={(user as any).featuredBadge} memberNumber={(user as any).memberNumber} />
                 )}
@@ -294,7 +294,7 @@ export default function UserProfile() {
         open={showReportModal}
         onClose={() => setShowReportModal(false)}
         reportedId={user.id}
-        reportedName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split('@')[0] || 'User'}
+        reportedName={user.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : user.email?.split('@')[0] || 'User'}
         contextType="profile"
       />
     </PageContainer>

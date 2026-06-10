@@ -392,8 +392,8 @@ export default function ToyDetail() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
-                    {(toy as any)?.owner?.firstName && (toy as any)?.owner?.lastName
-                      ? `${(toy as any).owner.firstName} ${(toy as any).owner.lastName}`
+                    {(toy as any)?.owner?.firstName
+                      ? `${(toy as any).owner.firstName}${(toy as any).owner.lastName ? ` ${(toy as any).owner.lastName}` : ''}`
                       : (toy as any)?.owner?.email}
                   </h4>
                   {(toy as any)?.owner?.featuredBadge && (
