@@ -34,7 +34,7 @@ export default function AchievementCard({ badge, memberNumber }: AchievementCard
         <div className="min-w-0">
           <p className="text-base font-bold text-gray-900 dark:text-gray-50">ToyX Official</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-            Official ToyX account. Example listings, platform updates, safety guidance and community announcements.
+            Official ToyX Account. Example listings, platform updates, safety guidance and community announcements.
           </p>
         </div>
       </div>

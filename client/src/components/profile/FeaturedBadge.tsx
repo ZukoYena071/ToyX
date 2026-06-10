@@ -14,7 +14,7 @@ const OFFICIAL_BADGE_DARK = "/assets/badges/toyx-official-dark.png";
 
 const BADGE_DESCRIPTIONS: Record<string, string> = {
   founding_member: "One of the first ToyX families helping build the community before launch.",
-  toyx_official: "Official ToyX account. Example listings, platform updates, safety guidance and community announcements.",
+  toyx_official: "Official ToyX Account. Example listings, platform updates, safety guidance and community announcements.",
 };
 
 interface FeaturedBadgeProps {
