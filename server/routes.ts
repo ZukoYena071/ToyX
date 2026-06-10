@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
@@ -49,6 +51,46 @@ const corsOriginFn = (origin: string | undefined, callback: (err: Error | null, 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Build info diagnostic endpoint — tells us what code is running
+  app.get("/api/build-info", async (_req, res) => {
+    // Same resolution order as serveStatic() in server/vite.ts
+    const bundledPath = path.resolve(import.meta.dirname, "public");
+    const sourcePath = path.resolve(import.meta.dirname, "..", "dist", "public");
+    const possible = [bundledPath, sourcePath];
+    let foundPath: string | null = null;
+    let hasOfficialImages = false;
+    for (const dir of possible) {
+      const testPath = path.join(dir, "assets", "official", "family-games-1.png");
+      if (fs.existsSync(testPath)) {
+        foundPath = dir;
+        hasOfficialImages = true;
+        break;
+      }
+    }
+    let commit = "unknown";
+    let branch = "unknown";
+    try {
+      commit = fs.readFileSync(path.join(import.meta.dirname, "..", ".git", "HEAD"), "utf-8").trim();
+      if (commit.startsWith("ref: ")) {
+        const refPath = path.join(import.meta.dirname, "..", ".git", commit.slice(5).trim());
+        commit = fs.existsSync(refPath) ? fs.readFileSync(refPath, "utf-8").trim() : commit;
+      }
+    } catch {}
+    try {
+      const head = fs.readFileSync(path.join(import.meta.dirname, "..", ".git", "HEAD"), "utf-8").trim();
+      if (head.startsWith("ref: refs/heads/")) branch = head.slice(16);
+    } catch {}
+    res.json({
+      commit: commit.substring(0, 12),
+      branch,
+      buildTime: new Date().toISOString(),
+      hasOfficialImages,
+      distPath: foundPath || "NOT_FOUND",
+      expressStaticMount: foundPath || "NONE",
+      checked: possible,
+    });
+  });
 
   // CORS for the marketing landing page
   app.use("/api/marketing", cors({
