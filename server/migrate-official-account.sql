@@ -18,9 +18,11 @@ INSERT INTO users (
   '/toyx-logo.png',
   'Official ToyX account.
 
-Example listings, platform updates, safety guidance and community announcements.
+Browse these example listings to learn how to create high-quality toy exchange listings.
 
-This account is not available for exchanges or direct messaging.',
+This account is not available for messaging, exchanges, reviews, or transactions.
+
+Used for platform guidance, community education, and showcasing best-practice listings.',
   'South Africa',
   'official',
   false,

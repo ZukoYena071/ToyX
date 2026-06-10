@@ -111,8 +111,8 @@ export default function ToyCard({ toy }: ToyCardProps) {
               </AvatarFallback>
             </Avatar>
             <span className="text-xs text-gray-600 dark:text-muted-foreground truncate">
-              {toy.owner?.firstName && toy.owner?.lastName 
-                ? `${toy.owner.firstName} ${toy.owner.lastName}`
+              {toy.owner?.firstName
+                ? `${toy.owner.firstName}${toy.owner.lastName ? ` ${toy.owner.lastName}` : ''}`
                 : toy.owner?.email?.split('@')[0] || 'Unknown'
               }
             </span>

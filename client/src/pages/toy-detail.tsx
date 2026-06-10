@@ -292,7 +292,7 @@ export default function ToyDetail() {
           }} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
             <Share2 className="w-5 h-5 text-gray-900 dark:text-white" />
           </OverlayBtn>
-          {!isOwner && (
+          {!isOwner && !(toy as any)?.isExample && (
             <OverlayBtn onClick={() => favoriteMutation.mutate()} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
               <Heart className={`w-5 h-5 ${(favoriteStatus as any)?.isFavorite ? "fill-red-500 text-red-500" : "text-gray-900 dark:text-white"}`} />
             </OverlayBtn>

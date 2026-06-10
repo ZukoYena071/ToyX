@@ -53,15 +53,17 @@ export default function ToyCarouselCard({ toy, onOpen, onToggleFavorite }: ToyCa
           </span>
         )}
 
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-          className="absolute top-3 right-3 min-w-[44px] min-h-[44px] flex items-center justify-center z-10"
-          aria-label={toy.isFavorited ? "Remove from favorites" : "Add to favorites"}
-        >
-          <div className="w-9 h-9 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/40 transition-colors">
-            <Heart className={`w-5 h-5 ${toy.isFavorited ? "text-red-500 fill-red-500" : "text-white"}`} />
-          </div>
-        </button>
+        {!(toy as any).isExample && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+            className="absolute top-3 right-3 min-w-[44px] min-h-[44px] flex items-center justify-center z-10"
+            aria-label={toy.isFavorited ? "Remove from favorites" : "Add to favorites"}
+          >
+            <div className="w-9 h-9 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/40 transition-colors">
+              <Heart className={`w-5 h-5 ${toy.isFavorited ? "text-red-500 fill-red-500" : "text-white"}`} />
+            </div>
+          </button>
+        )}
 
         {toy.location && (
           <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10">

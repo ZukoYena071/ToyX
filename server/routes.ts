@@ -841,6 +841,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const fm = await db.select({ memberNumber: foundingMembers.memberNumber }).from(foundingMembers).where(eq(foundingMembers.email, user.email)).limit(1);
         if (fm.length) memberNumber = fm[0].memberNumber;
       }
+      // Never expose email for the official account
+      if ((user as any).accountType === "official") {
+        (user as any).email = undefined;
+      }
       res.json({ ...user, featuredBadge, memberNumber });
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -1055,7 +1059,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toy.ownerRating = ratingMap.get(toy.ownerId) ?? 0;
         toy.inExchange = exchangeSet.has(toy.id);
         if (toy.owner) {
-          (toy.owner as any).featuredBadge = officialSet.has(toy.ownerId) ? "toyx_official" : (badgeMap.get(toy.ownerId) || null);
+          const isOfficial = officialSet.has(toy.ownerId);
+          (toy.owner as any).featuredBadge = isOfficial ? "toyx_official" : (badgeMap.get(toy.ownerId) || null);
+          if (isOfficial) {
+            delete (toy.owner as any).email;
+          }
         }
         (toy as any).isExample = officialSet.has(toy.ownerId);
         (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
@@ -1510,6 +1518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (ownerUser?.accountType === "official") {
           (toy.owner as any).featuredBadge = "toyx_official";
           (toy as any).isExample = true;
+          delete (toy.owner as any).email;
         } else {
           const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, toy.ownerId)).limit(1);
           const badgeArr = (rewardsRow[0]?.badges as any[]) || [];
