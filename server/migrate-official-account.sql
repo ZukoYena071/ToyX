@@ -77,7 +77,7 @@ SELECT
   '2-4 years',
   'Excellent',
   'Johannesburg, Gauteng',
-  ARRAY['/assets/official/montessori-puzzle-1.png'],
+  ARRAY['/assets/official/montessori-puzzle-1.png', '/assets/official/montessori-puzzle-2.png'],
   ARRAY['Educational', 'Board Games'],
   'Looking for other Montessori-style toys, early learning puzzles, or educational board games for ages 2-4.',
   true,
@@ -87,7 +87,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM toys WHERE owner_id = 'official_toyx' AND name = 'Montessori Wooden Number Puzzle'
 );
 
-UPDATE toys SET image_urls = ARRAY['/assets/official/montessori-puzzle-1.png'], updated_at = NOW()
+UPDATE toys SET image_urls = ARRAY['/assets/official/montessori-puzzle-1.png', '/assets/official/montessori-puzzle-2.png'], updated_at = NOW()
 WHERE owner_id = 'official_toyx' AND name = 'Montessori Wooden Number Puzzle' AND (image_urls IS NULL OR image_urls = ARRAY[]::text[]);
 
 INSERT INTO toys (
