@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "wouter";
 import { ArrowLeft, Users, Search, Loader2, CheckCircle, XCircle, Award, Star, Download, ChevronDown } from "lucide-react";
 import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
@@ -116,19 +115,17 @@ export default function AdminFoundingConsole() {
 
   return (
     <PageContainer>
-      <PageHeader title="Founding Family Management" rightAction={
-        <div className="flex items-center gap-2">
-          <Link href="/admin/founding-members"><button className="text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors min-h-[36px]">View Analytics</button></Link>
-          <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button>
-        </div>
+      <PageHeader title="Founding Management" rightAction={
+        <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button>
       } />
+      <p className="px-4 text-xs text-gray-500 dark:text-gray-400 -mt-2">Manage founding family applicants, awards and beta access.</p>
 
       <div className="px-4 pt-4 space-y-4 pb-24">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard icon={<Users className="w-4 h-4 text-violet-500" />} label="Total Members" value={allMembers.length} />
-          <StatCard icon={<Star className="w-4 h-4 text-green-500" />} label="Fully Qualified" value={fullyQualified} />
-          <StatCard icon={<Award className="w-4 h-4 text-blue-500" />} label="Beta Access" value={betaAccess} />
-          <StatCard icon={<Award className="w-4 h-4 text-amber-500" />} label="Badges Awarded" value={badgesAwarded} />
+          <StatCard icon={<Users className="w-4 h-4 text-violet-500" />} label="Founders" value={allMembers.length} />
+          <StatCard icon={<Star className="w-4 h-4 text-green-500" />} label="Qualified" value={fullyQualified} />
+          <StatCard icon={<Award className="w-4 h-4 text-blue-500" />} label="Beta Users" value={betaAccess} />
+          <StatCard icon={<Award className="w-4 h-4 text-amber-500" />} label="Badges" value={badgesAwarded} />
         </div>
 
         <SectionCard>
@@ -160,7 +157,7 @@ export default function AdminFoundingConsole() {
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">#</th>
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Name</th>
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">City</th>
-              <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Qualification</th>
+              <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Qualification (4&nbsp;criteria)</th>
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Badge</th>
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Access</th>
             </tr></thead><tbody>
@@ -168,7 +165,7 @@ export default function AdminFoundingConsole() {
                 <tr key={m.id} className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer ${selected.has(m.id) ? 'bg-purple-50/50 dark:bg-purple-900/10' : ''}`} onClick={() => setSelectedId(m.id)}>
                   <td className="py-2.5 px-2"><input type="checkbox" checked={selected.has(m.id)} onChange={() => toggleSelect(m.id)} onClick={e => e.stopPropagation()} className="rounded" /></td>
                   <td className="py-2.5 px-2 font-mono text-xs text-gray-600">{m.memberNumber || "—"}</td>
-                  <td className="py-2.5 px-2"><p className="font-medium text-gray-900">{m.firstName}</p><p className="text-xs text-gray-400 truncate max-w-[160px]">{m.email}</p></td>
+                  <td className="py-2.5 px-2"><p className="font-medium text-gray-900 dark:text-gray-50">{m.firstName}</p><p className="text-[11px] text-gray-400 dark:text-gray-500 truncate max-w-[140px]">{m.email}</p></td>
                   <td className="py-2.5 px-2 text-gray-600">{m.city}</td>
                   <td className="py-2.5 px-2"><QBadge n={m.qualCount || 0} /></td>
                   <td className="py-2.5 px-2">{m.badgeAwarded ? <span className="text-green-600 font-medium text-xs">✅</span> : <span className="text-gray-400 text-xs">—</span>}</td>
