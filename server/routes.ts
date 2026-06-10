@@ -5,6 +5,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import cors from "cors";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { uploadImage, validateImage, isR2Configured, processImages } from "./r2";
 import { sendEmail } from "./email";
 import { welcomeTemplate } from "./email/templates/welcome";
@@ -76,6 +77,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("MARKETING_SUBSCRIPTION_ERROR:", error);
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // Rate limiters for auth endpoints
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { code: "RATE_LIMITED", message: "Too many attempts. Try again in 15 minutes." },
+  });
+  const oauthInitLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { code: "RATE_LIMITED", message: "Too many sign-in attempts. Try again in 15 minutes." },
   });
 
   // Admin authorization middleware (must be defined before routes that use it)
@@ -504,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Signup - create a new user and log them in
-  app.post('/api/signup', async (req: any, res, next) => {
+  app.post('/api/signup', authLimiter, async (req: any, res, next) => {
     try {
       const { email, firstName } = req.body;
       if (!email) {
@@ -534,23 +551,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dev login - quick login as demo user
-  app.post('/api/dev-login', async (req: any, res, next) => {
-    try {
-      const { userId } = req.body;
-      const user = await storage.getUser(userId || "demo-user-1");
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+  // Dev login - only available in local development with explicit flag
+  if (process.env.NODE_ENV !== "production" && process.env.DEV_AUTH_BYPASS === "true") {
+    app.post('/api/dev-login', async (req: any, res, next) => {
+      try {
+        const { userId } = req.body;
+        const user = await storage.getUser(userId || "demo-user-1");
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        req.logIn({ id: user.id, sub: user.id, claims: { sub: user.id } }, (err: any) => {
+          if (err) return next(err);
+          res.json({ message: "Logged in", user });
+        });
+      } catch (error) {
+        console.error("Error in dev login:", error);
+        res.status(500).json({ message: "Login failed" });
       }
-      req.logIn({ id: user.id, sub: user.id, claims: { sub: user.id } }, (err: any) => {
-        if (err) return next(err);
-        res.json({ message: "Logged in", user });
-      });
-    } catch (error) {
-      console.error("Error in dev login:", error);
-      res.status(500).json({ message: "Login failed" });
-    }
-  });
+    });
+  }
 
   // User profile routes
 

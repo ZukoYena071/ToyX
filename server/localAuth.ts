@@ -5,6 +5,7 @@ import { Strategy as FacebookStrategy } from "passport-facebook";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memorystore from "memorystore";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { awardFoundingMemberBadge } from "./rewards";
 
@@ -40,20 +41,13 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Local email/password login is disabled for security.
+  // All authentication must use Google or Facebook OAuth.
   passport.use(
     new LocalStrategy(
       { usernameField: "email", passwordField: "password" },
-      async (email, _password, done) => {
-        try {
-          const users = await storage.searchUsersByEmail(email);
-          const user = users.length > 0 ? users[0] : undefined;
-          if (!user) {
-            return done(null, false, { message: "User not found" });
-          }
-          return done(null, { id: user.id, sub: user.id });
-        } catch (err) {
-          return done(err);
-        }
+      async (_email, _password, done) => {
+        return done(null, false, { message: "Please sign in with Google." });
       },
     ),
   );
@@ -72,7 +66,15 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { code: "RATE_LIMITED", message: "Too many attempts. Try again in 15 minutes." },
+  });
+
+  app.post("/api/login", loginLimiter, (req, res, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) {
@@ -135,7 +137,15 @@ export async function setupAuth(app: Express) {
   }
 
   // Always register routes so they don't 404 in production — handler checks config at runtime
-  app.get("/api/auth/google", (req, res, next) => {
+  const oauthLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { code: "RATE_LIMITED", message: "Too many sign-in attempts. Try again in 15 minutes." },
+  });
+
+  app.get("/api/auth/google", oauthLimiter, (req, res, next) => {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_BASE_URL) {
       return res.status(503).json({ code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google OAuth is not configured on this server." });
     }
@@ -203,7 +213,7 @@ export async function setupAuth(app: Express) {
   }
 
   // Always register routes so they don't 404 in production — handler checks config at runtime
-  app.get("/api/auth/facebook", (req, res, next) => {
+  app.get("/api/auth/facebook", oauthLimiter, (req, res, next) => {
     if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET || !APP_BASE_URL || !ENABLE_FACEBOOK_AUTH) {
       return res.status(503).json({ code: "FACEBOOK_AUTH_NOT_CONFIGURED", message: "Facebook OAuth is not configured on this server." });
     }
