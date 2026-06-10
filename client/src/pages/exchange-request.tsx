@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { ExchangeFormSkeleton } from "@/components/loading-skeletons";
 import { apiRequest } from "@/lib/queryClient";
+import { formatLocation } from "@/lib/formatLocation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -212,7 +213,7 @@ export default function ExchangeRequest() {
                   {toy.location && (
                     <div className="flex items-center gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
                       <MapPin className="w-3 h-3" />
-                      <span className="truncate">{toy.location}</span>
+                      <span className="truncate">{formatLocation(toy.location)}</span>
                     </div>
                   )}
                 </SectionCard>

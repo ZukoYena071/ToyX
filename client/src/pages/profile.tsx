@@ -48,6 +48,7 @@ import { apiRequest, clearWasAuthenticated } from "@/lib/queryClient";
 import UploadOverlay from "@/components/upload-overlay";
 import BoostButton from "@/components/toys/BoostButton";
 import { searchLocations } from "@/lib/location";
+import { formatLocation } from "@/lib/formatLocation";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -468,7 +469,7 @@ export default function Profile() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
                 <div className="flex items-center gap-1 mt-1">
                   <MapPin className="text-purple-500 w-3 h-3 shrink-0" />
-                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{(user as any)?.location || 'Location not set'}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatLocation((user as any)?.location) || 'Location not set'}</span>
                 </div>
               </div>
             </div>

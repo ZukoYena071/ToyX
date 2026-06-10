@@ -17,6 +17,7 @@ import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import { normalizeList, ChipRow } from "@/components/toys/MetaChip";
 import FeaturedBadge from "@/components/profile/FeaturedBadge";
+import { formatLocation } from "@/lib/formatLocation";
 
 export default function ToyDetail() {
   const { id } = useParams();
@@ -232,7 +233,7 @@ export default function ToyDetail() {
   const categories = normalizeList((toy as any)?.category);
   const desc = (toy as any)?.description || "";
   const descLong = desc.length > 140;
-  const shortLocation = ((toy as any)?.location || "").split(",")[0].trim();
+  const shortLocation = formatLocation((toy as any)?.location);
   const rating = (ownerRating as any)?.averageRating || 0;
   const reviewCount = (ownerReviews as any)?.length || 0;
 

@@ -15,6 +15,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ToyFeedCard from "@/components/toys/ToyFeedCard";
 import ToyImage from "@/components/ToyImage";
 import { apiRequest } from "@/lib/queryClient";
+import { formatLocation } from "@/lib/formatLocation";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 
 function goToToy(toyId: number) {
@@ -330,7 +331,7 @@ export default function BrowsePage() {
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 line-clamp-2">{toy.name}</h3>
                     <div className="flex items-center gap-1">
                       <MapPin className="text-purple-500 w-3 h-3" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.location || 'Unknown location'}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatLocation(toy.location) || 'Unknown location'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
