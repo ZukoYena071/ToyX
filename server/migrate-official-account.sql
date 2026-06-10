@@ -58,6 +58,10 @@ WHERE NOT EXISTS (
   SELECT 1 FROM toys WHERE owner_id = 'official_toyx' AND name = 'Space Explorer Action Figure Set'
 );
 
+-- Backfill image URLs for existing rows (idempotent)
+UPDATE toys SET image_urls = ARRAY['/assets/official/space-explorer-1.png', '/assets/official/space-explorer-2.png'], updated_at = NOW()
+WHERE owner_id = 'official_toyx' AND name = 'Space Explorer Action Figure Set' AND (image_urls IS NULL OR image_urls = ARRAY[]::text[]);
+
 INSERT INTO toys (
   owner_id, name, description, category, age_group, condition,
   location, image_urls, looking_for_categories, looking_for_details,
@@ -81,6 +85,9 @@ WHERE NOT EXISTS (
   SELECT 1 FROM toys WHERE owner_id = 'official_toyx' AND name = 'Montessori Wooden Number Puzzle'
 );
 
+UPDATE toys SET image_urls = ARRAY['/assets/official/montessori-puzzle-1.png'], updated_at = NOW()
+WHERE owner_id = 'official_toyx' AND name = 'Montessori Wooden Number Puzzle' AND (image_urls IS NULL OR image_urls = ARRAY[]::text[]);
+
 INSERT INTO toys (
   owner_id, name, description, category, age_group, condition,
   location, image_urls, looking_for_categories, looking_for_details,
@@ -103,5 +110,8 @@ SELECT
 WHERE NOT EXISTS (
   SELECT 1 FROM toys WHERE owner_id = 'official_toyx' AND name = 'Family Game Night Collection'
 );
+
+UPDATE toys SET image_urls = ARRAY['/assets/official/family-games-1.png', '/assets/official/family-games-2.png'], updated_at = NOW()
+WHERE owner_id = 'official_toyx' AND name = 'Family Game Night Collection' AND (image_urls IS NULL OR image_urls = ARRAY[]::text[]);
 
 COMMIT;

@@ -52,7 +52,7 @@ async function main() {
       ageGroup: "3-5 years",
       condition: "Like New",
       location: "Cape Town, Western Cape",
-      imageUrls: [],
+      imageUrls: ["/assets/official/space-explorer-1.png", "/assets/official/space-explorer-2.png"],
       lookingForCategories: ["Action Figures", "Building"],
       lookingForDetails: "Looking for similar action figure sets or building toys that encourage imaginative play. Open to other space-themed toys.",
     },
@@ -63,7 +63,7 @@ async function main() {
       ageGroup: "2-4 years",
       condition: "Excellent",
       location: "Johannesburg, Gauteng",
-      imageUrls: [],
+      imageUrls: ["/assets/official/montessori-puzzle-1.png"],
       lookingForCategories: ["Educational", "Board Games"],
       lookingForDetails: "Looking for other Montessori-style toys, early learning puzzles, or educational board games for ages 2-4.",
     },
@@ -74,7 +74,7 @@ async function main() {
       ageGroup: "6-8 years",
       condition: "Good",
       location: "Durban, KwaZulu-Natal",
-      imageUrls: [],
+      imageUrls: ["/assets/official/family-games-1.png", "/assets/official/family-games-2.png"],
       lookingForCategories: ["Board Games", "Educational", "Outdoor"],
       lookingForDetails: "Looking for family board games suitable for ages 6-10. Also interested in outdoor games or educational activity sets.",
     },
@@ -94,7 +94,16 @@ async function main() {
       });
       console.log(`[migrate-official-account] Created example: "${ex.name}"`);
     } else {
-      console.log(`[migrate-official-account] Example already exists: "${ex.name}"`);
+      // Backfill image URLs for existing rows that have empty images
+      if (existingToy.length > 0 && ex.imageUrls && ex.imageUrls.length > 0) {
+        const current = existingToy[0];
+        const urls: any[] = (current.imageUrls || []) as any[];
+        if (!urls.length || (urls.length === 1 && (!urls[0] || urls[0] === ''))) {
+          await db.update(toys).set({ imageUrls: ex.imageUrls, updatedAt: new Date() })
+            .where(eq(toys.id, current.id));
+          console.log(`[migrate-official-account] Backfilled images for: "${ex.name}"`);
+        }
+      }
     }
   }
 
