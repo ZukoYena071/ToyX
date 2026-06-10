@@ -70,7 +70,7 @@ export default function AdminLaunchControl() {
   return (
     <PageContainer>
       <PageHeader title="Launch Control" rightAction={
-        <Link href="/admin/founding-members"><button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button></Link>
+        <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button>
       } />
 
       <div className="px-4 pt-4 space-y-4 pb-24">
