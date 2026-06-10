@@ -12,6 +12,7 @@ import SectionCard from "@/components/ui/SectionCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ReportUserModal from "@/components/toys/ReportUserModal";
 import FeaturedBadge from "@/components/profile/FeaturedBadge";
+import { formatLocation } from "@/lib/formatLocation";
 
 export default function UserProfile() {
   const { userId } = useParams();
@@ -261,10 +262,10 @@ export default function UserProfile() {
                             <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.category}</span>
                             <span className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.condition}</span>
                           </div>
-                          {toy.location && (
+                          {(toy as any).location && (
                             <div className="flex items-center gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
                               <MapPin className="w-3 h-3" />
-                              <span className="truncate">{toy.location}</span>
+                              <span className="truncate">{formatLocation((toy as any).location)}</span>
                             </div>
                           )}
                         </div>

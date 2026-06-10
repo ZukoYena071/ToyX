@@ -16,9 +16,10 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 }
 
 function QBadge({ n }: { n: number }) {
-  if (n === 4) return <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">{n}/4</span>;
-  if (n === 3) return <span className="text-xs font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">{n}/4</span>;
-  return <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{n}/4</span>;
+  if (n === 4) return <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full text-center">{n}/4</span>;
+  if (n === 3) return <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full text-center">{n}/4</span>;
+  if (n >= 1) return <span className="text-xs font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full text-center">{n}/4</span>;
+  return <span className="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full text-center">{n}/4</span>;
 }
 
 function csvEscape(v: any) { const s = String(v || ""); return s.includes(",") || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s; }
@@ -129,10 +130,10 @@ export default function AdminFoundingConsole() {
         </div>
 
         <SectionCard>
-          <div className="flex flex-col sm:flex-row gap-2 mb-3">
-            <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="flex gap-2 mb-3">
+            <div className="relative flex-[3]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input placeholder="Search by name, email, member #..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); setSelected(new Set()); }} className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-50" /></div>
-            <select value={filter} onChange={e => { setFilter(e.target.value); setPage(1); setSelected(new Set()); }} className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-50">
+            <select value={filter} onChange={e => { setFilter(e.target.value); setPage(1); setSelected(new Set()); }} className="flex-[2] px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-50">
               <option value="all">All</option>
               <option value="qualified">Qualified (4/4)</option><option value="almost_qualified">Almost (3/4)</option><option value="not_qualified">Not Qualified (&lt;3)</option>
               <option value="badge_awarded">Has Badge</option><option value="badge_missing">No Badge</option>
@@ -157,8 +158,8 @@ export default function AdminFoundingConsole() {
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">#</th>
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Name</th>
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">City</th>
-              <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Qualification (4&nbsp;criteria)</th>
-              <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Badge</th>
+              <th className="text-center py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Qualified</th>
+              <th className="text-center py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Award</th>
               <th className="text-left py-2 px-2 text-[11px] font-semibold text-gray-500 uppercase">Access</th>
             </tr></thead><tbody>
               {displayMembers.map(m => (
@@ -167,8 +168,8 @@ export default function AdminFoundingConsole() {
                   <td className="py-2.5 px-2 font-mono text-xs text-gray-600">{m.memberNumber || "—"}</td>
                   <td className="py-2.5 px-2"><p className="font-medium text-gray-900 dark:text-gray-50">{m.firstName}</p><p className="text-[11px] text-gray-400 dark:text-gray-500 truncate max-w-[140px]">{m.email}</p></td>
                   <td className="py-2.5 px-2 text-gray-600">{m.city}</td>
-                  <td className="py-2.5 px-2"><QBadge n={m.qualCount || 0} /></td>
-                  <td className="py-2.5 px-2">{m.badgeAwarded ? <span className="text-green-600 font-medium text-xs">✅</span> : <span className="text-gray-400 text-xs">—</span>}</td>
+                  <td className="py-2.5 px-2 text-center"><QBadge n={m.qualCount || 0} /></td>
+                  <td className="py-2.5 px-2 text-center">{m.badgeAwarded ? <span className="text-green-600 font-medium text-xs">✅</span> : <span className="text-gray-400 text-xs">—</span>}</td>
                   <td className="py-2.5 px-2"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.accessStatus === "live" ? 'bg-green-100 text-green-700' : m.accessStatus === "beta" ? 'bg-blue-100 text-blue-700' : m.accessStatus === "waitlist" ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>{m.accessStatus || "—"}</span></td>
                 </tr>
               ))}

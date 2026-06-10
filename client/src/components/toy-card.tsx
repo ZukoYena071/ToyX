@@ -4,6 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { Heart, MapPin } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
+import { formatLocation } from "@/lib/formatLocation";
 import type { ToyWithOwner } from "@shared/schema";
 
 interface ToyCardProps {
@@ -86,7 +87,7 @@ export default function ToyCard({ toy }: ToyCardProps) {
                 <MapPin className="w-3 h-3 mr-1" />
                 {toy.distance !== undefined 
                   ? `${toy.distance.toFixed(1)}${settings.distanceUnit === 'miles' ? 'mi' : 'km'}`
-                  : toy.location?.split(',')[0] || 'Nearby'
+                  : formatLocation(toy.location) || 'Nearby'
                 }
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Heart, Star } from "lucide-react";
 import { normalizeList, ChipRow } from "./MetaChip";
 import { formatDistanceAway } from "@/lib/formatDistance";
+import { formatLocation } from "@/lib/formatLocation";
 
 interface Toy {
   id: number;
@@ -110,7 +111,7 @@ export default function ToyFeedCard({ toy, onOpen, onToggleFavorite }: ToyFeedCa
         {toy.location && (
           <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            <span className="truncate max-w-[120px]">{toy.distanceKm != null ? formatDistanceAway(toy.distanceKm) : toy.location}</span>
+            <span className="truncate max-w-[120px]">{toy.distanceKm != null ? formatDistanceAway(toy.distanceKm) : formatLocation(toy.location)}</span>
           </div>
         )}
 
