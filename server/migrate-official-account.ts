@@ -27,7 +27,7 @@ async function main() {
       email: "official@toyxchange.online",
       firstName: "ToyX Official",
       lastName: "",
-      profileImageUrl: "/toyx-logo.png",
+      profileImageUrl: "/assets/official/toyx-avatar-light.png",
       bio: "Official ToyX account.\n\nBrowse these example listings to learn how to create high-quality toy exchange listings.\n\nThis account is not available for messaging, exchanges, reviews, or transactions.\n\nUsed for platform guidance, community education, and showcasing best-practice listings.",
       location: "South Africa",
       accountType: "official",
