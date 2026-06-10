@@ -143,7 +143,7 @@ export default function UserProfile() {
           {/* Statistics Grid */}
           <div className="grid grid-cols-3 gap-3 mt-6">
             {[
-              { value: availableToys.length, label: "Available Toys", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+              { value: availableToys.length, label: (user as any)?.accountType === "official" ? "Example Listings" : "Available Toys", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
               { value: reviewCount, label: "Reviews", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20" },
               { value: rating.toFixed(1), label: "Rating", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/20" },
             ].map((stat, i) => (

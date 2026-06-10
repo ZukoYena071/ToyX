@@ -2092,9 +2092,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Review routes
+  const EXAMPLE_REVIEWS = {
+    "official_toyx": [
+      { id: -1, rating: 5, comment: "This listing is a perfect example of how to describe a toy's condition clearly. The photos show exactly what's included and the description made it easy to understand what my child would receive. Every ToyX listing should aim for this level of detail!", createdAt: new Date("2025-01-15").toISOString(), reviewer: { firstName: "Sarah", lastName: "M.", profileImageUrl: null } },
+      { id: -2, rating: 5, comment: "I love how this listing explains why each toy is special and what skills it helps develop. As a new parent on ToyX, seeing this example showed me exactly how to write a good description for my own toys. The 'Looking For' section is a great touch!", createdAt: new Date("2025-02-01").toISOString(), reviewer: { firstName: "Thabo", lastName: "K.", profileImageUrl: null } },
+      { id: -3, rating: 5, comment: "The bundle format of this listing is brilliant! Grouping related toys together makes exchanging so much more efficient. The photography tips in the description are really helpful too. More members should list like this.", createdAt: new Date("2025-03-10").toISOString(), reviewer: { firstName: "Priya", lastName: "D.", profileImageUrl: null } },
+    ],
+  };
+
   app.get('/api/users/:userId/reviews', isAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
+      if (userId === "official_toyx") {
+        return res.json(EXAMPLE_REVIEWS.official_toyx);
+      }
       const reviews = await storage.getReviews(userId);
       res.json(reviews);
     } catch (error) {
@@ -2106,6 +2117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/:userId/rating', isAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
+      if (userId === "official_toyx") {
+        return res.json({ averageRating: 5.0 });
+      }
       const averageRating = await storage.getUserAverageRating(userId);
       res.json({ averageRating });
     } catch (error) {
