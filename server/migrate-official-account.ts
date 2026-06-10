@@ -27,7 +27,7 @@ async function main() {
       email: "official@toyxchange.online",
       firstName: "ToyX Official",
       lastName: "",
-      profileImageUrl: "/toyx-logo.png",
+      profileImageUrl: "/assets/official/toyx-avatar-light.png",
       bio: "Official ToyX account.\n\nExample listings, platform updates, safety guidance and community announcements.\n\nThis account is not available for exchanges or direct messaging.",
       location: "South Africa",
       accountType: "official",
