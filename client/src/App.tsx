@@ -11,7 +11,6 @@ import Landing from "@/pages/landing";
 import Welcome from "@/pages/welcome";
 import Signup from "@/pages/signup";
 import Login from "@/pages/login";
-import ForgotPassword from "@/pages/forgot-password";
 import Home from "@/pages/home";
 import Search from "@/pages/search";
 import ToyDetail from "@/pages/toy-detail";
@@ -50,7 +49,7 @@ function ListToyRoute() {
 }
 
 const PUBLIC_ROUTES = new Set([
-  "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
+  "/", "/welcome", "/landing", "/signup", "/login",
   "/pricing", "/terms", "/privacy-policy", "/data-deletion", "/support", "/billing-success", "/billing-cancel",
   "/rewards", "/invite", "/exchange-request",
 ]);
@@ -193,7 +192,6 @@ function Router() {
         <Route path="/landing" component={Landing} />
         <Route path="/signup" component={Signup} />
         <Route path="/login" component={Login} />
-        <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
