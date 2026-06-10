@@ -63,7 +63,7 @@ async function main() {
       ageGroup: "2-4 years",
       condition: "Excellent",
       location: "Johannesburg, Gauteng",
-      imageUrls: ["/assets/official/montessori-puzzle-1.png"],
+      imageUrls: ["/assets/official/montessori-puzzle-1.png", "/assets/official/montessori-puzzle-2.png"],
       lookingForCategories: ["Educational", "Board Games"],
       lookingForDetails: "Looking for other Montessori-style toys, early learning puzzles, or educational board games for ages 2-4.",
     },
@@ -94,14 +94,16 @@ async function main() {
       });
       console.log(`[migrate-official-account] Created example: "${ex.name}"`);
     } else {
-      // Backfill image URLs for existing rows that have empty images
+      // Backfill/refresh image URLs for existing rows
       if (existingToy.length > 0 && ex.imageUrls && ex.imageUrls.length > 0) {
         const current = existingToy[0];
-        const urls: any[] = (current.imageUrls || []) as any[];
-        if (!urls.length || (urls.length === 1 && (!urls[0] || urls[0] === ''))) {
+        const currentUrls: any[] = (current.imageUrls || []) as any[];
+        const needsUpdate = currentUrls.length !== ex.imageUrls.length ||
+          !currentUrls.every((u, i) => u === ex.imageUrls![i]);
+        if (needsUpdate) {
           await db.update(toys).set({ imageUrls: ex.imageUrls, updatedAt: new Date() })
             .where(eq(toys.id, current.id));
-          console.log(`[migrate-official-account] Backfilled images for: "${ex.name}"`);
+          console.log(`[migrate-official-account] Updated images for: "${ex.name}"`);
         }
       }
     }
