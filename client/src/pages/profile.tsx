@@ -123,7 +123,7 @@ export default function Profile() {
         firstName: (user as any)?.firstName || '',
         lastName: (user as any)?.lastName || '',
         bio: (user as any)?.bio || '',
-        location: (user as any)?.location || 'San Francisco, CA',
+        location: (user as any)?.location || 'Johannesburg',
         phone: (user as any)?.phone || '',
         profileImageUrl: (user as any)?.profileImageUrl || ''
       });
