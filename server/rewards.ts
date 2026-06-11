@@ -14,6 +14,9 @@ export async function ensureUserRewards(userId: string) {
   }
 }
 
+// Official accounts cannot earn rewards
+const OFFICIAL_IDS = new Set(["official_toyx"]);
+
 export async function awardPoints(opts: {
   userId: string;
   eventType: string;
@@ -22,6 +25,7 @@ export async function awardPoints(opts: {
   points: number;
   meta?: any;
 }): Promise<{ awarded: boolean }> {
+  if (OFFICIAL_IDS.has(opts.userId)) return { awarded: false };
   await ensureUserRewards(opts.userId);
   try {
     await db.insert(rewardLedger).values({
@@ -206,6 +210,7 @@ export async function applyPaidBoost(toyId: number, userId: string, hours: numbe
 }
 
 export async function qualifyReferral(refereeId: string) {
+  if (OFFICIAL_IDS.has(refereeId)) return null;
   console.log(`[referral] qualifyReferral called for refereeId=${refereeId}`);
   const refs = await db.select().from(referrals).where(
     and(eq(referrals.refereeId, refereeId), eq(referrals.status, "pending"))

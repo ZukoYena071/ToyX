@@ -11,7 +11,6 @@ import Landing from "@/pages/landing";
 import Welcome from "@/pages/welcome";
 import Signup from "@/pages/signup";
 import Login from "@/pages/login";
-import ForgotPassword from "@/pages/forgot-password";
 import Home from "@/pages/home";
 import Search from "@/pages/search";
 import ToyDetail from "@/pages/toy-detail";
@@ -34,12 +33,15 @@ import PrivacyMessages from "@/pages/privacy-messages";
 import AdminModeration from "@/pages/admin-moderation";
 import AdminFoundingMembers from "@/pages/admin-founding-members";
 import AdminLaunchControl from "@/pages/admin-launch-control";
+import AdminConsole from "@/pages/admin-console";
+import AdminFoundingConsole from "@/pages/admin-founding-console";
 import FoundingFamilyHub from "@/pages/founding-family-hub";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import DataDeletionPage from "@/pages/data-deletion";
 import SupportPage from "@/pages/support";
 import ModerationMessageNotifier from "@/components/ModerationMessageNotifier";
+import { UploadProvider } from "@/hooks/useUpload";
 function ListToyRoute() {
   const [, setLocation] = useLocation();
   useEffect(() => {
@@ -49,7 +51,7 @@ function ListToyRoute() {
 }
 
 const PUBLIC_ROUTES = new Set([
-  "/", "/welcome", "/landing", "/signup", "/login", "/forgot-password",
+  "/", "/welcome", "/landing", "/signup", "/login",
   "/pricing", "/terms", "/privacy-policy", "/data-deletion", "/support", "/billing-success", "/billing-cancel",
   "/rewards", "/invite", "/exchange-request",
 ]);
@@ -192,7 +194,6 @@ function Router() {
         <Route path="/landing" component={Landing} />
         <Route path="/signup" component={Signup} />
         <Route path="/login" component={Login} />
-        <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
@@ -246,9 +247,11 @@ function Router() {
         <Route path="/privacy/messages" component={PrivacyMessages} />
         <Route path="/privacy/messages/:id" component={PrivacyMessages} />
         <Route path="/hub" component={FoundingFamilyHub} />
+        <Route path="/admin" component={AdminConsole} />
         <Route path="/admin/moderation" component={AdminModeration} />
         <Route path="/admin/founding-members" component={AdminFoundingMembers} />
         <Route path="/admin/launch-control" component={AdminLaunchControl} />
+        <Route path="/admin/founding" component={AdminFoundingConsole} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/data-deletion" component={DataDeletionPage} />
@@ -278,8 +281,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="toyx-ui-theme">
         <TooltipProvider>
-          <Router />
-          <Toaster />
+          <UploadProvider>
+            <Router />
+            <Toaster />
+          </UploadProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

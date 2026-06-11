@@ -7,8 +7,49 @@ import PageContainer from "@/components/ui/PageContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import ListItemRow from "@/components/ui/ListItemRow";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ReportUserModal from "@/components/toys/ReportUserModal";
+
+function InfoPopover({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [open]);
+  return (
+    <div className="relative inline-flex" ref={ref}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+        aria-label="More information"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 w-56 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+          <div className="flex items-start justify-between gap-2">
+            <p>{children}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+              className="shrink-0 min-h-[28px] min-w-[28px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors -mr-1 -mt-1"
+              aria-label="Close"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
   <button
@@ -149,16 +190,9 @@ export default function PrivacySafety() {
               subtitle="Controls your public profile city"
               right={
                 <div className="flex items-center gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                        <HelpCircle className="w-4 h-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-[220px] text-xs">
-                      Hide your city from your public profile page. Toy locations on listings are always shown so other parents can find toys near them.
-                    </TooltipContent>
-                  </Tooltip>
+                  <InfoPopover>
+                    Hide your city from your public profile page. Toy locations on listings are always shown so other parents can find toys near them.
+                  </InfoPopover>
                   <ToggleSwitch enabled={settings.showLocation} onToggle={() => updateSetting("showLocation", !settings.showLocation)} />
                 </div>
               }

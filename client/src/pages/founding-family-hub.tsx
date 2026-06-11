@@ -6,6 +6,7 @@ import SectionCard from "@/components/ui/SectionCard";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/useUpload";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 
 const FAMILIES_TARGET = 100;
@@ -134,6 +135,7 @@ function MilestoneCard({ done, label, expanded, children }: { done: boolean; lab
 
 export default function FoundingFamilyHub() {
   const { toast } = useToast();
+  const { openUpload } = useUpload();
   const [data, setData] = useState<any>(null);
   const [refData, setRefData] = useState<any>(null);
   const [copied, setCopied] = useState(false);
@@ -356,7 +358,7 @@ export default function FoundingFamilyHub() {
 
         {/* CTA Cards */}
         <div className="grid gap-4">
-          <button onClick={() => window.location.href = "/list-toy"} className="w-full rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white p-6 text-left hover:shadow-lg transition-all active:scale-[0.99] group cursor-pointer">
+          <button onClick={() => openUpload()} className="w-full rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white p-6 text-left hover:shadow-lg transition-all active:scale-[0.99] group cursor-pointer">
             <div className="flex items-center gap-4">
               <span className="text-4xl">🧸</span>
               <div className="flex-1 min-w-0">

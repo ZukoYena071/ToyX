@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ChevronLeft, Sparkles } from "lucide-react";
+import { Check, ChevronLeft, Gift, Sparkles } from "lucide-react";
 import OnboardingIllustration from "@/components/ui/OnboardingIllustration";
 
 interface StepData {
@@ -252,9 +252,10 @@ export default function Onboarding() {
         </div>
 
         {/* Welcome points banner */}
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 mb-6 text-center">
-          <p className="text-sm font-medium text-green-700 dark:text-green-300">
-            🎉 Earn +100 points when you complete your first exchange!
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 mb-6">
+          <p className="text-sm font-medium text-green-700 dark:text-green-300 flex items-center justify-center gap-2">
+            <Gift className="w-4 h-4 shrink-0" />
+            Earn +100 points when you complete your first exchange!
           </p>
         </div>
 
@@ -307,8 +308,8 @@ export default function Onboarding() {
             }`}
           >
             {/* Best Value badge */}
-            <span className="absolute -top-2.5 right-3 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-              Best Value ✨
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-500 text-white rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-sm">
+              Best Value
             </span>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
               Yearly

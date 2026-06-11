@@ -23,6 +23,8 @@
     "db:migrate:launch-settings": "NODE_ENV=development tsx server/migrate-launch-settings.ts",
     "db:migrate:member-numbers": "NODE_ENV=development tsx server/migrate-member-numbers.ts",
     "db:backfill:badges": "NODE_ENV=development tsx server/migrate-backfill-badges.ts",
+    "db:migrate:founding-console": "NODE_ENV=development tsx server/migrate-founding-console.ts",
+    "db:migrate:official-account": "NODE_ENV=development tsx server/migrate-official-account.ts",
     "qa": "npm run db:push && npm run db:seed:test && start-server-and-test \"npm run dev:test\" http://localhost:3001 \"npm run test:visual:update && npm run test:api && npm run test:e2e && npm run test:visual\""
   },
   "dependencies": {
@@ -72,6 +74,7 @@
     "drizzle-zod": "^0.7.0",
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.5.2",
     "express-session": "^1.18.1",
     "framer-motion": "^11.13.1",
     "input-otp": "^1.4.2",

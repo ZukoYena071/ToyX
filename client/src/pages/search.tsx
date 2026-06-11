@@ -15,6 +15,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ToyFeedCard from "@/components/toys/ToyFeedCard";
 import ToyImage from "@/components/ToyImage";
 import { apiRequest } from "@/lib/queryClient";
+import { formatLocation } from "@/lib/formatLocation";
 import toyxLogo from "@assets/Logo-remove-background_1753309864367.png";
 
 function goToToy(toyId: number) {
@@ -29,8 +30,8 @@ export default function BrowsePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedCondition, setSelectedCondition] = useState('All');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [selectedDistance, setSelectedDistance] = useState('All');
   const [selectedDateAdded, setSelectedDateAdded] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
@@ -72,8 +73,8 @@ export default function BrowsePage() {
     },
   });
 
-  const categories = ['All', 'Action Figures', 'Dolls', 'Building', 'Educational', 'Outdoor', 'Board Games'];
-  const conditions = ['All', 'Like New', 'Excellent', 'Good', 'Fair'];
+  const categories = ['Action Figures', 'Dolls', 'Building', 'Educational', 'Outdoor', 'Board Games'];
+  const conditions = ['Like New', 'Excellent', 'Good', 'Fair'];
   const distances = ['All', 'Under 1km', '1-5km', '5-10km', '10km+'];
   const dateOptions = ['All', 'Past 2 days', 'Past week', 'Past month'];
 
@@ -83,8 +84,8 @@ export default function BrowsePage() {
 
   const filteredToys = Array.isArray(toys) ? toys.filter((toy: any) => {
     const matchesSearch = toy.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || toy.category === selectedCategory;
-    const matchesCondition = selectedCondition === 'All' || toy.condition === selectedCondition;
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(toy.category);
+    const matchesCondition = selectedConditions.length === 0 || selectedConditions.includes(toy.condition);
     let matchesDistance = selectedDistance === 'All';
     if (!matchesDistance) {
       const toyDistance = parseFloat(toy.distance || '0');
@@ -105,13 +106,14 @@ export default function BrowsePage() {
   }) : [];
 
   const clearFilters = () => {
-    setSelectedCategory('All');
-    setSelectedCondition('All');
+    setSelectedCategories([]);
+    setSelectedConditions([]);
     setSelectedDistance('All');
     setSelectedDateAdded('All');
   };
 
-  const activeFiltersCount = [selectedCategory, selectedCondition, selectedDistance, selectedDateAdded].filter(f => f !== 'All').length;
+  const activeFiltersCount = selectedCategories.length + selectedConditions.length +
+    (selectedDistance !== 'All' ? 1 : 0) + (selectedDateAdded !== 'All' ? 1 : 0);
 
   // Restore scroll position when returning from toy detail (after data loads so page is full height)
   useEffect(() => {
@@ -155,13 +157,20 @@ export default function BrowsePage() {
     return <PageLoadingSkeleton />;
   }
 
-  const FilterPill = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+  const FilterPill = ({ label, active, onClick, multi }: { label: string; active: boolean; onClick: () => void; multi?: boolean }) => (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 min-h-[36px] ${
+      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 min-h-[36px] flex items-center gap-1.5 ${
         active ? 'bg-purple-500 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
       }`}
     >
+      {multi && (
+        <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center ${
+          active ? 'bg-white border-white' : 'border-gray-400 dark:border-gray-500'
+        }`}>
+          {active && <span className="w-2 h-2 bg-purple-500 rounded-[1px]" />}
+        </span>
+      )}
       {label}
     </button>
   );
@@ -223,13 +232,21 @@ export default function BrowsePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
                 <div className="flex flex-wrap gap-2">
-                  {categories.map((c) => <FilterPill key={c} label={c} active={selectedCategory === c} onClick={() => setSelectedCategory(c)} />)}
+                  {categories.map((c) => (
+                    <FilterPill key={c} label={c} multi active={selectedCategories.includes(c)} onClick={() => {
+                      setSelectedCategories(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+                    }} />
+                  ))}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Condition</label>
                 <div className="flex flex-wrap gap-2">
-                  {conditions.map((c) => <FilterPill key={c} label={c} active={selectedCondition === c} onClick={() => setSelectedCondition(c)} />)}
+                  {conditions.map((c) => (
+                    <FilterPill key={c} label={c} multi active={selectedConditions.includes(c)} onClick={() => {
+                      setSelectedConditions(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+                    }} />
+                  ))}
                 </div>
               </div>
               <div>
@@ -244,6 +261,14 @@ export default function BrowsePage() {
                   {dateOptions.map((d) => <FilterPill key={d} label={d} active={selectedDateAdded === d} onClick={() => setSelectedDateAdded(d)} />)}
                 </div>
               </div>
+              {(activeFiltersCount > 0) && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedCategories.map(c => <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"><span>Category: {c}</span><button onClick={() => setSelectedCategories(prev => prev.filter(x => x !== c))} className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-100">&times;</button></span>)}
+                  {selectedConditions.map(c => <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"><span>Condition: {c}</span><button onClick={() => setSelectedConditions(prev => prev.filter(x => x !== c))} className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-100">&times;</button></span>)}
+                  {selectedDistance !== 'All' && <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"><span>Distance: {selectedDistance}</span><button onClick={() => setSelectedDistance('All')} className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-100">&times;</button></span>}
+                  {selectedDateAdded !== 'All' && <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"><span>Date: {selectedDateAdded}</span><button onClick={() => setSelectedDateAdded('All')} className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-100">&times;</button></span>}
+                </div>
+              )}
               <div className="flex items-center justify-between pt-2">
                 <button onClick={clearFilters} className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors min-h-[44px]">
                   Clear All
@@ -306,7 +331,7 @@ export default function BrowsePage() {
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 line-clamp-2">{toy.name}</h3>
                     <div className="flex items-center gap-1">
                       <MapPin className="text-purple-500 w-3 h-3" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.location || 'Unknown location'}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatLocation(toy.location) || 'Unknown location'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">

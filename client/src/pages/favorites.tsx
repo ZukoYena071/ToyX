@@ -10,6 +10,7 @@ import SectionCard from "@/components/ui/SectionCard";
 import EmptyState from "@/components/ui/EmptyState";
 import BadgePill from "@/components/ui/BadgePill";
 import { apiRequest } from "@/lib/queryClient";
+import { formatLocation } from "@/lib/formatLocation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -105,7 +106,7 @@ export default function FavoritesPage() {
                       </h3>
                       <div className="flex items-center gap-1">
                         <MapPin className="text-purple-500 w-3 h-3" />
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.location || 'Location not set'}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatLocation(toy.location) || 'Location not set'}</span>
                       </div>
                       <BadgePill
                         label={toy.condition}

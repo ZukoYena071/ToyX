@@ -1,10 +1,13 @@
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { eq, and, or, gte, inArray, isNull, sql, desc } from "drizzle-orm";
 import cors from "cors";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { uploadImage, validateImage, isR2Configured, processImages } from "./r2";
 import { sendEmail } from "./email";
 import { welcomeTemplate } from "./email/templates/welcome";
@@ -17,7 +20,7 @@ import { accountBannedTemplate } from "./email/templates/account-banned";
 import { supportRequestTemplate } from "./email/templates/support-request";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, launchSettings, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
+import { users, toys, exchanges, messages, reviews, favorites, referrals, rewardRedemptions, rewardLedger, userRewards, reports, moderationActions, moderationMessages, marketingSubscribers, supportRequests, foundingMembers, launchSettings, foundingConsoleActions, insertMarketingSubscriberSchema, insertSupportRequestSchema, insertFoundingMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertToySchema, insertExchangeSchema, insertMessageSchema, insertFavoriteSchema, insertReviewSchema } from "@shared/schema";
 import { computeEntitlements, awardPoints, checkDailyCap, qualifyReferral, getRewardsProfile, spendPoints, ensureUserRewards, countActiveBoosts, checkMonthlyReferralCap, redeemPointsBoost, applyPaidBoost, awardFoundingMemberBadge, computeContributionScore } from "./rewards";
@@ -49,6 +52,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Build info diagnostic endpoint — tells us what code is running
+  app.get("/api/build-info", async (_req, res) => {
+    // Same resolution order as serveStatic() in server/vite.ts
+    const bundledPath = path.resolve(import.meta.dirname, "public");
+    const sourcePath = path.resolve(import.meta.dirname, "..", "dist", "public");
+    const possible = [bundledPath, sourcePath];
+    let foundPath: string | null = null;
+    let hasOfficialImages = false;
+    for (const dir of possible) {
+      const testPath = path.join(dir, "assets", "official", "family-games-1.png");
+      if (fs.existsSync(testPath)) {
+        foundPath = dir;
+        hasOfficialImages = true;
+        break;
+      }
+    }
+    let commit = "unknown";
+    let branch = "unknown";
+    try {
+      commit = fs.readFileSync(path.join(import.meta.dirname, "..", ".git", "HEAD"), "utf-8").trim();
+      if (commit.startsWith("ref: ")) {
+        const refPath = path.join(import.meta.dirname, "..", ".git", commit.slice(5).trim());
+        commit = fs.existsSync(refPath) ? fs.readFileSync(refPath, "utf-8").trim() : commit;
+      }
+    } catch {}
+    try {
+      const head = fs.readFileSync(path.join(import.meta.dirname, "..", ".git", "HEAD"), "utf-8").trim();
+      if (head.startsWith("ref: refs/heads/")) branch = head.slice(16);
+    } catch {}
+    res.json({
+      commit: commit.substring(0, 12),
+      branch,
+      buildTime: new Date().toISOString(),
+      hasOfficialImages,
+      distPath: foundPath || "NOT_FOUND",
+      expressStaticMount: foundPath || "NONE",
+      checked: possible,
+    });
+  });
+
   // CORS for the marketing landing page
   app.use("/api/marketing", cors({
     origin: corsOriginFn,
@@ -76,6 +119,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("MARKETING_SUBSCRIPTION_ERROR:", error);
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // Rate limiters for auth endpoints
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { code: "RATE_LIMITED", message: "Too many attempts. Try again in 15 minutes." },
+  });
+  const oauthInitLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { code: "RATE_LIMITED", message: "Too many sign-in attempts. Try again in 15 minutes." },
   });
 
   // Admin authorization middleware (must be defined before routes that use it)
@@ -504,7 +563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Signup - create a new user and log them in
-  app.post('/api/signup', async (req: any, res, next) => {
+  app.post('/api/signup', authLimiter, async (req: any, res, next) => {
     try {
       const { email, firstName } = req.body;
       if (!email) {
@@ -534,23 +593,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dev login - quick login as demo user
-  app.post('/api/dev-login', async (req: any, res, next) => {
-    try {
-      const { userId } = req.body;
-      const user = await storage.getUser(userId || "demo-user-1");
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+  // Dev login - only available in local development with explicit flag
+  if (process.env.NODE_ENV !== "production" && process.env.DEV_AUTH_BYPASS === "true") {
+    app.post('/api/dev-login', async (req: any, res, next) => {
+      try {
+        const { userId } = req.body;
+        const user = await storage.getUser(userId || "demo-user-1");
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        req.logIn({ id: user.id, sub: user.id, claims: { sub: user.id } }, (err: any) => {
+          if (err) return next(err);
+          res.json({ message: "Logged in", user });
+        });
+      } catch (error) {
+        console.error("Error in dev login:", error);
+        res.status(500).json({ message: "Login failed" });
       }
-      req.logIn({ id: user.id, sub: user.id, claims: { sub: user.id } }, (err: any) => {
-        if (err) return next(err);
-        res.json({ message: "Logged in", user });
-      });
-    } catch (error) {
-      console.error("Error in dev login:", error);
-      res.status(500).json({ message: "Login failed" });
-    }
-  });
+    });
+  }
 
   // User profile routes
 
@@ -766,14 +827,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.profileImageUrl) {
         user.profileImageUrl = user.profileImageUrl.replace(/^http:/, "https:");
       }
-      // Include featured badge and founding member info
-      const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, user.id)).limit(1);
-      const badges = (rewardsRow[0]?.badges || []) as any[];
-      const featuredBadge = badges.length > 0 ? badges[0].type : null;
+      // Include featured badge, founding member info, and official account check
+      let featuredBadge: string | null = null;
+      if ((user as any).accountType === "official") {
+        featuredBadge = "toyx_official";
+      } else {
+        const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, user.id)).limit(1);
+        const badges = (rewardsRow[0]?.badges || []) as any[];
+        featuredBadge = badges.length > 0 ? badges[0].type : null;
+      }
       let memberNumber: number | null = null;
       if (user.email) {
         const fm = await db.select({ memberNumber: foundingMembers.memberNumber }).from(foundingMembers).where(eq(foundingMembers.email, user.email)).limit(1);
         if (fm.length) memberNumber = fm[0].memberNumber;
+      }
+      // Never expose email for the official account
+      if ((user as any).accountType === "official") {
+        (user as any).email = undefined;
       }
       res.json({ ...user, featuredBadge, memberNumber });
     } catch (error) {
@@ -886,6 +956,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nearYou = recentlyAdded;
       }
 
+      // Filter out official account's toys from recommendations
+      forYou = forYou.filter((t: any) => t.ownerId !== "official_toyx");
+      nearYou = nearYou.filter((t: any) => t.ownerId !== "official_toyx");
+      recentlyAdded = recentlyAdded.filter((t: any) => t.ownerId !== "official_toyx");
+
       // Add isFavorited + isBoosted for each toy
       const now = new Date();
       const addFav = async (toy: any) => { 
@@ -968,6 +1043,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return [r.userId, arr.length > 0 ? arr[0].type : null];
       }));
 
+      // ── Batch account types for owners (official account detection) ──
+      const ownerTypeRows = await db.select({ id: users.id, accountType: users.accountType }).from(users)
+        .where(inArray(users.id, ownerIds));
+      const officialSet = new Set(ownerTypeRows.filter(r => r.accountType === "official").map(r => r.id));
+
       // ── Compute distance if location enabled ──
       const now = new Date();
       const viewer = uid ? await storage.getUser(uid) : null;
@@ -978,7 +1058,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toy.isFavorited = favSet.has(toy.id);
         toy.ownerRating = ratingMap.get(toy.ownerId) ?? 0;
         toy.inExchange = exchangeSet.has(toy.id);
-        if (toy.owner) (toy.owner as any).featuredBadge = badgeMap.get(toy.ownerId) || null;
+        if (toy.owner) {
+          const isOfficial = officialSet.has(toy.ownerId);
+          (toy.owner as any).featuredBadge = isOfficial ? "toyx_official" : (badgeMap.get(toy.ownerId) || null);
+          if (isOfficial) {
+            delete (toy.owner as any).email;
+          }
+        }
+        (toy as any).isExample = officialSet.has(toy.ownerId);
         (toy as any).isBoosted = !!(toy as any).boostedUntil && new Date((toy as any).boostedUntil) > now;
         if (viewerHasLocation && toy.latitude != null && toy.longitude != null) {
           toy.distanceKm = haversineKm(viewer!.latitude as number, viewer!.longitude as number, toy.latitude as number, toy.longitude as number);
@@ -1090,6 +1177,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper: log founding console action
+  async function logFmAction(adminId: string, actionType: string, targetEmail?: string, targetMemberId?: number, metadata?: any) {
+    await db.insert(foundingConsoleActions).values({ adminId, actionType, targetEmail, targetMemberId: targetMemberId || null, metadata: metadata || null }).catch(() => {});
+  }
+
+  // Founding Member Management Console APIs
+  app.get('/api/admin/founding/members', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { search, filter, page = "1", limit = "50" } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string));
+      const limitNum = Math.min(200, Math.max(1, parseInt(limit as string)));
+      const offset = (pageNum - 1) * limitNum;
+
+      let query = db.select().from(foundingMembers);
+      let countQuery = db.select({ total: sql<number>`count(*)` }).from(foundingMembers);
+
+      if (filter && filter !== "all") {
+        if (filter === "registered") { query = query.where(sql`email IN (SELECT email FROM users)`) as any; countQuery = countQuery.where(sql`email IN (SELECT email FROM users)`) as any; }
+        else if (filter === "not_registered") { query = query.where(sql`email NOT IN (SELECT email FROM users)`) as any; countQuery = countQuery.where(sql`email NOT IN (SELECT email FROM users)`) as any; }
+        else if (filter === "badge_awarded") { query = query.where(eq(foundingMembers.badgeAwarded, true)) as any; countQuery = countQuery.where(eq(foundingMembers.badgeAwarded, true)) as any; }
+        else if (filter === "badge_missing") { query = query.where(eq(foundingMembers.badgeAwarded, false)) as any; countQuery = countQuery.where(eq(foundingMembers.badgeAwarded, false)) as any; }
+        else if (filter === "beta_invited") { query = query.where(eq(foundingMembers.status, "INVITED")) as any; countQuery = countQuery.where(eq(foundingMembers.status, "INVITED")) as any; }
+        else if (filter === "beta_activated") { query = query.where(eq(foundingMembers.status, "ACTIVATED")) as any; countQuery = countQuery.where(eq(foundingMembers.status, "ACTIVATED")) as any; }
+      }
+
+      if (search) {
+        const q = `%${search}%`;
+        const searchCond = or(sql`${foundingMembers.firstName} ILIKE ${q}`, sql`${foundingMembers.email} ILIKE ${q}`, sql`CAST(${foundingMembers.memberNumber} AS TEXT) ILIKE ${q}`);
+        query = query.where(searchCond) as any;
+        countQuery = countQuery.where(searchCond) as any;
+      }
+
+      const rows = await query.orderBy(foundingMembers.memberNumber).limit(limitNum).offset(offset);
+      const [totalResult] = await countQuery;
+
+      // Enrich with user account data and qualification
+      const enriched = await Promise.all(rows.map(async (fm) => {
+        const userRows = fm.email ? await db.select({ id: users.id, accessStatus: users.accessStatus }).from(users).where(eq(users.email, fm.email)).limit(1) : [];
+        const hasAccount = userRows.length > 0;
+        const user = userRows[0];
+        let qualification = 0;
+        let qualCount = 0;
+        const qualChecks: Record<string, boolean> = { profileComplete: false, emailVerified: false, toysListed: false, referralComplete: false };
+        if (hasAccount && user) {
+          const u = await storage.getUser(user.id);
+          if (u) {
+            const filled = [u.firstName, u.lastName, u.profileImageUrl, u.bio, u.location].filter(Boolean).length;
+            qualChecks.profileComplete = filled >= 4;
+            qualChecks.emailVerified = !!u.email;
+            const [toyC] = await db.select({ c: sql<number>`count(*)` }).from(toys).where(and(eq(toys.ownerId, user.id), isNull(toys.deletedAt)));
+            qualChecks.toysListed = Number(toyC?.c || 0) >= 3;
+            const [refC] = await db.select({ c: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, user.id), eq(referrals.status, "qualified")));
+            qualChecks.referralComplete = Number(refC?.c || 0) >= 1;
+          }
+          qualCount = Object.values(qualChecks).filter(Boolean).length;
+          qualification = Math.round((qualCount / 4) * 100);
+        }
+        return {
+          id: fm.id, memberNumber: fm.memberNumber, firstName: fm.firstName, email: fm.email, city: fm.city,
+          joinedAt: fm.joinedAt, status: fm.status, badgeAwarded: fm.badgeAwarded,
+          signupSource: fm.signupSource,
+          registered: hasAccount, accessStatus: user?.accessStatus || null,
+          qualification, qualCount, qualChecks,
+        };
+      }));
+
+      res.json({ members: enriched, total: Number(totalResult?.total || 0), page: pageNum });
+    } catch (e: any) { console.error("FOUNDING_CONSOLE_LIST_ERROR:", e); res.status(500).json({ error: e.message }); }
+  });
+
+  app.get('/api/admin/founding/members/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      const userRows = fm.email ? await db.select().from(users).where(eq(users.email, fm.email)).limit(1) : [];
+      const hasAccount = userRows.length > 0;
+      const user = userRows[0] || null;
+      let qualChecks: Record<string, boolean> | null = null;
+      if (hasAccount && user) {
+        const u = await storage.getUser(user.id);
+        if (u) {
+          const filled = [u.firstName, u.lastName, u.profileImageUrl, u.bio, u.location].filter(Boolean).length;
+          const [toyC] = await db.select({ c: sql<number>`count(*)` }).from(toys).where(and(eq(toys.ownerId, user.id), isNull(toys.deletedAt)));
+          const [refC] = await db.select({ c: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, user.id), eq(referrals.status, "qualified")));
+          qualChecks = {
+            profileComplete: filled >= 4,
+            emailVerified: !!u.email,
+            toysListed: Number(toyC?.c || 0) >= 3,
+            referralComplete: Number(refC?.c || 0) >= 1,
+          };
+        }
+      }
+      const actions = await db.select().from(foundingConsoleActions).where(eq(foundingConsoleActions.targetMemberId, fmId)).orderBy(desc(foundingConsoleActions.createdAt)).limit(50);
+      res.json({ foundingMember: fm, user, hasAccount, qualChecks, recentActions: actions });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/admin/founding/members/:id/promote', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      await db.update(foundingMembers).set({ status: "INVITED" }).where(eq(foundingMembers.id, fmId));
+      // Also promote matching user account if exists
+      if (fm.email) {
+        const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+        if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "beta" });
+      }
+      await logFmAction(adminId, "promoted_to_beta", fm.email, fmId);
+      res.json({ ok: true, status: "INVITED" });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/admin/founding/members/:id/revoke', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      await db.update(foundingMembers).set({ status: "WAITLIST" }).where(eq(foundingMembers.id, fmId));
+      if (fm.email) {
+        const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+        if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "waitlist" });
+      }
+      await logFmAction(adminId, "beta_revoked", fm.email, fmId);
+      res.json({ ok: true, status: "WAITLIST" });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/admin/founding/members/:id/award-badge', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const fmId = parseInt(req.params.id);
+      const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, fmId)).limit(1);
+      if (!fm) return res.status(404).json({ error: "Not found" });
+      if (fm.email) {
+        const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+        if (uRows.length) {
+          const ok = await awardFoundingMemberBadge(uRows[0].id);
+          if (ok) await logFmAction(adminId, "badge_awarded", fm.email, fmId);
+          return res.json({ ok, badgeAwarded: ok });
+        }
+      }
+      res.json({ ok: false, error: "No matching user account found" });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Bulk promote to beta
+  app.post('/api/admin/founding/bulk/promote', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: "ids array required" });
+      let promoted = 0; let errors = 0;
+      for (const id of ids) {
+        try {
+          const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, id)).limit(1);
+          if (!fm) { errors++; continue; }
+          await db.update(foundingMembers).set({ status: "INVITED" }).where(eq(foundingMembers.id, id));
+          if (fm.email) {
+            const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+            if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "beta" });
+          }
+          await logFmAction(adminId, "promoted_to_beta", fm.email, id, { bulk: true, bulkAction: "promote" });
+          promoted++;
+        } catch { errors++; }
+      }
+      res.json({ ok: true, promoted, errors });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Bulk revoke beta
+  app.post('/api/admin/founding/bulk/revoke', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: "ids array required" });
+      let revoked = 0; let errors = 0;
+      for (const id of ids) {
+        try {
+          const [fm] = await db.select().from(foundingMembers).where(eq(foundingMembers.id, id)).limit(1);
+          if (!fm) { errors++; continue; }
+          await db.update(foundingMembers).set({ status: "WAITLIST" }).where(eq(foundingMembers.id, id));
+          if (fm.email) {
+            const uRows = await db.select({ id: users.id }).from(users).where(eq(users.email, fm.email)).limit(1);
+            if (uRows.length) await storage.updateUser(uRows[0].id, { accessStatus: "waitlist" });
+          }
+          await logFmAction(adminId, "beta_revoked", fm.email, id, { bulk: true, bulkAction: "revoke" });
+          revoked++;
+        } catch { errors++; }
+      }
+      res.json({ ok: true, revoked, errors });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   // Launch settings CRUD (single-row table)
   app.get('/api/admin/launch-settings', isAuthenticated, isAdmin, async (_, res) => {
     try {
@@ -1122,11 +1406,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [listings] = await db.select({ value: sql<number>`count(*)` }).from(toys).where(and(eq(toys.isAvailable, true), isNull(toys.deletedAt)));
       const [qualifiedRefs] = await db.select({ value: sql<number>`count(*)` }).from(referrals).where(eq(referrals.status, "qualified"));
       const [badged] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers).where(eq(foundingMembers.badgeAwarded, true));
+      const [registered] = await db.select({ value: sql<number>`count(*)` }).from(foundingMembers).where(sql`email IN (SELECT email FROM users)`);
       const settings = await db.select().from(launchSettings).limit(1);
       res.json({
         total: Number(total?.value || 0), waitlist: Number(waitlist?.value || 0), beta: Number(beta?.value || 0), live: Number(live?.value || 0),
         foundingFamilies: Number(families?.value || 0), totalListings: Number(listings?.value || 0), qualifiedReferrals: Number(qualifiedRefs?.value || 0),
-        badgesAwarded: Number(badged?.value || 0),
+        badgesAwarded: Number(badged?.value || 0), registeredMembers: Number(registered?.value || 0),
         settings: settings[0] || null,
       });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -1227,11 +1512,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Add featured badge to owner
+      // Add featured badge to owner + isExample for official account
       if (toy.owner) {
-        const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, toy.ownerId)).limit(1);
-        const badgeArr = (rewardsRow[0]?.badges as any[]) || [];
-        (toy.owner as any).featuredBadge = badgeArr.length > 0 ? badgeArr[0].type : null;
+        const [ownerUser] = await db.select({ accountType: users.accountType }).from(users).where(eq(users.id, toy.ownerId)).limit(1);
+        if (ownerUser?.accountType === "official") {
+          (toy.owner as any).featuredBadge = "toyx_official";
+          (toy as any).isExample = true;
+          delete (toy.owner as any).email;
+        } else {
+          const rewardsRow = await db.select({ badges: userRewards.badges }).from(userRewards).where(eq(userRewards.userId, toy.ownerId)).limit(1);
+          const badgeArr = (rewardsRow[0]?.badges as any[]) || [];
+          (toy.owner as any).featuredBadge = badgeArr.length > 0 ? badgeArr[0].type : null;
+        }
       }
       res.json(toy);
     } catch (error) {
@@ -1573,6 +1865,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!toy) {
         return res.status(404).json({ message: "Toy not found" });
       }
+
+      // Block exchange requests to official account listings
+      if (toy.ownerId === "official_toyx") {
+        return res.status(403).json({ message: "ToyX Official listings are example listings and are not available for exchange." });
+      }
       
       const exchangeData = insertExchangeSchema.parse({ 
         ...req.body, 
@@ -1846,9 +2143,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Review routes
+  const EXAMPLE_REVIEWS = {
+    "official_toyx": [
+      { id: -1, rating: 5, comment: "This listing is a perfect example of how to describe a toy's condition clearly. The photos show exactly what's included and the description made it easy to understand what my child would receive. Every ToyX listing should aim for this level of detail!", createdAt: new Date("2025-01-15").toISOString(), reviewer: { firstName: "Sarah", lastName: "M.", profileImageUrl: null } },
+      { id: -2, rating: 5, comment: "I love how this listing explains why each toy is special and what skills it helps develop. As a new parent on ToyX, seeing this example showed me exactly how to write a good description for my own toys. The 'Looking For' section is a great touch!", createdAt: new Date("2025-02-01").toISOString(), reviewer: { firstName: "Thabo", lastName: "K.", profileImageUrl: null } },
+      { id: -3, rating: 5, comment: "The bundle format of this listing is brilliant! Grouping related toys together makes exchanging so much more efficient. The photography tips in the description are really helpful too. More members should list like this.", createdAt: new Date("2025-03-10").toISOString(), reviewer: { firstName: "Priya", lastName: "D.", profileImageUrl: null } },
+    ],
+  };
+
   app.get('/api/users/:userId/reviews', isAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
+      if (userId === "official_toyx") {
+        return res.json(EXAMPLE_REVIEWS.official_toyx);
+      }
       const reviews = await storage.getReviews(userId);
       res.json(reviews);
     } catch (error) {
@@ -1860,6 +2168,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/:userId/rating', isAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
+      if (userId === "official_toyx") {
+        return res.json({ averageRating: 5.0 });
+      }
       const averageRating = await storage.getUserAverageRating(userId);
       res.json({ averageRating });
     } catch (error) {
@@ -1875,6 +2186,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         reviewerId: userId
       });
+
+      // Block reviews for the official account
+      if (reviewData.revieweeId === "official_toyx") {
+        return res.status(400).json({ message: "ToyX Official cannot be reviewed." });
+      }
       
       // Check if user can review this exchange
       const canReview = await storage.canUserReview(reviewData.exchangeId, userId);
@@ -2179,6 +2495,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exchangeId = parseInt(req.params.id);
       const exchange = await storage.getExchange(exchangeId);
       if (!exchange) return res.status(404).json({ message: "Exchange not found" });
+      // Block messaging involving the official account
+      if (exchange.requesterId === "official_toyx" || exchange.ownerId === "official_toyx") {
+        return res.status(403).json({ message: "ToyX Official is not available for messaging." });
+      }
       const otherUserId = exchange.requesterId === userId ? exchange.ownerId : exchange.requesterId;
       // Check if either user has blocked the other
       const [blockedByOther, blockedOther] = await Promise.all([

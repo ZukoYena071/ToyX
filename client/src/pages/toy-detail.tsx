@@ -17,6 +17,7 @@ import PageContainer from "@/components/ui/PageContainer";
 import SectionCard from "@/components/ui/SectionCard";
 import { normalizeList, ChipRow } from "@/components/toys/MetaChip";
 import FeaturedBadge from "@/components/profile/FeaturedBadge";
+import { formatLocation } from "@/lib/formatLocation";
 
 export default function ToyDetail() {
   const { id } = useParams();
@@ -232,6 +233,7 @@ export default function ToyDetail() {
   const categories = normalizeList((toy as any)?.category);
   const desc = (toy as any)?.description || "";
   const descLong = desc.length > 140;
+  const shortLocation = formatLocation((toy as any)?.location);
   const rating = (ownerRating as any)?.averageRating || 0;
   const reviewCount = (ownerReviews as any)?.length || 0;
 
@@ -240,7 +242,7 @@ export default function ToyDetail() {
   );
 
   return (
-    <PageContainer className="pb-40">
+    <PageContainer className="pb-48 sm:pb-40">
       {/* Hero image carousel */}
       <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800">
         {/* Hero scrims */}
@@ -258,7 +260,7 @@ export default function ToyDetail() {
               ))}
             </div>
             {imageUrls.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/25 px-2 py-1 rounded-full backdrop-blur-sm">
+              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/25 px-2 py-1 rounded-full backdrop-blur-sm">
                 {imageUrls.map((_: any, i: number) => (
                   <span key={i} className={`block rounded-full transition-all duration-200 shadow-sm ${
                     i === currentImageIndex
@@ -291,7 +293,7 @@ export default function ToyDetail() {
           }} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
             <Share2 className="w-5 h-5 text-gray-900 dark:text-white" />
           </OverlayBtn>
-          {!isOwner && (
+          {!isOwner && !(toy as any)?.isExample && (
             <OverlayBtn onClick={() => favoriteMutation.mutate()} className="bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-full active:scale-95 transition-transform">
               <Heart className={`w-5 h-5 ${(favoriteStatus as any)?.isFavorite ? "fill-red-500 text-red-500" : "text-gray-900 dark:text-white"}`} />
             </OverlayBtn>
@@ -309,10 +311,10 @@ export default function ToyDetail() {
             Boosted
           </span>
         )}
-        {(toy as any)?.location && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 max-w-[55%] truncate whitespace-nowrap">
-            <MapPin className="w-3 h-3" />
-            <span className="truncate max-w-[160px]">{(toy as any)?.location}</span>
+        {shortLocation && (
+          <div className="absolute bottom-12 left-3 max-w-[40%] flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/45 text-white backdrop-blur-sm z-10 truncate whitespace-nowrap">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{shortLocation}</span>
           </div>
         )}
       </div>
@@ -320,6 +322,15 @@ export default function ToyDetail() {
       {/* Info content - floating sheet */}
       <div className="px-4 -mt-4 relative z-10">
         <div className="rounded-2xl border bg-white/80 backdrop-blur-xl border-gray-200 dark:bg-gray-900/70 dark:border-white/10 shadow-sm p-5 space-y-3">
+          {(toy as any)?.isExample && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl px-4 py-3">
+              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                <span>⭐</span>
+                ToyX Example Listing
+              </p>
+              <p className="text-[11px] text-blue-500/70 dark:text-blue-400/70 mt-0.5">This listing demonstrates best practices for creating a great ToyX listing and is not available for exchange.</p>
+            </div>
+          )}
           <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
             {(toy as any)?.name}
           </h1>
@@ -382,17 +393,27 @@ export default function ToyDetail() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
-                    {(toy as any)?.owner?.firstName && (toy as any)?.owner?.lastName
-                      ? `${(toy as any).owner.firstName} ${(toy as any).owner.lastName}`
+                    {(toy as any)?.owner?.firstName
+                      ? `${(toy as any).owner.firstName}${(toy as any).owner.lastName ? ` ${(toy as any).owner.lastName}` : ''}`
                       : (toy as any)?.owner?.email}
                   </h4>
                   {(toy as any)?.owner?.featuredBadge && (
                     <FeaturedBadge type={(toy as any).owner.featuredBadge} />
                   )}
-                  <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  {(toy as any)?.owner?.accountType !== "official" && (
+                    <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  )}
                 </div>
+                {(toy as any)?.owner?.accountType === "official" && (
+                  <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium mt-0.5">Official ToyX Account</p>
+                )}
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  {rating > 0 ? (
+                  {(toy as any)?.owner?.accountType === "official" ? (
+                    <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                      Example Listings
+                    </span>
+                  ) : rating > 0 ? (
                     <span className="flex items-center gap-1">
                       <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                       {rating.toFixed(1)} ({reviewCount} {reviewCount === 1 ? "review" : "reviews"})
@@ -403,10 +424,12 @@ export default function ToyDetail() {
                     <span>New member</span>
                   )}
                   <span>·</span>
-                  <span>View profile</span>
+                  <span>{(toy as any)?.owner?.accountType === "official" ? "Official ToyX Account" : "View profile"}</span>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+              {(toy as any)?.owner?.accountType !== "official" && (
+                <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+              )}
             </div>
           </SectionCard>
         </Link>
@@ -414,54 +437,149 @@ export default function ToyDetail() {
 
       {/* Sticky action bar */}
         <div className="fixed bottom-16 left-0 right-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-2.5 z-40 rounded-t-2xl">
-          <div className="max-w-lg mx-auto flex gap-2">
-            {/* Share — available to everyone */}
-            <button onClick={() => {
-              const shareUrl = `https://app.toyxchange.online/toy/${id}`;
-              if (typeof navigator !== "undefined" && navigator.share) {
-                navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
-              } else {
-                navigator.clipboard.writeText(shareUrl).catch(() => {});
-              }
-            }}
-              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share</span>
-            </button>
-            {/* Post to Social — owner only */}
-            {isOwner && (
-              <button onClick={() => setShowShareModal(true)}
-                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span>Post</span>
-              </button>
-            )}
-            {/* Non-owner actions */}
-            {!isOwner && (
+          {/* Mobile layout */}
+          <div className="max-w-lg mx-auto space-y-2 sm:hidden">
+            {!isOwner && (toy as any)?.isExample ? (
               <>
-                <button onClick={() => setShowMessageModal(true)}
-                  className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>Message</span>
+                <button onClick={() => {
+                  const shareUrl = `https://app.toyxchange.online/toy/${id}`;
+                  if (typeof navigator !== "undefined" && navigator.share) {
+                    navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(shareUrl).catch(() => {});
+                  }
+                }}
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]">
+                  <Share2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Share</span>
                 </button>
-                {(toy as any)?.isAvailable === false ? (
-                  <div className="flex-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <span>In Progress</span>
-                  </div>
-                ) : hasExistingRequest ? (
-                  <div className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Requested</span>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowToySelectionModal(true)}
-                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors min-h-[40px]">
-                    <User className="w-3.5 h-3.5" />
-                    <span>Request Exchange</span>
+                <div className="w-full bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-700/50 rounded-xl px-4 py-3 text-center">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">⭐ ToyX Example Listing</p>
+                  <p className="text-[11px] text-blue-500/70 dark:text-blue-400/70 mt-1">This listing demonstrates best practices for creating a great ToyX listing and is not available for exchange.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <button onClick={() => {
+                    const shareUrl = `https://app.toyxchange.online/toy/${id}`;
+                    if (typeof navigator !== "undefined" && navigator.share) {
+                      navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
+                    } else {
+                      navigator.clipboard.writeText(shareUrl).catch(() => {});
+                    }
+                  }}
+                    className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[40px]">
+                    <Share2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Share</span>
                   </button>
+                  {isOwner ? (
+                    <button onClick={() => setShowShareModal(true)}
+                      className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <span>Post</span>
+                    </button>
+                  ) : (
+                    <button onClick={() => setShowMessageModal(true)}
+                      className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[40px]">
+                      <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Message</span>
+                    </button>
+                  )}
+                </div>
+                {!isOwner && (
+                  <>
+                    {(toy as any)?.isAvailable === false ? (
+                      <div className="w-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>In Progress</span>
+                      </div>
+                    ) : hasExistingRequest ? (
+                      <div className="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Requested</span>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowToySelectionModal(true)}
+                        className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors min-h-[48px] shadow-sm shadow-purple-500/25">
+                        <User className="w-4 h-4" />
+                        <span>Request Exchange</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </>
+            )}
+          </div>
+
+          {/* Desktop layout */}
+          <div className="hidden sm:block max-w-lg mx-auto">
+            {!isOwner && (toy as any)?.isExample ? (
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  const shareUrl = `https://app.toyxchange.online/toy/${id}`;
+                  if (typeof navigator !== "undefined" && navigator.share) {
+                    navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(shareUrl).catch(() => {});
+                  }
+                }}
+                  className="flex-[0.9] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[40px]">
+                  <Share2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Share</span>
+                </button>
+                <div className="flex-1 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-700/50 rounded-xl px-4 py-2.5 flex items-center justify-center gap-2">
+                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">⭐ ToyX Educational Example — Not available for exchange</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  const shareUrl = `https://app.toyxchange.online/toy/${id}`;
+                  if (typeof navigator !== "undefined" && navigator.share) {
+                    navigator.share({ title: (toy as any)?.name || "ToyX Listing", url: shareUrl }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(shareUrl).catch(() => {});
+                  }
+                }}
+                  className="flex-[0.9] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[40px]">
+                  <Share2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Share</span>
+                </button>
+                {isOwner && (
+                  <button onClick={() => setShowShareModal(true)}
+                    className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[40px]">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>Post</span>
+                  </button>
+                )}
+                {!isOwner && (
+                  <>
+                    <button onClick={() => setShowMessageModal(true)}
+                      className="flex-[0.9] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[40px]">
+                      <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Message</span>
+                    </button>
+                    {(toy as any)?.isAvailable === false ? (
+                      <div className="flex-[1.2] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>In Progress</span>
+                      </div>
+                    ) : hasExistingRequest ? (
+                      <div className="flex-[1.2] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px]">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Requested</span>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowToySelectionModal(true)}
+                        className="flex-[1.2] bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors min-h-[40px]">
+                        <User className="w-3.5 h-3.5" />
+                        <span>Request Exchange</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>

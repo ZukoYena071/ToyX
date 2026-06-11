@@ -57,6 +57,7 @@ export const users = pgTable("users", {
   locationUpdatedAt: timestamp("location_updated_at"),
   accessStatus: varchar("access_status", { length: 32 }).notNull().default("waitlist"),
   isAdmin: boolean("is_admin").default(false),
+  accountType: varchar("account_type", { length: 32 }).notNull().default("standard"),
   suspendedUntil: timestamp("suspended_until"),
   suspensionReason: text("suspension_reason"),
   bannedAt: timestamp("banned_at"),
@@ -424,6 +425,17 @@ export const launchSettings = pgTable("launch_settings", {
   liveThreshold: integer("live_threshold").notNull().default(7),
   updatedBy: varchar("updated_by").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// Audit log for admin actions on founding members
+export const foundingConsoleActions = pgTable("founding_console_actions", {
+  id: serial("id").primaryKey(),
+  adminId: varchar("admin_id").notNull().references(() => users.id),
+  actionType: varchar("action_type", { length: 32 }).notNull(),
+  targetEmail: varchar("target_email"),
+  targetMemberId: integer("target_member_id").references(() => foundingMembers.id),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Types

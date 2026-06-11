@@ -70,8 +70,9 @@ export default function AdminLaunchControl() {
   return (
     <PageContainer>
       <PageHeader title="Launch Control" rightAction={
-        <Link href="/admin/founding-members"><button className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button></Link>
+        <button onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/admin"; }} className="min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ArrowLeft className="text-gray-600 dark:text-gray-300 w-4 h-4" /></button>
       } />
+      <p className="px-4 text-xs text-gray-500 dark:text-gray-400 -mt-2">Monitor launch readiness and community growth metrics.</p>
 
       <div className="px-4 pt-4 space-y-4 pb-24">
         {stats ? (
@@ -79,11 +80,11 @@ export default function AdminLaunchControl() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <StatCard icon={<Users className="w-4 h-4 text-violet-500" />} label="Total Users" value={s.total || 0} />
               <StatCard icon={<UserPlus className="w-4 h-4 text-blue-500" />} label="Waitlist" value={s.waitlist || 0} />
-              <StatCard icon={<UserCheck className="w-4 h-4 text-amber-500" />} label="Beta" value={s.beta || 0} sub="Active marketplace participants" />
+              <StatCard icon={<UserCheck className="w-4 h-4 text-amber-500" />} label="Beta Users" value={s.beta || 0} sub="Active marketplace participants" />
               <StatCard icon={<Star className="w-4 h-4 text-green-500" />} label="Live" value={s.live || 0} />
-              <StatCard icon={<Users className="w-4 h-4 text-purple-500" />} label="Founding Families" value={s.foundingFamilies || 0} sub={`${s.badgesAwarded || 0} badges awarded`} />
+              <StatCard icon={<Users className="w-4 h-4 text-purple-500" />} label="Founders" value={s.foundingFamilies || 0} sub={`${s.badgesAwarded || 0} badges awarded`} />
               <StatCard icon={<Gift className="w-4 h-4 text-pink-500" />} label="Toys Listed" value={s.totalListings || 0} />
-              <StatCard icon={<TrendingUp className="w-4 h-4 text-teal-500" />} label="Qualified Referrals" value={s.qualifiedReferrals || 0} />
+              <StatCard icon={<TrendingUp className="w-4 h-4 text-teal-500" />} label="Referrals" value={s.qualifiedReferrals || 0} />
             </div>
 
             {s.settings && (

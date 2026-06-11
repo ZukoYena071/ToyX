@@ -154,19 +154,19 @@ export function calculateDistance(
 // Helper function to get approximate location from coordinates
 export async function reverseGeocode(lat: number, lng: number): Promise<string> {
   try {
-    // Using a simple reverse geocoding approach based on known Bay Area coordinates
-    const bayAreaLocations = [
-      { name: "San Francisco, CA", lat: 37.7749, lng: -122.4194 },
-      { name: "Oakland, CA", lat: 37.8044, lng: -122.2712 },
-      { name: "Berkeley, CA", lat: 37.8715, lng: -122.2730 },
-      { name: "San Jose, CA", lat: 37.3382, lng: -121.8863 },
-      { name: "Palo Alto, CA", lat: 37.4419, lng: -122.1430 },
+    // Simple reverse geocoding based on known South African city coordinates
+    const saLocations = [
+      { name: "Johannesburg, Gauteng", lat: -26.2041, lng: 28.0473 },
+      { name: "Cape Town, Western Cape", lat: -33.9249, lng: 18.4241 },
+      { name: "Durban, KwaZulu-Natal", lat: -29.8587, lng: 31.0218 },
+      { name: "Pretoria, Gauteng", lat: -25.7479, lng: 28.2293 },
+      { name: "Port Elizabeth, Eastern Cape", lat: -33.9608, lng: 25.6022 },
     ];
 
-    let closest = bayAreaLocations[0];
+    let closest = saLocations[0];
     let minDistance = calculateDistance(lat, lng, closest.lat, closest.lng);
 
-    for (const location of bayAreaLocations.slice(1)) {
+    for (const location of saLocations.slice(1)) {
       const distance = calculateDistance(lat, lng, location.lat, location.lng);
       if (distance < minDistance) {
         minDistance = distance;

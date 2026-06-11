@@ -12,6 +12,7 @@ import SectionCard from "@/components/ui/SectionCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ReportUserModal from "@/components/toys/ReportUserModal";
 import FeaturedBadge from "@/components/profile/FeaturedBadge";
+import { formatLocation } from "@/lib/formatLocation";
 
 export default function UserProfile() {
   const { userId } = useParams();
@@ -120,19 +121,21 @@ export default function UserProfile() {
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-0.5">
-                {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split('@')[0] || 'User'}
+                {user.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : user.email?.split('@')[0] || 'User'}
                 {(user as any).featuredBadge && (
                   <FeaturedBadge type={(user as any).featuredBadge} memberNumber={(user as any).memberNumber} />
                 )}
               </h2>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className={`w-4 h-4 ${star <= rating ? "text-yellow-400 fill-current" : "text-gray-300 dark:text-gray-600"}`} />
-                  ))}
+              {(user as any).accountType !== "official" && (
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} className={`w-4 h-4 ${star <= rating ? "text-yellow-400 fill-current" : "text-gray-300 dark:text-gray-600"}`} />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{rating.toFixed(1)} ({reviewCount} reviews)</span>
                 </div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">{rating.toFixed(1)} ({reviewCount} reviews)</span>
-              </div>
+              )}
               <div className="flex items-center gap-1 mt-2 text-sm text-gray-500 dark:text-gray-400">
                 <Calendar className="w-4 h-4" />
                 <span>Member since {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}</span>
@@ -140,19 +143,35 @@ export default function UserProfile() {
             </div>
           </div>
 
-          {/* Statistics Grid */}
-          <div className="grid grid-cols-3 gap-3 mt-6">
-            {[
-              { value: availableToys.length, label: "Available Toys", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
-              { value: reviewCount, label: "Reviews", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20" },
-              { value: rating.toFixed(1), label: "Rating", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/20" },
-            ].map((stat, i) => (
-              <div key={i} className={`${stat.bg} rounded-xl p-3 text-center`}>
-                <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-                <div className={`text-xs ${stat.color} font-medium`}>{stat.label}</div>
+          {/* Statistics Grid / Educational Banner */}
+          {(user as any).accountType === "official" ? (
+            <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-50">📚 Community Guide</p>
+                </div>
               </div>
-            ))}
-          </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                Browse these example listings to learn how to create high-quality ToyX listings and increase your chances of successful exchanges.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 mt-6">
+              {[
+                { value: availableToys.length, label: "Available Toys", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+                { value: reviewCount, label: "Reviews", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20" },
+                { value: rating.toFixed(1), label: "Rating", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/20" },
+              ].map((stat, i) => (
+                <div key={i} className={`${stat.bg} rounded-xl p-3 text-center`}>
+                  <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+                  <div className={`text-xs ${stat.color} font-medium`}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
         {/* Selected Toys Bar */}
@@ -186,7 +205,7 @@ export default function UserProfile() {
                   : "text-gray-500 dark:text-gray-400"
               }`}
             >
-              Toys ({availableToys.length})
+              {(user as any).accountType === "official" ? "Example Listings" : "Toys"} ({availableToys.length})
             </button>
             <button
               onClick={() => setActiveTab("reviews")}
@@ -196,7 +215,7 @@ export default function UserProfile() {
                   : "text-gray-500 dark:text-gray-400"
               }`}
             >
-              Reviews ({reviewCount})
+              {(user as any).accountType === "official" ? "Community Review Examples" : "Reviews"} ({reviewCount})
             </button>
           </div>
 
@@ -243,10 +262,10 @@ export default function UserProfile() {
                             <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.category}</span>
                             <span className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-lg font-medium">{toy.condition}</span>
                           </div>
-                          {toy.location && (
+                          {(toy as any).location && (
                             <div className="flex items-center gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
                               <MapPin className="w-3 h-3" />
-                              <span className="truncate">{toy.location}</span>
+                              <span className="truncate">{formatLocation((toy as any).location)}</span>
                             </div>
                           )}
                         </div>
@@ -294,7 +313,7 @@ export default function UserProfile() {
         open={showReportModal}
         onClose={() => setShowReportModal(false)}
         reportedId={user.id}
-        reportedName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split('@')[0] || 'User'}
+        reportedName={user.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : user.email?.split('@')[0] || 'User'}
         contextType="profile"
       />
     </PageContainer>

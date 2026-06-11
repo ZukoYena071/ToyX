@@ -90,7 +90,7 @@ export default function UploadOverlay({ onClose, toy, restoreDraft }: UploadOver
     category: toy?.category || "",
     ageGroup: toy?.ageGroup || "",
     condition: toy?.condition || "",
-    location: toy?.location || (user as any)?.location || "",
+    location: toy?.location || (user as any)?.location || "Johannesburg",
     lookingForCategories: toy?.lookingForCategories || [],
     lookingForDetails: toy?.lookingForDetails || "",
   });

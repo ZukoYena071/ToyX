@@ -48,6 +48,7 @@ import { apiRequest, clearWasAuthenticated } from "@/lib/queryClient";
 import UploadOverlay from "@/components/upload-overlay";
 import BoostButton from "@/components/toys/BoostButton";
 import { searchLocations } from "@/lib/location";
+import { formatLocation } from "@/lib/formatLocation";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -58,6 +59,41 @@ export default function Profile() {
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Lock scroll when edit modal is open — works on iOS Safari
+  useEffect(() => {
+    if (showEditModal) {
+      const scrollY = window.scrollY;
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.width = "100%";
+    } else {
+      const scrollY = parseInt(document.body.style.top || "0", 10) * -1 || 0;
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
+    }
+    return () => {
+      const scrollY = parseInt(document.body.style.top || "0", 10) * -1 || 0;
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [showEditModal]);
   const [showEditToy, setShowEditToy] = useState<any>(null);
   const [confirmDeleteToyId, setConfirmDeleteToyId] = useState<number | null>(null);
   const [showToyMenu, setShowToyMenu] = useState<number | null>(null);
@@ -87,7 +123,7 @@ export default function Profile() {
         firstName: (user as any)?.firstName || '',
         lastName: (user as any)?.lastName || '',
         bio: (user as any)?.bio || '',
-        location: (user as any)?.location || 'San Francisco, CA',
+        location: (user as any)?.location || 'Johannesburg',
         phone: (user as any)?.phone || '',
         profileImageUrl: (user as any)?.profileImageUrl || ''
       });
@@ -403,41 +439,43 @@ export default function Profile() {
       {/* Profile Card */}
       <div className="px-4 mt-4">
         <SectionCard className="p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative">
-              <Avatar className="w-20 h-20">
-                <AvatarImage src={(user as any)?.profileImageUrl || undefined} />
-                <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
-                  {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
-                <Check className="text-white w-3 h-3" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="w-20 h-20 shrink-0">
+                  <AvatarImage src={(user as any)?.profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
+                    {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
+                  <Check className="text-white w-3 h-3" />
+                </div>
               </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 truncate flex items-center gap-0.5">
-                {(user as any)?.firstName || (user as any)?.lastName
-                  ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim()
-                  : (user as any)?.email || 'User'
-                }
-                {rewardsData && (rewardsData as any).badges?.length > 0 && (
-                  <FeaturedBadge
-                    type={(rewardsData as any).badges[0].type}
-                    memberNumber={(rewardsData as any).foundingMember?.memberNumber}
-                    awardedAt={(rewardsData as any).badges[0].awardedAt}
-                  />
-                )}
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
-              <div className="flex items-center gap-1 mt-1">
-                <MapPin className="text-purple-500 w-3 h-3" />
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{(user as any)?.location || 'Location not set'}</span>
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 truncate flex items-center gap-0.5">
+                  {(user as any)?.firstName || (user as any)?.lastName
+                    ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim()
+                    : (user as any)?.email || 'User'
+                  }
+                  {rewardsData && (rewardsData as any).badges?.length > 0 && (
+                    <FeaturedBadge
+                      type={(rewardsData as any).badges[0].type}
+                      memberNumber={(rewardsData as any).foundingMember?.memberNumber}
+                      awardedAt={(rewardsData as any).badges[0].awardedAt}
+                    />
+                  )}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{(user as any)?.firstName?.toLowerCase() || 'user'}_toys</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <MapPin className="text-purple-500 w-3 h-3 shrink-0" />
+                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatLocation((user as any)?.location) || 'Location not set'}</span>
+                </div>
               </div>
             </div>
             <button
               onClick={() => setShowEditModal(true)}
-              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px]"
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] sm:w-auto w-full"
             >
               Edit Profile
             </button>
@@ -576,19 +614,21 @@ export default function Profile() {
                             {Array.isArray(userToys) && userToys.length > 0 ? (
                               <div className="space-y-2">
                                 {userToys.map((toy: any) => (
-                                  <div key={toy.id} className={'flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl' + (toy.isAvailable === false ? ' opacity-60' : '')}>
-                                    <div className={'w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0' + (toy.isAvailable === false ? ' grayscale' : '')}>
-                                      {toy.imageUrls && toy.imageUrls[0] ? (
-                                        <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center">🧸</div>
-                                      )}
+                                  <div key={toy.id} className={'sm:flex sm:items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl' + (toy.isAvailable === false ? ' opacity-60' : '')}>
+                                    <div className="flex items-start gap-3 sm:flex-1 sm:min-w-0 mb-3 sm:mb-0">
+                                      <div className={'w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0' + (toy.isAvailable === false ? ' grayscale' : '')}>
+                                        {toy.imageUrls && toy.imageUrls[0] ? (
+                                          <img src={toy.imageUrls[0]} alt={toy.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center">🧸</div>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50 line-clamp-2 sm:line-clamp-none sm:truncate">{toy.name}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
+                                      </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">{toy.name}</h4>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{toy.category} • {toy.condition}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex items-center gap-1 justify-end sm:shrink-0">
                                       <BoostButton toyId={toy.id} isBoosted={toy.isBoosted} boostedUntil={toy.boostedUntil} disabled={toy.isAvailable === false} onSuccess={() => { queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.id, "toys"] }); queryClient.invalidateQueries({ queryKey: ["/api/toys"] }); }} />
                                       <div className="relative">
                                         <button onClick={() => setShowToyMenu(showToyMenu === toy.id ? null : toy.id)} className="min-w-[44px] min-h-[44px] bg-gray-50 dark:bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -714,11 +754,11 @@ export default function Profile() {
               />
             </Link>
             {(user as any)?.isAdmin && (
-              <Link href="/admin/moderation">
+              <Link href="/admin">
                 <ListItemRow
                   icon={<div className="w-10 h-10 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center"><Shield className="text-red-500 w-5 h-5" /></div>}
-                  title="Admin Moderation"
-                  subtitle="Manage user reports"
+                  title="Admin Console"
+                  subtitle="Manage founding members, moderation tools and platform administration"
                 />
               </Link>
             )}
@@ -853,9 +893,9 @@ export default function Profile() {
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex flex-col items-center justify-end sm:justify-center">
+          <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-lg w-full max-w-md max-h-[90dvh] sm:max-h-[85vh] flex flex-col mt-auto sm:mt-0">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Edit Profile</h2>
               <button
                 onClick={() => setShowEditModal(false)}
@@ -865,95 +905,100 @@ export default function Profile() {
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="p-4 space-y-4">
-              <div className="text-center">
-                <div className="relative inline-block">
-                  <Avatar className="w-20 h-20 mx-auto">
-                    <AvatarImage src={imagePreview || (user as any)?.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
-                      {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <label
-                    htmlFor="profile-image-input"
-                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer"
-                  >
-                    <Camera className="w-3 h-3" />
-                  </label>
-                  <input id="profile-image-input" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  {selectedImage ? `Selected: ${selectedImage.name}` : 'Click camera to upload photo'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
-                  <Input type="text" value={editForm.firstName} onChange={(e) => handleEditChange('firstName', e.target.value)} placeholder="Enter first name" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
-                  <Input type="text" value={editForm.lastName} onChange={(e) => handleEditChange('lastName', e.target.value)} placeholder="Enter last name" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
-                <Textarea value={editForm.bio} onChange={(e) => handleEditChange('bio', e.target.value)} placeholder="Tell other parents about yourself..." rows={3} />
-              </div>
-
-              <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type="text"
-                      value={editForm.location}
-                      onChange={(e) => handleLocationChange(e.target.value)}
-                      onFocus={() => editForm.location.length > 1 && setShowLocationSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
-                      className="pr-10"
-                      placeholder="Enter your city, state or address"
-                    />
-                    <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    {showLocationSuggestions && (
-                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm max-h-48 overflow-y-auto">
-                        {searchingLocation ? (
-                          <div className="flex items-center justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-purple-500" /></div>
-                        ) : locationSuggestions.length === 0 ? (
-                          <div className="px-3 py-2 text-sm text-gray-500">No locations found</div>
-                        ) : (
-                          locationSuggestions.map((result, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onMouseDown={(e) => { e.preventDefault(); selectLocation(result); }}
-                              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2"
-                            >
-                              <MapPin className="w-3 h-3 text-gray-400" />
-                              <span>{result.displayName}</span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
+            <div className="flex-1 overflow-y-auto">
+              <form id="edit-profile-form" onSubmit={handleEditSubmit} className="p-4 space-y-4">
+                <div className="text-center">
+                  <div className="relative inline-block">
+                    <Avatar className="w-20 h-20 mx-auto">
+                      <AvatarImage src={imagePreview || (user as any)?.profileImageUrl || undefined} />
+                      <AvatarFallback className="bg-purple-500 text-white text-2xl font-bold">
+                        {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label
+                      htmlFor="profile-image-input"
+                      className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer"
+                    >
+                      <Camera className="w-3 h-3" />
+                    </label>
+                    <input id="profile-image-input" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={getCurrentLocation} className="px-3">
-                    <Navigation className="w-4 h-4" />
-                  </Button>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {selectedImage ? `Selected: ${selectedImage.name}` : 'Click camera to upload photo'}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Type your location or use current location for better toy matching</p>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
-                <Input type="tel" value={editForm.phone} onChange={(e) => handleEditChange('phone', e.target.value)} placeholder="Enter phone number (optional)" />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
+                    <Input type="text" value={editForm.firstName} onChange={(e) => handleEditChange('firstName', e.target.value)} placeholder="Enter first name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
+                    <Input type="text" value={editForm.lastName} onChange={(e) => handleEditChange('lastName', e.target.value)} placeholder="Enter last name" />
+                  </div>
+                </div>
 
-              <div className="flex gap-3 pt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
+                  <Textarea value={editForm.bio} onChange={(e) => handleEditChange('bio', e.target.value)} placeholder="Tell other parents about yourself..." rows={3} />
+                </div>
+
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        value={editForm.location}
+                        onChange={(e) => handleLocationChange(e.target.value)}
+                        onFocus={() => editForm.location.length > 1 && setShowLocationSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
+                        className="pr-10"
+                        placeholder="Enter your city, state or address"
+                      />
+                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      {showLocationSuggestions && (
+                        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm max-h-48 overflow-y-auto">
+                          {searchingLocation ? (
+                            <div className="flex items-center justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-purple-500" /></div>
+                          ) : locationSuggestions.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-gray-500">No locations found</div>
+                          ) : (
+                            locationSuggestions.map((result, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); selectLocation(result); }}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2"
+                              >
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span>{result.displayName}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={getCurrentLocation} className="px-3">
+                      <Navigation className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Type your location or use current location for better toy matching</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
+                  <Input type="tel" value={editForm.phone} onChange={(e) => handleEditChange('phone', e.target.value)} placeholder="Enter phone number (optional)" />
+                </div>
+
+              </form>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-800 p-4 shrink-0 bg-white dark:bg-gray-900">
+              <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">Cancel</Button>
-                <Button type="submit" disabled={updateProfileMutation.isPending} className="flex-1">
+                <Button type="submit" disabled={updateProfileMutation.isPending} className="flex-1" form="edit-profile-form">
                   {updateProfileMutation.isPending ? (
                     <span className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -964,7 +1009,7 @@ export default function Profile() {
                   )}
                 </Button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
